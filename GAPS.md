@@ -165,6 +165,74 @@ They alias new hidden alpha primitives (`color-taupe-900-alpha-80`, `color-red-6
 - **Placeholder lengths.** Horizontal is 320 wide (`w-full`); vertical is 24 tall (`self-stretch`, which follows its parent in code). Both are fixed numbers, not variables. Resize the instance, or put it in an auto-layout frame and set it to fill.
 - `decorative` (accessibility only) has no Figma equivalent. `shrink-0` is not relevant.
 
+### Second batch: alert, avatar, checkbox, dialog, progress, radio-group, select, skeleton, switch, tabs, textarea, tooltip
+
+All twelve were built the same way as the first six: every size, gap, padding, fill, stroke, effect and text style is bound to a variable or style, and the properties use the code's names. They were checked in both modes.
+
+**New tokens (names invented; the code writes these inline).** Spacing steps `0_5`, `0_25`, `2_5`, `3_5`, `4_5`, `6_25`, `8_25`, `16`, `18`, `36` (fixed pixels, not multiples of `spacing`). Alpha and mode tokens in Semantic:
+
+| Token | Code |
+|---|---|
+| `dialog-overlay` | `bg-black/20` |
+| `ring-foreground-10` | `ring-foreground/10` (dialog and select content) |
+| `destructive-90` | alert destructive description `text-destructive/90` |
+| `input-50` | switch unchecked `border-input/50` |
+| `border-50` | select separator `bg-border/50` |
+| `switch-thumb`, `switch-thumb-checked` | thumb `bg-background`, `dark:bg-foreground` (unchecked), `dark:bg-primary-foreground` (checked) |
+| `tab-text` | `text-foreground/60`, `dark:text-muted-foreground` |
+| `tab-active-bg` | `data-active:bg-background`, `dark:bg-input/30` |
+| `tab-active-border` | `dark:data-active:border-input` (transparent in light) |
+
+Scopes were widened on existing tokens so they can be used where the code uses them: `input` (also fills), `background` (also text and effect), `foreground` (also frame fill and stroke), `primary` (also stroke), `border` (also fills), `muted-foreground` (also shapes). New effect styles: `shadow-md`, `ring-1 ring-foreground-10 shadow-md`, `ring-2 ring-background`, `backdrop-blur-sm`. New text styles (named after the slot): `alert-title`, `alert-description`, `avatar-fallback`, `avatar-fallback@sm`, `dialog-title`, `dialog-description`, `select-trigger`, `select-label`, `select-item`, `tabs-trigger`, `tabs-content`, `textarea`, `textarea@md`, `tooltip-content`.
+
+**Applies to several components**
+- **Focus and invalid rings on controls with no fill** (checkbox, radio, tabs trigger) are an outside stroke on a wrapper frame, not the effect style: a drop shadow on a hollow shape follows its edge. Switch has a fill, so it uses the effect styles.
+- **Checked plus invalid or focus.** The code sets both `border-destructive` (or `border-ring`) and `data-checked:border-primary`. Which wins depends on CSS output order, which the source does not settle. Modelled as the checked colour (primary for checkbox and switch, foreground for radio) with the destructive or focus ring still shown. Check this in Storybook.
+- **`after:-inset-*` hit areas** (checkbox, radio, switch) are invisible click targets and are not modelled. `group-has-[:focus-visible]/field-label:*` and `group-has-disabled/field:*` rules refer to a Field component that is not in the repo.
+- **Transitions and animations** (including `animate-pulse`, `animate-in/out`) are not built. No prototype interactions.
+
+**Skeleton.** One component. Size and shape come from `className`, so resize the instance (and set a corner radius for a circle). The pulse is not animated.
+
+**Progress.** `value` is a 0 to 100 number in code. Figma has five steps (0, 25, 50, 75, 100). Width is fixed at 320, height is `spacing-0_5` (2px). `transition-all` is not built.
+
+**Textarea.** As Input: `breakpoint` base or md, `value` placeholder or filled, and the text properties `placeholder` and `value`. Width is fixed at 320. `field-sizing-content` (grows with text) is approximated by auto layout; `min-h-16` is the minimum height. `resize-none` has no equivalent.
+
+**Checkbox.** `checked` × `state`. No indeterminate state (the code has none). The check icon is a drawn vector, 14px.
+
+**Radio group.** `radio-group-item` (`checked` × `state`) and `radio-group` (three items, first checked). No labels in the component; the label pairing in stories is composition.
+
+**Switch.** `size` (default 33×18, sm 25×14) × `checked` × `state`. The thumb is positioned by hand (`translate-x-[calc(100%+2px)]` becomes 2px from the edge in both positions).
+
+**Avatar.** `size` (default, sm, lg) with `children` (initials) and a `badge` toggle. `avatar-group` has three avatars and a count at size default only.
+- **Not expressible:** the avatar's 1px border uses `mix-blend-darken` in light and `mix-blend-lighten` in dark. Figma can't switch blend mode with a variable, so it is a normal border.
+- **Not modelled:** `AvatarImage` (no images in Figma), and the small icon that can sit inside the badge.
+- **Group overlap** is a fixed -8 (`-space-x-2`).
+
+**Alert.** `variant` × `action` (a variant, because it changes the right padding to `pr-18`), a `title` and `description` text property, and an `icon` toggle (a placeholder terminal icon).
+- **Indicator and action:** the 2px left indicator (`after:`) and the action are absolutely positioned. The action is an outline xs Button instance.
+- **Width:** fixed at 420 (the story's width; the code is fluid).
+- **Not modelled:** `text-balance` and `text-pretty`, and link styles inside title and description.
+
+**Dialog.** Parts: `dialog-header`, `dialog-footer`, `dialog-content` (toggle `close-button`) and `dialog` (overlay with content centred).
+- **Fixed sizes:** the overlay is a placeholder 1200×760 viewport, and the content is 448 wide (`sm:max-w-md`).
+- **Blur:** `backdrop-blur-sm` is an 8px background blur. Figma's blur radius does not equal a CSS pixel blur exactly.
+- **Close button:** it is redrawn (ghost icon-sm with `bg-secondary` and an X) rather than a Button instance, because the Button component holds a placeholder icon that can't be swapped.
+- **Footer:** only the `sm:` layout (row, right-aligned) is modelled; the mobile stack is not. Trigger, Portal and Close wrappers are behaviour, not visuals.
+
+**Select.** Parts: `select-trigger` (`size` × `value` × `state`), `select-item` (`checked` × `state`: default, focus, disabled), `select-label`, `select-separator`, `select-content`.
+- **Trigger width:** `w-fit` in code; fixed at 220 here so the chevron sits at the right.
+- **Content width:** fixed at 200 (`min-w-36` is 144).
+- **Item focus:** the `focus` state means CSS `:focus` (keyboard or pointer highlight), not `focus-visible`.
+- **Not modelled:** the scroll up and down buttons, the `item-aligned` vs `popper` positions, and the separator's `-mx-1.5` bleed.
+
+**Tabs.** Parts: `tabs-trigger` (list `variant` × `orientation` × `state`: default, hover, active, focus-visible, disabled), `tabs-list` (variant × orientation, first tab active), `tabs-content`, and `tabs` (orientation × variant).
+- **Focus:** the 3px ring is an outside stroke and the 1px border is the trigger's stroke. The extra `focus-visible:outline-1 outline-ring` is not built (Figma has one stroke per node).
+- **Trigger height:** 31px fixed for horizontal tabs (`h-[calc(100%-1px)]` of a 32px list); vertical tabs hug.
+- **Line indicator:** the active bar (`after:`) is an absolutely positioned 2px rectangle, 5px beyond the trigger edge.
+- **Not modelled:** `flex-1` equal-width triggers, and icon-plus-text triggers (`has-data-[icon]` padding).
+
+**Tooltip.** `side` (top, bottom, left, right), `children`. The arrow is a hand-placed 10px square rotated 45°, its centre 2px inside the edge facing the trigger, centred along the edge. `max-w-xs` is not enforced, and the `kbd` slot is not modelled.
+
 ## Not yet mirrored
 
-Border widths as variables, and prototype interactions. All six components in `src/components/ui` are now built.
+Border widths as variables, and prototype interactions. All eighteen components in `src/components/ui` are now built in Figma.
