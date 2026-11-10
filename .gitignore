@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+tsconfig.app.tsbuildinfo
+
+*storybook.log
+storybook-static
+.claude/settings.local.json
