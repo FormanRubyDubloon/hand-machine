@@ -28,7 +28,8 @@ A design system foundation: a Vite + React 19 + TypeScript app styled with Tailw
 ## Architecture
 
 - **Path alias:** `@/*` → `src/*`, defined in both `vite.config.ts` and `tsconfig.app.json`. Keep them in sync.
-- **Theming:** all tokens live in `src/index.css`. Colours are CSS variables on `:root` (oklch values) and mapped into Tailwind through an `@theme` block (`--color-*`). The `@theme` block wraps values in `hsl(var(--x))`, while the `:root` values are oklch, so check this mismatch when changing tokens. Dark mode uses `@custom-variant dark (&:is(.dark *))`, i.e. a `.dark` class on an ancestor.
+- **Theming:** all tokens live in `src/index.css`. Colours are CSS variables on `:root` (oklch values) and mapped into Tailwind by the `@theme inline` block (`--color-*`); don't wrap them in `hsl()`. Dark mode uses `@custom-variant dark (&:is(.dark *))`, i.e. a `.dark` class on an ancestor.
+- **shadcn CLI:** the root `tsconfig.json` must carry the `@/*` path alias, otherwise `shadcn add` writes into a literal `@/` folder. After adding or overwriting components, check they import `cn` from `@/lib/utils` (the CLI has emitted `from "cn"`, the unrelated npm package) and that stock `radix-sera` styling (square corners, uppercase buttons) is intact.
 - **Components:** `src/components/ui/` holds shadcn primitives (badge, button, card, input, label, separator) built on `radix-ui`, `class-variance-authority`, and the `cn()` helper in `src/lib/utils.ts`.
 - **Typeface:** Stevie Sans, loaded from Adobe Fonts via a Typekit stylesheet in `index.html`. `@fontsource-variable/inter` is still imported in `index.css` as a fallback.
 
