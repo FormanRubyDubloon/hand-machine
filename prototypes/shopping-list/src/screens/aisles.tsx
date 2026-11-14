@@ -34,6 +34,9 @@ function AislesContent({ close }: { close: () => void }) {
   const left = open.filter((li) => !li.skipped)
   const aislesLeft = aisles.filter((a) => a.items.some((li) => li.remaining > 0 && !li.skipped)).length
 
+  const allCurrent = session.aisleIndex < 0
+  const allTodo = left.filter((li) => matchesFilter(li.stock, state.filter))
+
   return (
     <>
       <DrawerHeader className="gap-3.5 border-b border-border px-5 pt-4 pb-5 text-left group-data-[vaul-drawer-direction=bottom]/drawer-content:text-left">
@@ -61,8 +64,26 @@ function AislesContent({ close }: { close: () => void }) {
       </DrawerHeader>
       <div className="flex flex-col overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))]">
       <nav aria-label="Aisles">
+        <ListRow asChild tone={allCurrent ? "current" : "default"} size={allCurrent ? "lg" : "default"}>
+          <button
+            type="button"
+            aria-current={allCurrent ? "page" : undefined}
+            onClick={() => {
+              actions.setAisle(-1)
+              close()
+            }}
+          >
+            <span className="w-6 shrink-0" aria-hidden="true" />
+            <ListRowText
+              title="All items"
+              description={allCurrent ? `${allTodo.length} left` : "Every aisle in one list"}
+              descriptionClassName={allCurrent ? "text-[10px] font-semibold tracking-widest uppercase" : undefined}
+            />
+            <CountBox variant="default">{allTodo.length}</CountBox>
+          </button>
+        </ListRow>
         {aisles.map((aisle, i) => {
-          const current = i === Math.min(session.aisleIndex, aisles.length - 1)
+          const current = !allCurrent && i === Math.min(session.aisleIndex, aisles.length - 1)
           const todo = aisle.items.filter((li) => li.remaining > 0 && !li.skipped && matchesFilter(li.stock, state.filter))
           const skippedHere = aisle.items.filter((li) => li.skipped).length
           const done = aisle.items.every((li) => li.remaining === 0 || li.skipped)

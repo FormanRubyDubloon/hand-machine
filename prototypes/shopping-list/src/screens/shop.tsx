@@ -43,14 +43,18 @@ export function Shop() {
       </Screen>
     )
 
-  const index = Math.min(session.aisleIndex, aisles.length - 1)
+  // aisleIndex -1 is the "All items" view: every aisle's items in one list.
+  const index = session.aisleIndex < 0 ? -1 : Math.min(session.aisleIndex, aisles.length - 1)
   // Keyed by aisle so the row order is fixed while you're in it.
-  return <AisleView key={aisles[index].number} index={index} />
+  return <AisleView key={index < 0 ? "all" : aisles[index].number} index={index} />
 }
 
 function AisleView({ index }: { index: number }) {
   const { state, actions, sessionStore, aisles } = useApp()
-  const aisle: ShopAisle = aisles[index]
+  const all = index < 0
+  const aisle: ShopAisle = all
+    ? { number: 0, name: "All items", categoryIds: aisles.flatMap((a) => a.categoryIds), items: aisles.flatMap((a) => a.items) }
+    : aisles[index]
   const [adding, setAdding] = React.useState(false)
   const [editing, setEditing] = React.useState<string | null>(null)
 
@@ -69,7 +73,7 @@ function AisleView({ index }: { index: number }) {
 
   const totalLeft = aisles.reduce((n, a) => n + a.items.filter((li) => li.remaining > 0 && !li.skipped).length, 0)
   const aislesLeft = aisles.filter((a) => a.items.some((li) => li.remaining > 0 && !li.skipped)).length
-  const next = aisles[index + 1]
+  const next = all ? undefined : aisles[index + 1]
   const cleared = leftHere === 0
 
   const getAll = (li: ListItem) => {
@@ -103,8 +107,8 @@ function AisleView({ index }: { index: number }) {
 
   return (
     <Screen
-      top={<SegmentBar total={aisles.length} filled={index + 1} aria-label={`Aisle ${index + 1} of ${aisles.length}`} />}
-      eyebrow={`${sessionStore!.name} · aisle ${aisle.number}`}
+      top={all ? undefined : <SegmentBar total={aisles.length} filled={index + 1} aria-label={`Aisle ${index + 1} of ${aisles.length}`} />}
+      eyebrow={all ? `${sessionStore!.name} · every aisle` : `${sessionStore!.name} · aisle ${aisle.number}`}
       title={aisle.name}
       aside={
         <>
