@@ -101,7 +101,12 @@ function diffSnapshot(prev: S, next: S): Snapshot {
   for (const id of new Set([...Object.keys(pr), ...Object.keys(nr)])) {
     if (JSON.stringify(pr[id]) !== JSON.stringify(nr[id])) recipes[id] = pr[id] ?? null
   }
-  return { items, recipes }
+  const snapshot: Snapshot = { items, recipes }
+  if (JSON.stringify(prev.db.categories) !== JSON.stringify(next.db.categories)) {
+    snapshot.categories = prev.db.categories
+    snapshot.stores = prev.db.stores
+  }
+  return snapshot
 }
 
 type EntryInput = { who?: Who; title: string | ((undo: Snapshot, next: S) => string); detail?: string | ((undo: Snapshot, next: S) => string); itemIds?: string[]; recipeId?: string; key?: string }
@@ -484,7 +489,8 @@ function usePantryState() {
     renameCategory(id: string, name: string) {
       commit((s) => setDb(s, { categories: s.db.categories.map((c) => (c.id === id ? { ...c, name } : c)) }))
     },
-    addCategory(storeId: string, name: string) {
+    /** A new category. With a store, it gets the next aisle number there; every other store has none. */
+    addCategory(storeId: string | null, name: string) {
       const id = uid("aisle")
       commit((s) => {
         const store = s.db.stores.find((x) => x.id === storeId)
@@ -494,6 +500,38 @@ function usePantryState() {
           stores: s.db.stores.map((x) => ({ ...x, aisles: { ...x.aisles, [id]: x.id === storeId ? top + 1 : null } })),
         })
       })
+      return id
+    },
+    /** SET-06, first step: moves every item in one category to another, so the first can be removed. */
+    moveCategoryItems(from: string, to: string) {
+      const s0 = ref.current
+      const a = s0.db.categories.find((c) => c.id === from)
+      const b = s0.db.categories.find((c) => c.id === to)
+      const moved = Object.values(s0.items).filter((i) => i.categoryId === from).map((i) => i.id)
+      if (!a || !b || from === to || !moved.length) return
+      commit(
+        (s) => moved.reduce((next, id) => edit(next, id, (x) => ({ ...x, categoryId: to })), s),
+        { title: `Moved ${plural(moved.length, "item")} from ${a.name} to ${b.name}`, itemIds: moved },
+      )
+      toast(`Moved ${plural(moved.length, "item")} to ${b.name}`)
+    },
+    /** SET-06: removes a category from every store. Only an empty one: its items have to be moved first. */
+    removeCategory(id: string) {
+      const s0 = ref.current
+      const gone = s0.db.categories.find((c) => c.id === id)
+      if (!gone || Object.values(s0.items).some((i) => i.categoryId === id)) return
+      commit(
+        (s) => setDb(s, {
+          categories: s.db.categories.filter((c) => c.id !== id),
+          stores: s.db.stores.map((x) => {
+            const aisles = { ...x.aisles }
+            delete aisles[id]
+            return { ...x, aisles }
+          }),
+        }),
+        { title: `Removed the category ${gone.name}`, detail: "It had no items" },
+      )
+      toast(`Removed ${gone.name}`, { description: "You can undo this from History today." })
     },
 
     // ----- sync with Supabase -----
@@ -620,8 +658,21 @@ function usePantryState() {
           else if (index >= 0) recipes[index] = before
           else recipes.push(before)
         }
+        // A removed category comes back in its old place, with its old aisle numbers. Categories
+        // added or renamed since stay as they are now.
+        let { categories, stores } = s.db
+        if (entry.undo.categories) {
+          const now = byId(categories)
+          const before = entry.undo.categories.map((c) => now[c.id] ?? c)
+          categories = [...before, ...categories.filter((c) => !entry.undo!.categories!.some((b) => b.id === c.id))]
+          const old = byId(entry.undo.stores ?? [])
+          stores = stores.map((x) => {
+            const back = Object.fromEntries(Object.entries(old[x.id]?.aisles ?? {}).filter(([k]) => !(k in x.aisles)))
+            return { ...x, aisles: { ...x.aisles, ...back } }
+          })
+        }
         const history = s.db.history.map((h) => (h.id === entryId ? { ...h, undone: true } : h))
-        return { items, db: { ...s.db, recipes, history } }
+        return { items, db: { ...s.db, recipes, categories, stores, history } }
       })
       toast("Undone")
     },

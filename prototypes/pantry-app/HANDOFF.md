@@ -1,6 +1,6 @@
 # Pantry app: design handoff
 
-**Date:** 14 November 2026
+**Date:** 14 November 2026 (categories added late on 14 November)
 **Status:** Working design, not final
 **Intent:** [../shopping-list/intent.md](../shopping-list/intent.md). The pantry app and the shopping app share one intent, so there is one copy. Read it before building or changing anything.
 **Design canvas:** "Shopping list app: 5 versions" on claude.ai, page "Pantry explorations". The `screens/` folder has a copy of each screen as it stood when this was written.
@@ -80,6 +80,9 @@ The canvas IDs are kept, so there are gaps in the numbers. The screens not liste
 | SET-01 | Stores and aisles | `screens/SET-01.html` | Stores, and each store's aisles in walking order (drag to reorder, a number on each). The same data the phone edits. |
 | SET-02 | Claude connection | `screens/SET-02.html` | Connected or not, the address to add in Claude, what Claude can do without asking and what it asks first, and Claude's recent changes. |
 | SET-03 | Account | `screens/SET-03.html` | Sign-in methods, the devices you're signed in on, export, delete account. Sharing is marked "Coming later". |
+| SET-04 | Categories | `screens/SET-04.html` | Every category in a table: kind (aisle or shop), items, Staples, which stores give it an aisle number. Shown while adding one: a new row at the top with a name, Aisle or Shop, and Add. |
+| SET-05 | Rename a category | `screens/SET-05.html` | The pencil turns the name into a field with Save and Cancel. The new name shows everywhere. |
+| SET-06 | Remove a category | `screens/SET-06.html` | Confirmation. The category's items must move to another category first. Says which stores lose an aisle number. |
 
 ### How the screens link
 
@@ -88,7 +91,7 @@ The canvas IDs are kept, so there are gaps in the numbers. The screens not liste
 - **PAN-10:** an item name opens PAN-11 (or PAN-16 for bulk). Import goes to PAN-15. Merge and Delete in the panel open PAN-17 and PAN-18 over the table.
 - **REC-07 and REC-08:** the two tabs switch between them. A recipe opens REC-09. Full screen goes to REC-10, and back again. "Cooked it" opens REC-11. "Want to cook" shows REC-13.
 - **LIST-01:** "Add to list" opens LIST-05. With nothing on the list it shows LIST-06.
-- **Settings:** the left column switches between SET-01, SET-02 and SET-03.
+- **Settings:** the left column switches between SET-01 (Stores and aisles), SET-04 (Categories), SET-02 (Claude connection) and SET-03 (Account). On SET-04, the pencil on a row gives SET-05 and the bin gives SET-06.
 - **PAN-19** appears after the phone syncs, if anything changed in both places.
 - **AUTH-01** comes before everything else until you're signed in.
 
@@ -150,6 +153,18 @@ The canvas IDs are kept, so there are gaps in the numbers. The screens not liste
 - SET-01 edits the same stores and aisle numbers as the phone's STORE screens.
 - SET-02 lists Claude's permissions as fixed rules (from the intent), not switches.
 
+### Categories (SET-04 to SET-06)
+
+See "Categories" in the intent. Every item has one category, and each store gives a category an aisle number, so the list follows the walk round the shop. Today's set is Notion's 18.
+
+- **Two kinds (design only, dropped).** The screens show an **aisle** (part of a store) and a **shop** (a whole shop). Left out of the build on 14 November: a shop category is just the only aisle in its store.
+- **Add:** "Add category" puts a new row at the top: name, Aisle or Shop, Add. A new category appears in every store's aisle order with no number until one is set in Stores and aisles (SET-01). Until then, its items don't show on that store's list.
+- **Rename:** the new name shows on every item, on the shopping list and in every store's aisles, here and on the phone.
+- **Remove:** you can't remove a category that still has items. The confirmation says how many and asks which category to move them to. It names the stores that lose an aisle number. Recipes don't change. It can be undone from History on the same day.
+- **Phone:** categories reach the shopping app when it syncs, like stores and aisles.
+- **A category with no aisle number in any store** is shown in bold ("No aisle number yet"), so it's easy to spot.
+- **Claude:** whether it can add or rename categories is an open question in the intent. Until that's settled, it uses the ones that exist and asks before changing one.
+
 ## Data
 
 All of it is shared with the shopping app and the Claude connection. The fields are the same as in the intent.
@@ -160,7 +175,9 @@ All of it is shared with the shopping app and the Claude connection. The fields 
 
 **List entry:** pantry item or one-off name, amount, source (Staple below minimum, by hand, Claude, recipe name).
 
-**Store:** name, default or not, an aisle number per shop-or-aisle category.
+**Category:** name. The screens also show a kind (aisle or shop), which isn't in the intent or the code yet.
+
+**Store:** name, default or not, an aisle number per category.
 
 **History entry:** who (you, Claude, shopping app, kitchen app later), when, what changed, and whether it can be undone.
 
@@ -175,6 +192,7 @@ Fix these in the seed data, not by copying the screens:
 - **Store names.** LIST-01 and SET-01 use "Sainsbury's, Stoke Newington". The phone uses "Supermarket". Pick one.
 - **Want to cook.** Here it's Sardine linguine. On the phone it's Fennel and orange salad. Use one seed where both are Want to cook.
 - **Counts.** Some counts don't agree between screens. For example, PAN-10 says 11 items are below minimum, but LIST-01 lists 12 Staples to buy. Work them out from the seed.
+- **Categories.** SET-04 shows 14 made-up categories. The data has Notion's 18. Use the data.
 - **Sync time.** "Synced today, 10:02" in the top bar is the phone's last sync. Label it that way ("Phone synced …") or move it. See open questions.
 
 ## Components
@@ -209,7 +227,10 @@ Components are in `src/components/ui/` (shadcn `radix-sera`: square corners, upp
 | **Recipe card in a column** (REC-07) and **Use-first tile** | **new** | |
 | **Ingredient row** | **new**, or reuse `IngredientRow` from the shopping prototype | Recipe wording, pantry link, stock mark. |
 | **Reorderable aisle list** (SET-01) | **new** | Drag handle, number box (dashed when empty), name, item count. Drag and drop isn't in the repo. |
-| **Settings navigation** | **new**, or `list-row` | Title and sub-line, current one with a dark left edge. |
+| **Settings navigation** | **new**, or `list-row` | Title and sub-line, current one with a dark left edge. Four entries now. |
+| Categories table (SET-04) | `table` | Same table as PAN-10. Small square icon buttons for rename (pencil) and remove (bin, in red). |
+| Inline add and rename rows (SET-04, SET-05) | `input` + `button` + `toggle-group` | Muted row background while editing. |
+| "Move the items to" choice (SET-06) | `select` | Lists every other category. |
 | **Sign-in layout** (AUTH-01) | page layout | Dark panel on the left, form on the right. |
 
 ## Colours and type
@@ -234,7 +255,21 @@ Stevie Sans (kit `tvk6fub`), falling back to Figtree in the mockups. Use Bold wh
 - **Editing recipes here:** both recipe screens have an Edit button. In or out?
 - **Sync time in the top bar:** keep it as the phone's last sync, or drop it from desktop?
 - **Sharing the mock pantry with the shopping prototype:** worth it for the demo?
+- **Naming:** the intent and the code now say "category". The item panel (PAN-11, PAN-12, PAN-16), the table column and the filters still say "Shop or aisle". Change them to "Category".
+- ~~**Aisle and shop kinds:** worth storing?~~ **Decided 14 November: left out.** A shop category is simply the only aisle in its store.
+- **Add and rename in two places:** the first build adds and renames categories inside SET-01. Keep that as a shortcut, or move it all to SET-04?
 - From the intent: online shopping, use-by warnings, Notion field mapping, sharing.
+
+## Changes for the next build (categories)
+
+Added to the design after the first code build.
+
+1. **Built (14 November):** a Categories entry in the settings menu and the SET-04 page (`screens/settings.tsx`), with add and rename inline (SET-05).
+2. **Built:** remove (SET-06). Only an empty category can be removed (the intent). If it has items, the dialog says how many and offers "Move items" to another category (you choose; there's no default), and Remove category stays disabled until it's empty. The move and the removal are separate History entries, each undoable today; undoing a removal brings the category back with its old aisle numbers. This differs from the SET-06 mockup, which moved and removed in one step.
+3. **Not built:** a kind (aisle or shop) on each category. `Category` in `prototypes/shared/src/pantry.ts` is `{ id, name }` only, and the Supabase `categories` table would need the column too. Isaac decided to leave it out, so the Kind column and the Aisle/Shop choice aren't built.
+4. **Built:** item and Staple counts per category, and which stores give it an aisle number.
+
+New and renamed categories still stay on this computer: Sync sends items only, and the `categories` table is written only by the service role.
 
 ## Gaps found
 

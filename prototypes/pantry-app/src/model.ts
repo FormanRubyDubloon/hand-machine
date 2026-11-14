@@ -18,6 +18,9 @@ export type Who = "you" | "claude" | "phone"
 export type Snapshot = {
   items?: Record<string, Item | null>
   recipes?: Record<string, Recipe | null>
+  /** Categories and stores before the change, when they changed (removing a category). */
+  categories?: Category[]
+  stores?: Store[]
 }
 
 export type HistoryEntry = {

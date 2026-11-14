@@ -1,6 +1,6 @@
-// SET-01 (stores and aisles), SET-02 (Claude connection), SET-03 (account).
+// SET-01 (stores and aisles), SET-04 to SET-06 (categories), SET-02 (Claude connection), SET-03 (account).
 import * as React from "react"
-import { CheckIcon, CopyIcon, GripVerticalIcon, PlusIcon } from "lucide-react"
+import { CheckIcon, CopyIcon, GripVerticalIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable"
@@ -9,7 +9,9 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { aisleOrder, isToday, numberedAisles, plural, shortDate, timeText, whenText, type Category, type Store } from "../model"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { aisleOrder, isStaple, isToday, nameList, numberedAisles, plural, shortDate, timeText, whenText, type Category, type Store } from "../model"
 import { navigate, type SettingsTab } from "../router"
 import { usePantry } from "../state"
 import { Eyebrow, Field, NavRow, PageTitle, Segmented } from "../components"
@@ -203,6 +205,208 @@ function StoresAndAisles() {
   )
 }
 
+// ---------- SET-04 to SET-06 ----------
+
+/** A store's short name: "Sainsbury's" from "Sainsbury's, Stoke Newington". */
+const shortStore = (s: Store) => s.name.split(",")[0].trim()
+
+/** Which stores give the category an aisle number: "2 of 2 supermarkets · Greengrocer", "Butcher only". */
+function numberedIn(category: Category, stores: Store[]) {
+  const numbered = stores.filter((s) => s.aisles[category.id] != null)
+  if (!numbered.length) return null
+  if (numbered.length === 1) return `${shortStore(numbered[0])} only`
+  const supers = stores.filter((s) => s.kind === "Supermarket")
+  const mySupers = numbered.filter((s) => s.kind === "Supermarket")
+  const others = numbered.filter((s) => s.kind !== "Supermarket").map(shortStore)
+  const superText = mySupers.length > 1 ? `${mySupers.length} of ${supers.length} supermarkets` : mySupers.map(shortStore)
+  return [superText, others].flat().join(" · ")
+}
+
+const head = "h-10 text-[10px] font-semibold tracking-widest"
+
+function NameForm({ initial, placeholder, submit, onSubmit, onCancel }: { initial: string; placeholder?: string; submit: string; onSubmit: (name: string) => void; onCancel: () => void }) {
+  const [name, setName] = React.useState(initial)
+  return (
+    <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (name.trim()) onSubmit(name.trim()) }}>
+      <Input
+        autoFocus
+        value={name}
+        placeholder={placeholder}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => e.key === "Escape" && onCancel()}
+        className="h-8 max-w-64 bg-background px-2"
+        aria-label="Category name"
+      />
+      <Button type="submit" size="sm" disabled={!name.trim()}>{submit}</Button>
+      <Button type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+    </form>
+  )
+}
+
+function RemoveCategory({ category, onClose }: { category: Category; onClose: () => void }) {
+  const { db, items, actions } = usePantry()
+  const inIt = Object.values(items).filter((i) => i.categoryId === category.id)
+  const others = db.categories.filter((c) => c.id !== category.id)
+  const [moveTo, setMoveTo] = React.useState("")
+  const losing = db.stores.filter((s) => s.aisles[category.id] != null)
+  const names = inIt.map((i) => i.name)
+  const shown = names.length > 6 ? [...names.slice(0, 5), `${names.length - 5} more`] : names
+  const empty = inIt.length === 0
+  return (
+    <DialogContent className="gap-5 p-8 sm:max-w-[520px]">
+      <DialogHeader>
+        <Eyebrow>Remove category</Eyebrow>
+        <DialogTitle className="text-[22px] tracking-[0.04em] uppercase">Remove {category.name}?</DialogTitle>
+        <DialogDescription>
+          {empty ? (
+            <>{category.name} has no items, so it can be removed.</>
+          ) : (
+            <>
+              {category.name} still has <strong className="font-semibold text-foreground">{plural(inIt.length, "item")}</strong>: {nameList(shown)}. Move{" "}
+              {inIt.length === 1 ? "it" : "them"} to another category first. A category can only be removed when it's empty.
+            </>
+          )}
+        </DialogDescription>
+      </DialogHeader>
+      {!empty && (
+        <div className="flex items-end gap-3 border border-border bg-muted p-4">
+          <Field label={`Move the ${plural(inIt.length, "item")} to`} className="flex-1">
+            <Select value={moveTo} onValueChange={setMoveTo}>
+              <SelectTrigger className="w-full bg-background"><SelectValue placeholder="Choose a category" /></SelectTrigger>
+              <SelectContent>{others.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
+          <Button disabled={!moveTo} onClick={() => actions.moveCategoryItems(category.id, moveTo)}>Move items</Button>
+        </div>
+      )}
+      <div className="flex flex-col gap-2 text-sm">
+        <p>
+          {losing.length === 1
+            ? `${shortStore(losing[0])} loses aisle ${losing[0].aisles[category.id]}, ${category.name}. The other aisles keep their numbers.`
+            : losing.length
+              ? `It comes out of ${nameList(losing.map((s) => `${shortStore(s)} (aisle ${s.aisles[category.id]})`))}. The other aisles keep their numbers.`
+              : "No store gives it an aisle number, so no aisle order changes."}
+        </p>
+        <p className="text-muted-foreground">Recipes aren't changed. You can undo the move and the removal from History today.</p>
+      </div>
+      <DialogFooter className="sm:justify-between">
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button className="bg-destructive text-white hover:bg-destructive/80" disabled={!empty} onClick={() => { actions.removeCategory(category.id); onClose() }}>
+          Remove category
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  )
+}
+
+function Categories({ intro }: { intro: string }) {
+  const { db, items, actions } = usePantry()
+  const [adding, setAdding] = React.useState(false)
+  const [renaming, setRenaming] = React.useState<string | null>(null)
+  const [removing, setRemoving] = React.useState<Category | null>(null)
+  const pantry = Object.values(items).filter((i) => !i.oneOff)
+  const counts = (id: string) => {
+    const mine = pantry.filter((i) => i.categoryId === id)
+    return { items: mine.length, staples: mine.filter(isStaple).length }
+  }
+
+  return (
+    <>
+      <PageTitle title="Categories" subtitle={intro}>
+        <Button variant="outline" className="border-primary" disabled={adding} onClick={() => { setAdding(true); setRenaming(null) }}>
+          <PlusIcon />
+          Add category
+        </Button>
+      </PageTitle>
+
+      <div className="flex max-w-5xl flex-col gap-3">
+        <Table className="text-sm">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className={cn(head, "pl-3")}>Category</TableHead>
+              <TableHead className={cn(head, "text-right")}>Items</TableHead>
+              <TableHead className={cn(head, "text-right")}>Staples</TableHead>
+              <TableHead className={head}>Has an aisle number in</TableHead>
+              <TableHead className={cn(head, "text-right")}><span className="sr-only">Actions</span></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {adding && (
+              <TableRow className="h-13 bg-muted hover:bg-muted">
+                <TableCell className="pl-3" colSpan={3}>
+                  <NameForm
+                    initial=""
+                    placeholder="Category name, like Snacks"
+                    submit="Add"
+                    onSubmit={(name) => { actions.addCategory(null, name); setAdding(false); toast(`Added ${name}`, { description: "Give it an aisle number in each store from Stores and aisles." }) }}
+                    onCancel={() => setAdding(false)}
+                  />
+                </TableCell>
+                <TableCell colSpan={2} className="text-xs text-muted-foreground">Gets an aisle number in each store from Stores and aisles</TableCell>
+              </TableRow>
+            )}
+            {db.categories.map((c) => {
+              const n = counts(c.id)
+              const where = numberedIn(c, db.stores)
+              const editing = renaming === c.id
+              return (
+                <TableRow key={c.id} className={cn("h-12", editing && "bg-muted hover:bg-muted")}>
+                  <TableCell className="pl-3">
+                    {editing ? (
+                      <NameForm
+                        initial={c.name}
+                        submit="Save"
+                        onSubmit={(name) => { if (name !== c.name) { actions.renameCategory(c.id, name); toast(`Renamed ${c.name} to ${name}`) } setRenaming(null) }}
+                        onCancel={() => setRenaming(null)}
+                      />
+                    ) : (
+                      <span className="text-[15px] font-medium">{c.name}</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{n.items}</TableCell>
+                  <TableCell className="text-right tabular-nums">{n.staples}</TableCell>
+                  <TableCell>
+                    {where ? <span className="text-muted-foreground">{where}</span> : <span className="font-semibold">No aisle number yet</span>}
+                  </TableCell>
+                  <TableCell className="pr-3 text-right">
+                    {!editing && (
+                      <span className="inline-flex gap-1.5">
+                        <Button variant="outline" size="icon-sm" aria-label={`Rename ${c.name}`} title={`Rename ${c.name}`} onClick={() => { setRenaming(c.id); setAdding(false) }}>
+                          <PencilIcon />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="text-destructive hover:text-destructive"
+                          disabled={db.categories.length <= 1}
+                          aria-label={`Remove ${c.name}`}
+                          title={`Remove ${c.name}`}
+                          onClick={() => setRemoving(c)}
+                        >
+                          <Trash2Icon />
+                        </Button>
+                      </span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+        <span className="text-xs text-muted-foreground">
+          {plural(db.categories.length, "category", "categories")}, {plural(pantry.length, "item")}.{" "}
+          {renaming ? "Renaming changes the name everywhere: items, the shopping list and every store's aisles. " : ""}
+          A category without an aisle number in a store doesn't show on that store's list. Changes reach the phone at its next sync.
+        </span>
+      </div>
+
+      <Dialog open={!!removing} onOpenChange={(open) => !open && setRemoving(null)}>
+        {removing && <RemoveCategory category={removing} onClose={() => setRemoving(null)} />}
+      </Dialog>
+    </>
+  )
+}
+
 // ---------- SET-02 ----------
 
 const ADDRESS = "https://pantry.example.com/mcp"
@@ -345,6 +549,7 @@ function Account() {
 
 const tabs: { tab: SettingsTab; title: string; sub: string; intro: string }[] = [
   { tab: "stores", title: "Stores and aisles", sub: "Aisle order for each shop", intro: "The aisle order sets the order of the shopping list in each shop. You can change it here or in the shopping app." },
+  { tab: "categories", title: "Categories", sub: "Groups for items and aisles", intro: "Every item has one. Each store gives a category an aisle number, so the shopping list follows your walk round the shop." },
   { tab: "claude", title: "Claude connection", sub: "What Claude can read and change", intro: "Lets Claude use your pantry from the Claude phone app, desktop or web." },
   { tab: "account", title: "Account", sub: "Sign-in, devices and your data", intro: "One account for the pantry, kitchen and shopping apps." },
 ]
@@ -360,8 +565,14 @@ export function Settings({ tab }: { tab: SettingsTab }) {
         </nav>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-10 py-7">
-        <PageTitle title={current.title} subtitle={current.intro} />
-        {tab === "stores" ? <StoresAndAisles /> : tab === "claude" ? <ClaudeConnection /> : <Account />}
+        {tab === "categories" ? (
+          <Categories intro={current.intro} />
+        ) : (
+          <>
+            <PageTitle title={current.title} subtitle={current.intro} />
+            {tab === "stores" ? <StoresAndAisles /> : tab === "claude" ? <ClaudeConnection /> : <Account />}
+          </>
+        )}
       </div>
     </div>
   )
