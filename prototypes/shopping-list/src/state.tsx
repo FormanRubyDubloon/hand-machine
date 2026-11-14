@@ -4,7 +4,8 @@ import {
   findConflicts, incomingChanges, merge, outgoingChanges, seedState, shopAisles,
   type Filter, type Item, type Session, type State, type Store,
 } from "./model"
-import { readRemote, readShared, resetRemote, writeRemote, writeSharedStores } from "./mock-pantry"
+import { isNetworkError, loadRemote, pushRemote, readRemote, readShared, resetRemote, writeSharedStores } from "./remote-pantry"
+import { signOutOfSupabase } from "../../shared/src/auth"
 import { PHONE_KEY } from "../../shared/src/pantry"
 import { navigate } from "./router"
 
@@ -48,6 +49,20 @@ function useShoppingState() {
   }, [state])
 
   const update = React.useCallback((fn: (s: State) => State) => setState(fn), [])
+  // True once this sync has fetched the pantry's items from Supabase.
+  const remoteReady = React.useRef(false)
+
+  /** Stops a sync that couldn't finish. Nothing is marked as synced, so the next sync sends it all again. */
+  const failSync = React.useCallback((e: unknown) => {
+    update((s) => ({ ...s, sync: null }))
+    navigate({ name: "sync-offline" }, { replace: true })
+    if (!isNetworkError(e)) {
+      const message = e instanceof Error ? e.message : String(e)
+      toast.error("Couldn't sync", {
+        description: /row-level security/i.test(message) ? "Supabase refused the write. Are you signed in?" : message,
+      })
+    }
+  }, [update])
 
   const setItem = (s: State, id: string, patch: Partial<Item>): State => ({
     ...s,
@@ -115,11 +130,8 @@ function useShoppingState() {
         return setItem(s, itemId, { entries: [...(i.entries ?? []), { source: { kind: "recipe", recipe }, qty }] })
       })
     },
-    signIn() {
-      update((s) => ({ ...s, signedIn: true }))
-    },
     signOut() {
-      update((s) => ({ ...s, signedIn: false }))
+      void signOutOfSupabase()
     },
     skip(id: string) {
       update((s) => setSession(s, { skipped: [...new Set([...(s.session?.skipped ?? []), id])] }))
@@ -187,6 +199,8 @@ function useShoppingState() {
         navigate({ name: "sync-offline" })
         return
       }
+      remoteReady.current = false
+      loadRemote().then(() => (remoteReady.current = true), failSync)
       update((s) => ({
         ...s,
         sync: {
@@ -221,6 +235,8 @@ function useShoppingState() {
       const s = ref.current
       if (!s.sync) return
       const progress = Math.min(85, s.sync.progress + 3)
+      // Hold at 85 until the pantry's items have arrived.
+      if (progress >= 85 && !remoteReady.current) return
       if (progress < 85) {
         update((s) => s.sync ? { ...s, sync: { ...s.sync, progress, phase: progress < 45 ? "sending" : "receiving" } } : s)
         return
@@ -234,7 +250,8 @@ function useShoppingState() {
 
   React.useEffect(() => {
     if (phase !== "finishing") return
-    const t = setTimeout(() => {
+    let cancelled = false
+    const t = setTimeout(async () => {
       const s = ref.current
       if (!s.sync) return
       const remote = readRemote()
@@ -243,38 +260,48 @@ function useShoppingState() {
         ...incomingChanges(remote, s.baseline),
       ].map((c) => c.item.id))
       const merged = merge(s.sync.snapshot, s.baseline, remote, s.sync.resolutions)
-      writeRemote(merged)
-      // Re-apply anything ticked while the sync was running.
-      const items = structuredClone(merged)
-      for (const [id, now] of Object.entries(s.items)) {
-        const before = s.sync.snapshot[id]
-        if (!before) items[id] = now
-        else items[id].inStock += now.inStock - before.inStock
+      try {
+        await pushRemote(merged)
+      } catch (e) {
+        if (!cancelled) failSync(e)
+        return
       }
-      const session = s.session && {
-        ...s.session,
+      if (cancelled) return
+      // Re-apply anything ticked while the sync was running.
+      const now = ref.current
+      const items = structuredClone(merged)
+      for (const [id, item] of Object.entries(now.items)) {
+        const before = s.sync.snapshot[id]
+        if (!before) items[id] = item
+        else if (items[id]) items[id].inStock += item.inStock - before.inStock
+      }
+      const session = now.session && {
+        ...now.session,
         startStock: {
           ...Object.fromEntries(Object.keys(items).map((id) => [id, items[id].inStock])),
-          ...s.session.startStock,
+          ...now.session.startStock,
         },
       }
       // Recipes and aisles come from the pantry app. Stores go whichever way changed: if they were
       // edited on this phone since the last sync, the phone's win and go to the pantry.
       const shared = readShared()
-      const storesChanged = JSON.stringify(s.stores) !== JSON.stringify(s.storesBaseline)
-      if (storesChanged) writeSharedStores(s.stores)
-      const stores = storesChanged ? s.stores : shared.stores
+      const storesChanged = JSON.stringify(now.stores) !== JSON.stringify(now.storesBaseline)
+      if (storesChanged) writeSharedStores(now.stores)
+      const stores = storesChanged ? now.stores : shared.stores
       setState({
-        ...s, items, baseline: structuredClone(merged), order: [...new Set([...s.order, ...Object.keys(items)])], session, sync: null,
+        ...now, items, baseline: structuredClone(merged), order: [...new Set([...now.order.filter((id) => items[id]), ...Object.keys(items)])], session, sync: null,
         lastSyncedAt: new Date().toISOString(),
         recipes: shared.recipes, categories: shared.categories, stores, storesBaseline: structuredClone(stores),
-        lastStoreId: stores.some((x) => x.id === s.lastStoreId) ? s.lastStoreId : stores[0]?.id ?? null,
+        lastStoreId: stores.some((x) => x.id === now.lastStoreId) ? now.lastStoreId : stores[0]?.id ?? null,
       })
       const total = changed.size
       toast(total ? `Synced ${total} ${total === 1 ? "change" : "changes"} with your pantry` : "Up to date with your pantry")
     }, 500)
-    return () => clearTimeout(t)
-  }, [phase])
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [phase, failSync])
 
   // Derived values used on several screens.
   const store = state.stores.find((s) => s.id === state.lastStoreId) ?? null

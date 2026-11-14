@@ -4,7 +4,7 @@ import * as React from "react"
 import { MailIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { sendSignInLink, signInWithPassword } from "../auth"
+import { sendSignInLink, signInWithPassword } from "../../../shared/src/auth"
 import { Field } from "../components"
 
 export function SignIn() {
@@ -20,7 +20,7 @@ export function SignIn() {
     setError(null)
     const failed = await signInWithPassword(email.trim(), password)
     setBusy(false)
-    if (failed) setError(/invalid login/i.test(failed) ? "That email and password don't match." : failed)
+    if (failed) setError(failed)
   }
 
   const send = async () => {
@@ -28,7 +28,7 @@ export function SignIn() {
     setError(null)
     const failed = await sendSignInLink(email.trim())
     setBusy(false)
-    if (failed) setError(/signups not allowed|not found/i.test(failed) ? "There's no account for that email." : failed)
+    if (failed) setError(failed)
     else setSent(true)
   }
 

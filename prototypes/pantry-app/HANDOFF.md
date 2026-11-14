@@ -166,7 +166,7 @@ All of it is shared with the shopping app and the Claude connection. The fields 
 
 Worked out, not stored: Staple, Low or Out, how many to buy, whether a recipe can be cooked and what it's short of, the estimated total.
 
-The shopping prototype keeps its mock pantry in `prototypes/shopping-list/src/mock-pantry.ts`, with data in localStorage. Both prototypes run on the same site, so the pantry app could read and write the same mock. Then a change here would show on the phone after a sync. That's Isaac's call. It needs a shared seed (see the next section).
+The shopping prototype keeps its mock pantry in `prototypes/shopping-list/src/remote-pantry.ts`, with data in localStorage. Both prototypes run on the same site, so the pantry app could read and write the same mock. Then a change here would show on the phone after a sync. That's Isaac's call. It needs a shared seed (see the next section).
 
 ## Mockup inconsistencies
 
