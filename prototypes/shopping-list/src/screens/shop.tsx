@@ -155,7 +155,7 @@ function AisleView({ index }: { index: number }) {
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="overflow-hidden"
+          className="shrink-0 overflow-hidden"
         >
         <SwipeRow
           key={li.item.id}
