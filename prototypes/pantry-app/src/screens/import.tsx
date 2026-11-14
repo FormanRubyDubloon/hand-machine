@@ -48,9 +48,9 @@ type Row = {
 // Rough guesses so the table starts useful. You check every row anyway.
 const fridgeWords = ["milk", "spinach", "halloumi", "cheese", "yoghurt", "yogurt", "cream", "butter", "chicken", "fish", "salmon", "ham", "herbs"]
 const categoryWords: [string, string][] = [
-  ["coconut", "tins"], ["milk", "dairy"], ["halloumi", "dairy"], ["cheese", "dairy"], ["yoghurt", "dairy"], ["butter", "dairy"],
-  ["spinach", "fruit"], ["apple", "fruit"], ["onion", "fruit"], ["potato", "fruit"],
-  ["rice", "pasta"], ["pasta", "pasta"], ["lentil", "pasta"], ["tin", "tins"], ["flour", "baking"], ["sugar", "baking"],
+  ["coconut", "tins-and-jars"], ["milk", "dairy-and-chilled"], ["halloumi", "dairy-and-chilled"], ["cheese", "dairy-and-chilled"], ["yoghurt", "dairy-and-chilled"], ["butter", "dairy-and-chilled"],
+  ["spinach", "fruit-and-veg"], ["apple", "fruit-and-veg"], ["onion", "fruit-and-veg"], ["potato", "fruit-and-veg"],
+  ["rice", "grains-and-pulses"], ["pasta", "grains-and-pulses"], ["lentil", "grains-and-pulses"], ["tin", "tins-and-jars"], ["flour", "baking"], ["sugar", "baking"],
 ]
 
 function parseLine(line: string, items: Items, k: number): Row | null {
