@@ -1,12 +1,13 @@
 import { ChevronRightIcon, XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { Label } from "@/components/ui/label"
 import { ListRow, ListRowText } from "@/components/ui/list-row"
 import { Switch } from "@/components/ui/switch"
 import { formatSynced, plural } from "../model"
 import { goBack, navigate, type Route } from "../router"
 import { useApp } from "../state"
-import { Eyebrow, HeaderButton, Screen, SyncIcon } from "../layout"
+import { Eyebrow, HeaderButton, SyncIcon } from "../layout"
 
 function MenuRow({ title, description, to, onClick }: { title: string; description: string; to?: Route; onClick?: () => void }) {
   return (
@@ -19,17 +20,56 @@ function MenuRow({ title, description, to, onClick }: { title: string; descripti
   )
 }
 
-export function Menu() {
+/** The menu, as a bottom drawer over whichever screen you opened it from. Swipe down or tap outside to close. */
+export function MenuDrawer({ open }: { open: boolean }) {
   const { state, actions, store, outgoing } = useApp()
   const shopping = state.session && !state.session.finished
+  const close = () => goBack({ name: shopping ? "shop" : "home" })
 
   return (
-    <Screen
-      eyebrow="Shopping list"
-      title="Menu"
-      action={<HeaderButton icon={XIcon} label="Close menu" onClick={() => goBack({ name: shopping ? "shop" : "home" })} />}
-      footer={
-        <>
+    <Drawer open={open} onOpenChange={(next) => !next && close()}>
+      <DrawerContent className="mx-auto max-w-[430px] data-[vaul-drawer-direction=bottom]:max-h-[90dvh]">
+        <DrawerHeader className="flex-row items-end justify-between gap-4 border-b border-border px-5 pt-4 pb-5 text-left group-data-[vaul-drawer-direction=bottom]/drawer-content:text-left">
+          <div className="flex flex-col gap-2">
+            <Eyebrow>Shopping list</Eyebrow>
+            <DrawerTitle className="text-3xl leading-none tracking-[0.04em]">Menu</DrawerTitle>
+            <DrawerDescription className="sr-only">Change store, finish the shop or sync with Notion.</DrawerDescription>
+          </div>
+          <HeaderButton icon={XIcon} label="Close menu" onClick={close} />
+        </DrawerHeader>
+        <div className="flex flex-col overflow-y-auto overscroll-contain">
+          <nav aria-label="Menu">
+            {store && (
+              <div className="flex flex-col gap-1.5 border-b border-border px-5 pt-5 pb-4">
+                <Eyebrow>Current store</Eyebrow>
+                <span className="text-[22px] font-medium">{store.name}</span>
+              </div>
+            )}
+            {shopping && <MenuRow title="Back to the list" description="Carry on where you were" onClick={close} />}
+            <MenuRow title="Change store" description="Shop somewhere else, or add a store" to={{ name: "stores" }} />
+            {store && (
+              <MenuRow
+                title="Edit current store"
+                description={`Name and aisle numbers for ${store.name}`}
+                to={{ name: "edit-store", id: store.id }}
+              />
+            )}
+            {shopping && <MenuRow title="Finish this shop" description="See what's still to get and what you skipped" onClick={actions.finishShop} />}
+          </nav>
+          <section aria-label="Prototype settings" className="flex flex-col gap-3 px-5 py-5">
+            <Eyebrow>Prototype only</Eyebrow>
+            <div className="flex items-center justify-between gap-4">
+              <Label htmlFor="simulate-offline" className="text-sm font-normal tracking-normal normal-case">
+                Pretend there's no signal
+              </Label>
+              <Switch id="simulate-offline" checked={state.simulateOffline} onCheckedChange={actions.setSimulateOffline} />
+            </div>
+            <Button variant="ghost" className="-mx-3 self-start" onClick={() => confirm("Reset all demo data, including fake Notion?") && actions.reset()}>
+              Reset demo data
+            </Button>
+          </section>
+        </div>
+        <div className="flex shrink-0 flex-col gap-2.5 border-t border-border bg-background px-5 pt-3.5 pb-[max(1.75rem,env(safe-area-inset-bottom))]">
           <span className="text-sm text-muted-foreground">
             {outgoing.length ? `${plural(outgoing.length, "change")} waiting.` : "Nothing waiting to send."} Last
             synced {formatSynced(state.lastSyncedAt)}.
@@ -38,39 +78,8 @@ export function Menu() {
             <SyncIcon className="size-4" />
             Sync with Notion
           </Button>
-        </>
-      }
-    >
-      <nav aria-label="Menu">
-        {store && (
-          <div className="flex flex-col gap-1.5 border-b border-border px-5 pt-5 pb-4">
-            <Eyebrow>Current store</Eyebrow>
-            <span className="text-[22px] font-medium">{store.name}</span>
-          </div>
-        )}
-        {shopping && <MenuRow title="Back to the list" description="Carry on where you were" to={{ name: "shop" }} />}
-        <MenuRow title="Change store" description="Shop somewhere else, or add a store" to={{ name: "stores" }} />
-        {store && (
-          <MenuRow
-            title="Edit current store"
-            description={`Name and aisle numbers for ${store.name}`}
-            to={{ name: "edit-store", id: store.id }}
-          />
-        )}
-        {shopping && <MenuRow title="Finish this shop" description="See what's still to get and what you skipped" onClick={actions.finishShop} />}
-      </nav>
-      <section aria-label="Prototype settings" className="mt-auto flex flex-col gap-3 border-t border-border px-5 py-5">
-        <Eyebrow>Prototype only</Eyebrow>
-        <div className="flex items-center justify-between gap-4">
-          <Label htmlFor="simulate-offline" className="text-sm font-normal tracking-normal normal-case">
-            Pretend there's no signal
-          </Label>
-          <Switch id="simulate-offline" checked={state.simulateOffline} onCheckedChange={actions.setSimulateOffline} />
         </div>
-        <Button variant="ghost" className="-mx-3 self-start" onClick={() => confirm("Reset all demo data, including fake Notion?") && actions.reset()}>
-          Reset demo data
-        </Button>
-      </section>
-    </Screen>
+      </DrawerContent>
+    </Drawer>
   )
 }

@@ -1,8 +1,20 @@
 import * as React from "react"
-import { CheckCheckIcon, SkipForwardIcon } from "lucide-react"
+import { CheckCheckIcon, SkipForwardIcon, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-type SwipeAction = { label: string; onAction: () => void }
+type SwipeAction = {
+  label: string
+  onAction: () => void
+  /** Defaults to a double tick on the right action and a skip arrow on the left. */
+  icon?: LucideIcon
+  /** Background revealed behind the row. Defaults to primary on the right, muted on the left. */
+  tone?: "primary" | "muted"
+}
+
+const toneClass = {
+  primary: "bg-primary text-primary-foreground",
+  muted: "bg-muted text-foreground",
+}
 
 const THRESHOLD = 96
 const LOCK_DISTANCE = 8
@@ -91,22 +103,30 @@ function SwipeRow({
       {dx > 0 && right && (
         <div
           aria-hidden="true"
-          className="absolute inset-0 flex items-center gap-2.5 bg-primary px-5 text-xs font-semibold tracking-widest text-primary-foreground uppercase"
+          className={cn(
+            "absolute inset-0 flex items-center gap-2.5 px-5 text-xs font-semibold tracking-widest uppercase",
+            toneClass[right.tone ?? "primary"]
+          )}
         >
-          <CheckCheckIcon
-            className={cn("size-5 transition-transform", armed && "scale-125")}
-            strokeWidth={2.5}
-          />
+          {React.createElement(right.icon ?? CheckCheckIcon, {
+            className: cn("size-5 transition-transform", armed && "scale-125"),
+            strokeWidth: 2.5,
+          })}
           {right.label}
         </div>
       )}
       {dx < 0 && left && (
         <div
           aria-hidden="true"
-          className="absolute inset-0 flex items-center justify-end gap-2.5 bg-muted px-5 text-xs font-semibold tracking-widest text-foreground uppercase"
+          className={cn(
+            "absolute inset-0 flex items-center justify-end gap-2.5 px-5 text-xs font-semibold tracking-widest uppercase",
+            toneClass[left.tone ?? "muted"]
+          )}
         >
           {left.label}
-          <SkipForwardIcon className={cn("size-5 transition-transform", armed && "scale-125")} />
+          {React.createElement(left.icon ?? SkipForwardIcon, {
+            className: cn("size-5 transition-transform", armed && "scale-125"),
+          })}
         </div>
       )}
       <div

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { CheckIcon, Undo2Icon } from 'lucide-react'
 import { fn } from 'storybook/test'
 
 import { ItemRow } from './item-row'
@@ -9,8 +10,8 @@ const meta = {
   component: SwipeRow,
   tags: ['autodocs'],
   args: {
-    right: { label: 'Got all 4', onAction: fn() },
-    left: { label: 'Skip', onAction: fn() },
+    right: { label: 'Undo', onAction: fn(), icon: Undo2Icon, tone: 'muted' },
+    left: { label: 'Got 1', onAction: fn(), icon: CheckIcon, tone: 'primary' },
   },
   decorators: [(Story) => <div className="w-[390px] border-t border-border"><Story /></div>],
 } satisfies Meta<typeof SwipeRow>
@@ -18,7 +19,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Drag the row right (got all) or left (skip). A tap still reaches the row. */
+/** Drag the row left (got 1) or right (undo). A tap still reaches the row. */
 export const Default: Story = {
   render: (args) => (
     <SwipeRow {...args}>

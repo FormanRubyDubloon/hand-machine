@@ -1,4 +1,6 @@
 import * as React from "react"
+import { AnimatePresence, motion } from "motion/react"
+import { CheckIcon, Undo2Icon } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { CountBox } from "@/components/ui/count-box"
@@ -12,6 +14,7 @@ import { navigate, Redirect } from "../router"
 import { useApp } from "../state"
 import { MenuButton, Note, Screen, SplitButton } from "../layout"
 import { AddItemDrawer } from "./add-item-drawer"
+import { ItemEditor } from "./item-editor"
 
 const rank = { "to-get": 0, "partly-got": 0, skipped: 1, got: 2 } as const
 
@@ -48,6 +51,7 @@ function AisleView({ index }: { index: number }) {
   const { state, actions, sessionStore, aisles } = useApp()
   const aisle: ShopAisle = aisles[index]
   const [adding, setAdding] = React.useState(false)
+  const [editing, setEditing] = React.useState<string | null>(null)
 
   // Sort once on entry: to get, then skipped, then got. Rows don't jump under your thumb.
   const [order] = React.useState(() =>
@@ -142,11 +146,29 @@ function AisleView({ index }: { index: number }) {
         )
       }
     >
+      <AnimatePresence initial={false}>
       {shown.map((li) => (
+        <motion.div
+          key={li.item.id}
+          layout="position"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="overflow-hidden"
+        >
         <SwipeRow
           key={li.item.id}
-          right={li.state !== "got" ? { label: `Got all ${li.needed}`, onAction: () => getAll(li) } : undefined}
-          left={li.state !== "got" && !li.skipped ? { label: "Skip", onAction: () => skip(li) } : undefined}
+          left={
+            li.remaining > 0 && editing !== li.item.id
+              ? { label: "Got 1", icon: CheckIcon, tone: "primary", onAction: () => actions.addOne(li.item.id) }
+              : undefined
+          }
+          right={
+            li.got > 0 && editing !== li.item.id
+              ? { label: "Undo", icon: Undo2Icon, tone: "muted", onAction: () => actions.removeOne(li.item.id) }
+              : undefined
+          }
         >
           <ItemRow
             name={li.item.name}
@@ -154,11 +176,35 @@ function AisleView({ index }: { index: number }) {
             stock={li.stock}
             state={li.state}
             remaining={li.remaining}
-            aria-label={`${li.item.name}, ${li.state === "got" ? "got" : li.skipped ? "skipped" : `${li.remaining} to get`}. Tap to add one.`}
-            onClick={() => actions.addOne(li.item.id)}
+            expanded={editing === li.item.id}
+            countLabel={`Got all ${li.remaining} ${li.item.name.toLowerCase()}`}
+            onNameClick={() => setEditing(editing === li.item.id ? null : li.item.id)}
+            onCountClick={() => getAll(li)}
           />
         </SwipeRow>
+        <AnimatePresence initial={false}>
+          {editing === li.item.id && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+              <ItemEditor
+                li={li}
+                onRename={(name) => actions.updateItem(li.item.id, { name })}
+                onNeed={(n) => actions.updateItem(li.item.id, { target: li.item.target + (n - li.needed) })}
+                onGot={(g) => actions.updateItem(li.item.id, { inStock: li.item.inStock + (g - li.got) })}
+                onSkip={li.remaining > 0 && !li.skipped ? () => { skip(li); setEditing(null) } : undefined}
+                onClose={() => setEditing(null)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        </motion.div>
       ))}
+      </AnimatePresence>
       {shown.length === 0 && <Note>Nothing {state.filter === "out" ? "out of stock" : "low"} in this aisle.</Note>}
       <ListRow asChild className="min-h-18 border-b-0">
         <button type="button" onClick={() => setAdding(true)}>

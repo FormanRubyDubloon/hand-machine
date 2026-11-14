@@ -1,18 +1,33 @@
 import { XIcon } from "lucide-react"
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { CountBox } from "@/components/ui/count-box"
 import { FilterChips } from "@/components/ui/filter-chips"
 import { ListRow, ListRowText } from "@/components/ui/list-row"
 import { matchesFilter, nameList, plural } from "../model"
-import { navigate, Redirect } from "../router"
+import { goBack, Redirect } from "../router"
 import { useApp } from "../state"
-import { HeaderButton, Screen } from "../layout"
+import { Eyebrow, HeaderButton } from "../layout"
 
-export function Aisles() {
+/** The aisle list, as a bottom drawer over the shop screen. Swipe down or tap outside to close. */
+export function AislesDrawer({ open }: { open: boolean }) {
+  const { state, sessionStore } = useApp()
+  const ready = !!state.session && !!sessionStore
+  const close = () => goBack({ name: "shop" })
+  return (
+    <>
+      {open && !ready && <Redirect to={{ name: "home" }} />}
+      <Drawer open={open && ready} onOpenChange={(next) => !next && close()}>
+        <DrawerContent className="mx-auto max-w-[430px] data-[vaul-drawer-direction=bottom]:max-h-[90dvh]">
+          {ready && <AislesContent close={close} />}
+        </DrawerContent>
+      </Drawer>
+    </>
+  )
+}
+
+function AislesContent({ close }: { close: () => void }) {
   const { state, actions, sessionStore, aisles } = useApp()
-  const session = state.session
-  if (!session || !sessionStore) {
-    return <Redirect to={{ name: "home" }} />
-  }
+  const session = state.session!
 
   const open = aisles.flatMap((a) => a.items).filter((li) => li.remaining > 0)
   const skipped = open.filter((li) => li.skipped).length
@@ -20,17 +35,19 @@ export function Aisles() {
   const aislesLeft = aisles.filter((a) => a.items.some((li) => li.remaining > 0 && !li.skipped)).length
 
   return (
-    <Screen
-      eyebrow={skipped ? `${sessionStore.name} · ${skipped} skipped` : sessionStore.name}
-      title="Aisles"
-      subtitle={
-        <>
-          <strong className="font-semibold text-foreground">{left.length}</strong>{" "}
-          {left.length === 1 ? "item" : "items"} left in {plural(aislesLeft, "aisle")}
-        </>
-      }
-      action={<HeaderButton icon={XIcon} label="Close aisles" onClick={() => navigate({ name: "shop" }, { replace: true })} />}
-      below={
+    <>
+      <DrawerHeader className="gap-3.5 border-b border-border px-5 pt-4 pb-5 text-left group-data-[vaul-drawer-direction=bottom]/drawer-content:text-left">
+        <div className="flex items-end justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-2">
+            <Eyebrow>{skipped ? `${sessionStore!.name} · ${skipped} skipped` : sessionStore!.name}</Eyebrow>
+            <DrawerTitle className="text-3xl leading-none tracking-[0.04em]">Aisles</DrawerTitle>
+            <DrawerDescription className="mt-0">
+              <strong className="font-semibold text-foreground">{left.length}</strong>{" "}
+              {left.length === 1 ? "item" : "items"} left in {plural(aislesLeft, "aisle")}
+            </DrawerDescription>
+          </div>
+          <HeaderButton icon={XIcon} label="Close aisles" onClick={close} />
+        </div>
         <FilterChips
           aria-label="Filter by stock"
           value={state.filter}
@@ -41,8 +58,8 @@ export function Aisles() {
             { value: "low", label: "Low", count: left.filter((li) => li.stock === "low").length },
           ]}
         />
-      }
-    >
+      </DrawerHeader>
+      <div className="flex flex-col overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))]">
       <nav aria-label="Aisles">
         {aisles.map((aisle, i) => {
           const current = i === Math.min(session.aisleIndex, aisles.length - 1)
@@ -57,7 +74,7 @@ export function Aisles() {
                 aria-current={current ? "page" : undefined}
                 onClick={() => {
                   actions.setAisle(i)
-                  navigate({ name: "shop" }, { replace: true })
+                  close()
                 }}
               >
                 <span className="w-6 shrink-0 text-sm font-semibold text-muted-foreground group-data-[tone=current]/list-row:text-primary-foreground/70">
@@ -83,6 +100,7 @@ export function Aisles() {
           )
         })}
       </nav>
-    </Screen>
+      </div>
+    </>
   )
 }

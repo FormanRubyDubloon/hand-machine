@@ -83,6 +83,18 @@ function useShoppingState() {
         return unskip(setItem(s, id, { inStock: i.inStock + 1 }), id)
       })
     },
+    /** Takes one back off: undoes a check, but never below what was in stock when the shop began. */
+    removeOne(id: string) {
+      update((s) => {
+        const i = s.items[id]
+        const floor = s.session?.startStock[id] ?? 0
+        if (i.inStock <= floor) return s
+        return setItem(s, id, { inStock: i.inStock - 1 })
+      })
+    },
+    updateItem(id: string, patch: Partial<Pick<Item, "name" | "target" | "inStock">>) {
+      update((s) => setItem(s, id, patch))
+    },
     getAll(id: string) {
       update((s) => unskip(setItem(s, id, { inStock: Math.max(s.items[id].inStock, s.items[id].target) }), id))
     },
