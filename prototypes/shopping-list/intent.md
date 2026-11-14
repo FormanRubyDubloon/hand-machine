@@ -13,7 +13,7 @@ My recipes aren't connected to any of this. I can't see which recipes I can cook
 One system I own, made of four parts, that replaces Notion completely:
 
 1. **Shopping app (mobile-first web).** I use it in shops on my iPhone. It shows what I need to buy, and it works without signal. Pantry stock updates when I choose to sync, for example at the end of a shop. I can also look at recipes here and add what I'm missing for one.
-2. **Pantry admin app (desktop web).** I use it at my desk to manage pantry items, stock and recipes.
+2. **Pantry admin app (desktop web).** I use it at my desk to manage pantry items, stock, recipes and categories.
 3. **Kitchen app (mobile web).** A separate app I use on my phone in the kitchen. I use it for the quick pantry jobs (recording what I've used, adding stock), viewing recipes and cooking. Everything else, such as setting up items and minimums, stays in the admin app. It is built after the shopping app and the admin app are working.
 4. **Claude connection.** Claude can read pantry stock, update stock, edit the shopping list, create or change pantry items, and read, search and add recipes. I can use it from the Claude phone app and on desktop or web. For example: "what can I cook tonight?", "I used the last of the rice", "add what I need for this recipe to the list", "save this recipe".
 
@@ -23,7 +23,7 @@ Each pantry item records:
 - quantity and unit
 - pack size (optional, for bulk items, such as 1 kg)
 - minimum level
-- shop or aisle
+- category (the shop or aisle section it belongs to, such as dairy or tins)
 - location (fridge, freezer, cupboard)
 - use-by date
 - price
@@ -84,8 +84,15 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - I can see recipes in the pantry admin app, the kitchen app and the shopping app.
 - Recipes I've marked "Want to cook" are downloaded to the shopping app, so I can read them in a shop without signal.
 
+**Categories**
+- I can add, rename and remove categories in the pantry admin app. They aren't fixed. Today's set comes from Notion's 18.
+- Every item belongs to one category. Renaming a category renames it everywhere, including each store's aisle order and the shopping list.
+- A new category appears in every store's aisle order. It starts with no aisle number until I set one.
+- I can't remove a category that still has items in it. The app tells me how many, and offers to move them to another category first.
+- Categories reach the shopping app when it syncs, like stores and aisles.
+
 **Undo**
-- I can undo a merge or a delete from History on the same day.
+- I can undo a merge or a delete from History on the same day. This includes removing a category.
 
 **What Claude can do**
 - Claude can read pantry stock, the shopping list and my saved recipes, and search them.
@@ -126,5 +133,6 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - **Success numbers:** the numbers in the success list are starting guesses. Review them after a month of use, especially the 10 minutes a week.
 - **Use-by warnings:** recipes are ranked by what needs using first. Should anything also warn me before things go off?
 - **Notion import:** which Notion fields map to the new item and recipe fields, and what do I do with items or recipes that don't fit?
+- **Categories and Claude:** can Claude add or rename categories, or only use the ones that exist? Today it would have to ask before editing one.
 - **Sharing later:** if others join, do they see the same pantry, and does anyone have different permissions?
 - **Online shopping:** preferred brand exists for online orders. Is ordering online in scope, or is the brand just a note for now?
