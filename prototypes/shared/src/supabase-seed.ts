@@ -1,10 +1,10 @@
 // Fills the shared seed with the pantry items in Supabase (the Notion pantry, loaded there). Both
 // prototypes await this before they render, so the rest of the code can keep treating the seed
-// as plain data. Read only: the publishable key can read `items`, nothing writes back yet.
+// as plain data. This file only reads. The pantry app writes changes back at Sync (pantry-app/src/sync.ts).
 import { supabase } from "@/lib/supabase"
-import { seedItems, seedRecipes, type SharedItem, type SharedRecipe } from "./pantry"
+import { seedItems, seedRecipes, type ListEntry, type SharedItem, type SharedRecipe } from "./pantry"
 
-type Row = {
+export type Row = {
   id: string
   name: string
   category_id: string | null
@@ -23,10 +23,13 @@ type Row = {
   use_by: string[]
   one_off: boolean
   uses: number
+  entries: ListEntry[]
+  opened_at: string[]
+  edited_at: string
 }
 
 /** Notion's unit is free text ("bag", "350 g", "kg"); the app wants [one, many]. A guess, for display. */
-function unitPair(u: string | null): [string, string] | undefined {
+export function unitPair(u: string | null): [string, string] | undefined {
   if (!u) return undefined
   if (/\d|^(kg|g|ml|litres?|pound)$/i.test(u) || u.includes(" ")) return [u, u]
   const one = /[^s]s$/i.test(u) ? u.slice(0, -1) : u
@@ -53,6 +56,9 @@ export function toItem(r: Row): SharedItem {
     useBy: r.use_by.length ? r.use_by : undefined,
     oneOff: r.one_off || undefined,
     uses: r.uses || undefined,
+    entries: r.entries?.length ? r.entries : undefined,
+    openedAt: r.opened_at?.length ? r.opened_at : undefined,
+    editedAt: r.edited_at,
   }
 }
 

@@ -56,6 +56,10 @@ export type Db = {
   claudeConnected: boolean
   /** The items as this app last saw them. A difference on load means the phone synced. */
   seenItems: Items
+  /** The items as they were at the last sync with Supabase. Undefined until the first sync. */
+  syncedItems?: Items
+  /** When this computer last synced with Supabase. */
+  syncedAt?: string
 }
 
 export const locations: { value: Location; label: string }[] = [

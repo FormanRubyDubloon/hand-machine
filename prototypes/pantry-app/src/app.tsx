@@ -1,11 +1,12 @@
 import * as React from "react"
-import { ChevronDownIcon, PlusIcon, SettingsIcon, SmartphoneIcon, SparklesIcon } from "lucide-react"
+import { ChevronDownIcon, CloudIcon, PlusIcon, SettingsIcon, SmartphoneIcon, SparklesIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
 import { Toaster } from "@/components/ui/sonner"
 import { isToday, timeText, shortDate } from "./model"
+import { signOutOfSupabase, useAuthSession } from "./auth"
 import { navigate, useRoute, type Route } from "./router"
 import { PantryProvider, usePantry } from "./state"
 import { Search } from "./search"
@@ -68,11 +69,28 @@ function DemoMenu() {
             <span className="text-xs font-normal text-muted-foreground">Both apps go back to the seed.</span>
           </span>
         </Button>
-        <Button variant="ghost" className="h-auto justify-start py-2 text-left normal-case tracking-normal" onClick={run(actions.signOut)}>
+        <Button variant="ghost" className="h-auto justify-start py-2 text-left normal-case tracking-normal" onClick={run(() => void signOutOfSupabase())}>
           <span className="text-sm font-semibold">Sign out</span>
         </Button>
       </PopoverContent>
     </Popover>
+  )
+}
+
+/** Sends this computer's changes to Supabase and brings back what changed there. */
+function SyncButton() {
+  const { db, actions, syncing, pending } = usePantry()
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={syncing}
+      onClick={() => void actions.syncNow()}
+      title={db.syncedAt ? `Last synced ${isToday(db.syncedAt) ? "today" : shortDate(db.syncedAt)}, ${timeText(db.syncedAt)}` : "Not synced yet"}
+    >
+      <CloudIcon className={cn(syncing && "animate-pulse")} />
+      {syncing ? "Syncing" : pending ? `Sync · ${pending}` : "Sync"}
+    </Button>
   )
 }
 
@@ -108,6 +126,7 @@ function Header({ route, onAddWithClaude }: { route: Route; onAddWithClaude: () 
         {syncText(phoneSyncedAt)}
       </span>
       <div className="flex shrink-0 items-center gap-2">
+        <SyncButton />
         <DemoMenu />
         <Button variant="outline" size="icon" aria-label="Settings" title="Settings" onClick={() => navigate({ name: "settings", tab: "stores" })}>
           <SettingsIcon className="size-4.5" />
@@ -160,6 +179,7 @@ function Screen({ route }: { route: Route }) {
 
 function Shell() {
   const { db } = usePantry()
+  const session = useAuthSession()
   const route = useRoute()
   const [claude, setClaude] = React.useState(false)
   const [conflicts, setConflicts] = React.useState(false)
@@ -171,7 +191,8 @@ function Shell() {
     if (count > seen) setConflicts(true)
   }
 
-  if (!db.signedIn) return <SignIn />
+  if (session === undefined) return null
+  if (!session) return <SignIn />
   return (
     <div className="flex h-dvh min-w-[1180px] flex-col bg-background">
       <Header route={route} onAddWithClaude={() => setClaude(true)} />

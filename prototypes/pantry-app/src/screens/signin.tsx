@@ -1,16 +1,37 @@
-// AUTH-01: email link or passkey, no password. Faked: Continue "sends" a link you open from here.
+// AUTH-01: email and password, or an email link. Real Supabase Auth: the link comes back to this page.
+// There's no sign-up here. Only a user already created in the Supabase dashboard can sign in.
 import * as React from "react"
-import { KeyRoundIcon, MailIcon } from "lucide-react"
+import { MailIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { usePantry } from "../state"
-import { Eyebrow, Field } from "../components"
+import { sendSignInLink, signInWithPassword } from "../auth"
+import { Field } from "../components"
 
 export function SignIn() {
-  const { actions, db } = usePantry()
   const [email, setEmail] = React.useState("")
   const [sent, setSent] = React.useState(false)
+  const [password, setPassword] = React.useState("")
+  const [busy, setBusy] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
   const valid = /.+@.+\..+/.test(email)
+
+  const signIn = async () => {
+    setBusy(true)
+    setError(null)
+    const failed = await signInWithPassword(email.trim(), password)
+    setBusy(false)
+    if (failed) setError(/invalid login/i.test(failed) ? "That email and password don't match." : failed)
+  }
+
+  const send = async () => {
+    setBusy(true)
+    setError(null)
+    const failed = await sendSignInLink(email.trim())
+    setBusy(false)
+    if (failed) setError(/signups not allowed|not found/i.test(failed) ? "There's no account for that email." : failed)
+    else setSent(true)
+  }
+
   return (
     <div className="grid min-h-dvh grid-cols-[1.1fr_1fr] bg-background">
       <div className="flex flex-col justify-between bg-primary p-12 text-primary-foreground">
@@ -30,12 +51,7 @@ export function SignIn() {
               <div className="flex flex-col gap-2">
                 <MailIcon className="size-6" />
                 <h2 className="text-[22px] font-semibold tracking-[0.04em] uppercase">Check your email</h2>
-                <p className="text-sm text-muted-foreground">We sent a sign-in link to {email}. Open it on this computer to sign in.</p>
-              </div>
-              <div className="flex flex-col gap-2 border border-dashed border-ring p-4">
-                <Eyebrow>Prototype</Eyebrow>
-                <span className="text-sm">There's no email. Pretend you opened the link.</span>
-                <Button className="mt-2" onClick={() => actions.signIn(email)}>Open the link</Button>
+                <p className="text-sm text-muted-foreground">We sent a sign-in link to {email}. Open it in this browser to sign in.</p>
               </div>
               <Button variant="link" className="self-start p-0 text-xs" onClick={() => setSent(false)}>Use a different email</Button>
             </>
@@ -45,20 +61,24 @@ export function SignIn() {
                 <h2 className="text-[22px] font-semibold tracking-[0.04em] uppercase">Sign in</h2>
                 <p className="text-sm text-muted-foreground">One account for the pantry, kitchen and shopping apps.</p>
               </div>
-              <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (valid) setSent(true) }}>
+              <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (valid && password && !busy) void signIn() }}>
                 <Field label="Email">
-                  <Input type="email" autoComplete="email" value={email} placeholder={db.email} onChange={(e) => setEmail(e.target.value)} />
+                  <Input type="email" autoComplete="email" value={email} placeholder="you@example.com" onChange={(e) => setEmail(e.target.value)} />
                 </Field>
-                <Button type="submit" size="lg" disabled={!valid}>Continue</Button>
+                <Field label="Password">
+                  <Input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                </Field>
+                {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+                <Button type="submit" size="lg" disabled={!valid || !password || busy}>{busy ? "Signing in" : "Sign in"}</Button>
               </form>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" />
               </div>
-              <Button variant="outline" size="lg" className="border-primary" onClick={() => actions.signIn()}>
-                <KeyRoundIcon />
-                Sign in with a passkey
+              <Button variant="outline" size="lg" className="border-primary" disabled={!valid || busy} onClick={() => void send()}>
+                <MailIcon />
+                Email me a sign-in link
               </Button>
-              <p className="text-xs text-muted-foreground">Continue sends a sign-in link to your email. You stay signed in on this computer until you sign out.</p>
+              <p className="text-xs text-muted-foreground">You stay signed in on this computer until you sign out.</p>
             </>
           )}
         </div>

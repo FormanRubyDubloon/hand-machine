@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import {
   at, DB_KEY, fillAisles, ITEMS_KEY, PHONE_KEY, readJson, seedCategories, seedItems, seedPantryItems, seedRecipes, seedStores, writeJson,
 } from "../../shared/src/pantry"
+import { pendingIds, fingerprint, syncItems } from "./sync"
 import {
   cap, haveText, isBulk, isToday, lower, needOf, normalise, plural, settle, timeText, todayIso, unitText, withStock,
   type Conflict, type Db, type HistoryEntry, type Item, type Items, type Recipe, type Snapshot, type Store, type Who,
@@ -110,6 +111,7 @@ type EntryInput = { who?: Who; title: string | ((undo: Snapshot, next: S) => str
 function usePantryState() {
   const [state, setState] = React.useState<S>(load)
   const [phoneSyncedAt, setPhoneSyncedAt] = React.useState(readPhoneSync)
+  const [syncing, setSyncing] = React.useState(false)
   const ref = React.useRef(state)
   React.useLayoutEffect(() => {
     ref.current = state
@@ -494,6 +496,45 @@ function usePantryState() {
       })
     },
 
+    // ----- sync with Supabase -----
+    /** Sends this computer's item changes to Supabase and brings back anything that changed there. */
+    async syncNow() {
+      if (syncing) return
+      setSyncing(true)
+      const started = ref.current
+      try {
+        const result = await syncItems(started.items, started.db.syncedItems)
+        const now = new Date().toISOString()
+        setState((s) => {
+          // Anything edited while the sync ran is kept as it is now and goes out next time.
+          const items = { ...result.items }
+          for (const id of new Set([...Object.keys(s.items), ...Object.keys(started.items)])) {
+            if (fingerprint(s.items[id]) !== fingerprint(started.items[id])) {
+              if (s.items[id]) items[id] = s.items[id]
+              else delete items[id]
+            }
+          }
+          return { items, db: { ...s.db, syncedItems: result.items, syncedAt: now } }
+        })
+        const parts = [
+          result.pushed ? `${plural(result.pushed, "change")} sent` : "",
+          result.pulled ? `${plural(result.pulled, "change")} received` : "",
+        ].filter(Boolean)
+        const notes = [
+          result.clashes ? `${plural(result.clashes, "item")} changed in both places: the later edit won.` : "",
+          result.uncategorised ? `${plural(result.uncategorised, "item")} saved without an aisle: new aisles stay on this computer.` : "",
+        ].filter(Boolean)
+        toast(parts.length ? `Synced · ${parts.join(", ")}` : "Already up to date", { description: notes.join(" ") || undefined })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e)
+        toast.error("Couldn't sync", {
+          description: /row-level security/i.test(message) ? "Supabase refused the write. Are you signed in, and has the auth migration been applied?" : message,
+        })
+      } finally {
+        setSyncing(false)
+      }
+    },
+
     // ----- account and demo -----
     signIn(email?: string) {
       commit((s) => setDb(s, { signedIn: true, email: email || s.db.email }))
@@ -587,7 +628,8 @@ function usePantryState() {
   }
 
   const store = state.db.stores.find((s) => s.id === state.db.defaultStoreId) ?? state.db.stores[0]
-  return { state, items: state.items, db: state.db, actions, phoneSyncedAt, store }
+  const pending = pendingIds(state.items, state.db.syncedItems).length
+  return { state, items: state.items, db: state.db, actions, phoneSyncedAt, store, syncing, pending }
 }
 
 type Ctx = ReturnType<typeof usePantryState>
