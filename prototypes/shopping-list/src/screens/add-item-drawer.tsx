@@ -36,7 +36,7 @@ export function AddItemDrawer({
         <form onSubmit={submit} className="flex flex-col gap-5 px-5 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
           <DrawerHeader className="p-0 text-left">
             <DrawerTitle className="text-xl">Add item</DrawerTitle>
-            <DrawerDescription>Goes on this list now and into Notion at the next sync.</DrawerDescription>
+            <DrawerDescription>Goes on this list now and into your pantry at the next sync.</DrawerDescription>
           </DrawerHeader>
           <div className="flex flex-col gap-2">
             <Label htmlFor="new-item-name">Name</Label>

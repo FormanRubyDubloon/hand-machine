@@ -248,3 +248,10 @@ Added in code on 14 November 2026 and **not yet built in Figma**: `toggle`, `tog
 ## Not yet mirrored
 
 Border widths as variables, and prototype interactions. The third batch above is code only.
+
+## Changes to existing components, 14 November 2026 (shopping list, second handoff)
+
+Two small, backwards-compatible changes to code components. Neither is in Figma yet.
+
+- `summary-stats`: a stat can take `onClick`. Its cell then gets a chevron in the top right and the whole cell is a button. Used for the "Want to cook" count on HOME-01.
+- `item-row`: takes an optional `badge` that replaces the Out / Low pill. Used for the grey Recipe pill. The Recipe pill itself is **not** a `badge` variant: HANDOFF.md says to build "new" pieces locally and ask Isaac before adding them to the design system, so it lives in `prototypes/shopping-list/src/components.tsx`.

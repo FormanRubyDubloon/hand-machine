@@ -33,7 +33,7 @@ export function MenuDrawer({ open }: { open: boolean }) {
           <div className="flex flex-col gap-2">
             <Eyebrow>Shopping list</Eyebrow>
             <DrawerTitle className="text-3xl leading-none tracking-[0.04em]">Menu</DrawerTitle>
-            <DrawerDescription className="sr-only">Change store, finish the shop or sync with Notion.</DrawerDescription>
+            <DrawerDescription className="sr-only">Change store, finish the shop recipes or sync your pantry.</DrawerDescription>
           </div>
           <HeaderButton icon={XIcon} label="Close menu" onClick={close} />
         </DrawerHeader>
@@ -54,6 +54,11 @@ export function MenuDrawer({ open }: { open: boolean }) {
                 to={{ name: "edit-store", id: store.id }}
               />
             )}
+            <MenuRow
+              title="Recipes"
+              description={`${state.recipes.filter((r) => r.wantToCook).length} you want to cook, saved on this phone`}
+              to={{ name: "recipes" }}
+            />
             {shopping && <MenuRow title="Finish this shop" description="See what's still to get and what you skipped" onClick={actions.finishShop} />}
           </nav>
           <section aria-label="Prototype settings" className="flex flex-col gap-3 px-5 py-5">
@@ -64,9 +69,14 @@ export function MenuDrawer({ open }: { open: boolean }) {
               </Label>
               <Switch id="simulate-offline" checked={state.simulateOffline} onCheckedChange={actions.setSimulateOffline} />
             </div>
-            <Button variant="ghost" className="-mx-3 self-start" onClick={() => confirm("Reset all demo data, including fake Notion?") && actions.reset()}>
-              Reset demo data
-            </Button>
+            <div className="-mx-3 flex gap-1">
+              <Button variant="ghost" onClick={actions.signOut}>
+                Sign out
+              </Button>
+              <Button variant="ghost" onClick={() => confirm("Reset all demo data, including the fake pantry?") && actions.reset()}>
+                Reset demo data
+              </Button>
+            </div>
           </section>
         </div>
         <div className="flex shrink-0 flex-col gap-2.5 border-t border-border bg-background px-5 pt-3.5 pb-[max(1.75rem,env(safe-area-inset-bottom))]">
@@ -76,7 +86,7 @@ export function MenuDrawer({ open }: { open: boolean }) {
           </span>
           <Button size="lg" disabled={!!state.sync} onClick={() => navigate({ name: "sync" })}>
             <SyncIcon className="size-4" />
-            Sync with Notion
+            Sync pantry
           </Button>
         </div>
       </DrawerContent>

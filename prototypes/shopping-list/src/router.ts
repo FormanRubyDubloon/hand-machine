@@ -7,6 +7,8 @@ export type Route =
   | { name: "shop" }
   | { name: "aisles" }
   | { name: "menu" }
+  | { name: "recipes" }
+  | { name: "recipe"; id: string }
   | { name: "done" }
   | { name: "stores" }
   | { name: "edit-store"; id: string | null }
@@ -20,6 +22,8 @@ export function parse(hash: string): Route {
     case "shop": return { name: "shop" }
     case "aisles": return { name: "aisles" }
     case "menu": return { name: "menu" }
+    case "recipes":
+      return parts[1] ? { name: "recipe", id: decodeURIComponent(parts[1]) } : { name: "recipes" }
     case "done": return { name: "done" }
     case "stores":
       if (parts[1] === "new") return { name: "edit-store", id: null }
@@ -37,6 +41,7 @@ export function href(route: Route): string {
   switch (route.name) {
     case "home": return "#/"
     case "edit-store": return route.id ? `#/stores/${encodeURIComponent(route.id)}` : "#/stores/new"
+    case "recipe": return `#/recipes/${encodeURIComponent(route.id)}`
     case "sync-conflict": return "#/sync/conflict"
     case "sync-offline": return "#/sync/offline"
     default: return `#/${route.name}`

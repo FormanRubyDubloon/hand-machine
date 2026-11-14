@@ -152,7 +152,7 @@ function EditStoreForm({ existing }: { existing: Store | null }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove {existing?.name}?</DialogTitle>
-            <DialogDescription>Its aisle numbers go too. Your list and Notion aren't changed.</DialogDescription>
+            <DialogDescription>Its aisle numbers go too. Your list and your pantry aren't changed.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>

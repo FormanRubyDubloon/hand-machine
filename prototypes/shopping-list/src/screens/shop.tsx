@@ -9,9 +9,10 @@ import { ItemRow } from "@/components/ui/item-row"
 import { ListRow } from "@/components/ui/list-row"
 import { SegmentBar } from "@/components/ui/segment-bar"
 import { SwipeRow } from "@/components/ui/swipe-row"
-import { itemDescription, matchesFilter, plural, type ListItem, type ShopAisle } from "../model"
+import { haveText, itemDescription, matchesFilter, plural, unitText, type ListItem, type ShopAisle } from "../model"
 import { navigate, Redirect } from "../router"
 import { useApp } from "../state"
+import { RecipePill } from "../components"
 import { MenuButton, Note, Screen, SplitButton } from "../layout"
 import { AddItemDrawer } from "./add-item-drawer"
 import { ItemEditor } from "./item-editor"
@@ -74,8 +75,16 @@ function AisleView({ index }: { index: number }) {
   const getAll = (li: ListItem) => {
     const before = li.item.inStock
     const wasSkipped = li.skipped
-    actions.getAll(li.item.id)
-    toast(li.remaining === 1 ? `Got ${li.item.name.toLowerCase()}` : `Got all ${li.remaining} ${li.item.name.toLowerCase()}`, {
+    actions.getAll(li.item.id, li.remaining)
+    const name = li.item.name.toLowerCase()
+    // Bulk items say what you now have, the way you'd say it.
+    const message =
+      li.item.type === "bulk"
+        ? `Got ${unitText(li.item, li.remaining) ?? li.remaining} of ${name}. You now have ${haveText(li.item, before + li.remaining)}.`
+        : li.remaining === 1
+          ? `Got ${name}`
+          : `Got all ${li.remaining} ${name}`
+    toast(message, {
       action: { label: "Undo", onClick: () => actions.restore(li.item.id, before, wasSkipped) },
     })
   }
@@ -174,10 +183,15 @@ function AisleView({ index }: { index: number }) {
             name={li.item.name}
             description={itemDescription(li)}
             stock={li.stock}
+            badge={li.recipeOnly && li.state !== "got" ? <RecipePill /> : undefined}
             state={li.state}
             remaining={li.remaining}
             expanded={editing === li.item.id}
-            countLabel={`Got all ${li.remaining} ${li.item.name.toLowerCase()}`}
+            countLabel={
+              li.item.type === "bulk"
+                ? `Got ${unitText(li.item, li.remaining)} of ${li.item.name.toLowerCase()}`
+                : `Got all ${li.remaining} ${li.item.name.toLowerCase()}`
+            }
             onNameClick={() => setEditing(editing === li.item.id ? null : li.item.id)}
             onCountClick={() => getAll(li)}
           />
@@ -194,7 +208,7 @@ function AisleView({ index }: { index: number }) {
               <ItemEditor
                 li={li}
                 onRename={(name) => actions.updateItem(li.item.id, { name })}
-                onNeed={(n) => actions.updateItem(li.item.id, { target: li.item.target + (n - li.needed) })}
+                onNeed={(n) => actions.setNeeded(li.item.id, n - li.needed)}
                 onGot={(g) => actions.updateItem(li.item.id, { inStock: li.item.inStock + (g - li.got) })}
                 onSkip={li.remaining > 0 && !li.skipped ? () => { skip(li); setEditing(null) } : undefined}
                 onClose={() => setEditing(null)}

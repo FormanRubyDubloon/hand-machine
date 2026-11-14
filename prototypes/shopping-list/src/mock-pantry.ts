@@ -1,8 +1,9 @@
-// A stand-in for the Notion API. "Notion" lives in localStorage under its own key.
-// Swap this file for real API calls (through a small server) in the next pass.
+// A stand-in for the pantry the shopping app syncs with. It lives in localStorage under its own key.
+// Changes made in the pantry app or by Claude show up here. Swap this file for real API calls
+// (through a small server) in the next pass.
 import { seedRemote, type Items } from "./model"
 
-const KEY = "hm-shopping-list:notion:v1"
+const KEY = "hm-shopping-list:pantry:v2"
 
 export function readRemote(): Items {
   try {

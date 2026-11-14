@@ -10,7 +10,7 @@ const meta = {
     stats: [
       { label: 'To get', value: 14 },
       { label: 'Out of stock', value: 6 },
-      { label: 'On order', value: 3 },
+      { label: 'Want to cook', value: 3 },
     ],
   },
   decorators: [(Story) => <div className="w-[390px]"><Story /></div>],
@@ -20,3 +20,14 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
+
+/** A cell with `onClick` becomes a button with a chevron. */
+export const WithLink: Story = {
+  args: {
+    stats: [
+      { label: 'To get', value: 14 },
+      { label: 'Out of stock', value: 6 },
+      { label: 'Want to cook', value: 1, onClick: () => {} },
+    ],
+  },
+}

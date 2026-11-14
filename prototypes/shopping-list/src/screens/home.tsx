@@ -4,18 +4,21 @@ import { CountBox } from "@/components/ui/count-box"
 import { FilterChips } from "@/components/ui/filter-chips"
 import { ListRow, ListRowText } from "@/components/ui/list-row"
 import { SummaryStats } from "@/components/ui/summary-stats"
-import { formatSynced, matchesFilter, nameList, remainingOf, stockOf, toGetAt } from "../model"
+import { formatSynced, matchesFilter, nameList, needOf, stockOf, toGetAt } from "../model"
 import { navigate } from "../router"
 import { useApp } from "../state"
+import { SyncReminder } from "../components"
 import { Eyebrow, HeaderButton, Screen, SyncIcon } from "../layout"
 
 const today = () =>
   new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })
 
 export function Home() {
-  const { state, actions, outgoing } = useApp()
-  const all = Object.values(state.items).filter((i) => remainingOf(i) > 0)
-  const status = (i: (typeof all)[number]) => stockOf(i.target, i.inStock)
+  const { state, actions, outgoing, sessionStore } = useApp()
+  const all = Object.values(state.items).filter((i) => needOf(i, state.baseline) > 0)
+  const status = (i: (typeof all)[number]) => stockOf(i)
+  // HOME-02: the last shop ended and nothing has gone to the pantry yet.
+  const unsynced = !!state.session?.finished && outgoing.length > 0
 
   const stores = [...state.stores].sort((a, b) =>
     a.id === state.lastStoreId ? -1 : b.id === state.lastStoreId ? 1 : 0
@@ -40,17 +43,23 @@ export function Home() {
             onClick={() => (outgoing.length ? navigate({ name: "sync" }) : actions.startSync())}
           >
             <SyncIcon className="size-4" />
-            {outgoing.length ? "Sync with Notion" : "Get latest from Notion"}
+            {outgoing.length ? "Sync pantry" : "Get latest"}
           </Button>
         </>
       }
     >
+      <SyncReminder
+        show={unsynced}
+        store={sessionStore?.name ?? "Last shop"}
+        changes={outgoing.length}
+        onSync={() => navigate({ name: "sync" })}
+      />
       <SummaryStats
         aria-label="Summary"
         stats={[
           { label: "To get", value: all.length },
           { label: "Out of stock", value: all.filter((i) => status(i) === "out").length },
-          { label: "On order", value: Object.values(state.items).filter((i) => i.ordered).length },
+          { label: "Want to cook", value: state.recipes.filter((r) => r.wantToCook).length, onClick: () => navigate({ name: "recipes" }) },
         ]}
       />
       <div className="flex items-center justify-between px-5 pt-3">

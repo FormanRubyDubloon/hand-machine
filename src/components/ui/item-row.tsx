@@ -24,6 +24,7 @@ function ItemRow({
   onNameClick,
   onCountClick,
   countLabel,
+  badge,
   ...props
 }: Omit<React.ComponentProps<"div">, "name"> & {
   name: string
@@ -38,6 +39,8 @@ function ItemRow({
   onCountClick?: () => void
   /** Accessible name for the count button. */
   countLabel?: string
+  /** Replaces the Out / Low pill, e.g. a Recipe pill. */
+  badge?: React.ReactNode
 }) {
   const got = state === "got"
   const skipped = state === "skipped"
@@ -58,7 +61,8 @@ function ItemRow({
               <span className={cn((got || skipped) && "line-through", got && "text-muted-foreground")}>
                 {name}
               </span>
-              {pill && (
+              {badge}
+              {!badge && pill && (
                 <Badge variant={pill === "out" ? "solid" : "outlined"}>
                   {pill === "out" ? "Out" : "Low"}
                 </Badge>

@@ -4,10 +4,11 @@ import {
   findConflicts, incomingChanges, merge, outgoingChanges, seedState, shopAisles,
   type Filter, type Item, type Session, type State, type Store,
 } from "./model"
-import { readRemote, resetRemote, writeRemote } from "./mock-notion"
+import { readRemote, resetRemote, writeRemote } from "./mock-pantry"
 import { navigate } from "./router"
 
-const KEY = "hm-shopping-list:v1"
+// v2: the pantry model (counted/bulk items, list entries, recipes) replaced the Notion one.
+const KEY = "hm-shopping-list:v2"
 
 function load(): State {
   try {
@@ -77,11 +78,7 @@ function useShoppingState() {
       update((s) => setSession(s, { aisleIndex: index }))
     },
     addOne(id: string) {
-      update((s) => {
-        const i = s.items[id]
-        if (i.inStock >= i.target) return s
-        return unskip(setItem(s, id, { inStock: i.inStock + 1 }), id)
-      })
+      update((s) => unskip(setItem(s, id, { inStock: s.items[id].inStock + 1 }), id))
     },
     /** Takes one back off: undoes a check, but never below what was in stock when the shop began. */
     removeOne(id: string) {
@@ -92,11 +89,36 @@ function useShoppingState() {
         return setItem(s, id, { inStock: i.inStock - 1 })
       })
     },
-    updateItem(id: string, patch: Partial<Pick<Item, "name" | "target" | "inStock">>) {
+    updateItem(id: string, patch: Partial<Pick<Item, "name" | "inStock">>) {
       update((s) => setItem(s, id, patch))
     },
-    getAll(id: string) {
-      update((s) => unskip(setItem(s, id, { inStock: Math.max(s.items[id].inStock, s.items[id].target) }), id))
+    /** Gets everything still to get on an item. */
+    getAll(id: string, remaining: number) {
+      update((s) => unskip(setItem(s, id, { inStock: s.items[id].inStock + remaining }), id))
+    },
+    /** Changes how many to get. A Staple changes its minimum; anything else changes its list entry. */
+    setNeeded(id: string, delta: number) {
+      update((s) => {
+        const i = s.items[id]
+        if (i.target > 0) return setItem(s, id, { target: Math.max(1, i.target + delta) })
+        const [first, ...rest] = i.entries ?? []
+        if (!first) return s
+        return setItem(s, id, { entries: [{ ...first, qty: Math.max(1, first.qty + delta) }, ...rest] })
+      })
+    },
+    /** Puts an ingredient on the list for a recipe. It goes to the pantry at the next sync. */
+    addToList(itemId: string, qty: number, recipe: string) {
+      update((s) => {
+        const i = s.items[itemId]
+        if (!i) return s
+        return setItem(s, itemId, { entries: [...(i.entries ?? []), { source: { kind: "recipe", recipe }, qty }] })
+      })
+    },
+    signIn() {
+      update((s) => ({ ...s, signedIn: true }))
+    },
+    signOut() {
+      update((s) => ({ ...s, signedIn: false }))
     },
     skip(id: string) {
       update((s) => setSession(s, { skipped: [...new Set([...(s.session?.skipped ?? []), id])] }))
@@ -114,10 +136,14 @@ function useShoppingState() {
     setFilter(filter: Filter) {
       update((s) => ({ ...s, filter }))
     },
+    /** A one-off: on the list now, not a Staple (minimum 0). */
     addItem(input: { name: string; target: number; categoryId: string }) {
       update((s) => {
         const id = `local-${Date.now().toString(36)}`
-        const item: Item = { id, ...input, inStock: 0, ordered: false, where: [] }
+        const item: Item = {
+          id, name: input.name, categoryId: input.categoryId, type: "counted", target: 0, inStock: 0, where: [],
+          entries: [{ source: { kind: "hand" }, qty: input.target }],
+        }
         const next = { ...s, items: { ...s.items, [id]: item }, order: [...s.order, id] }
         return next.session
           ? setSession(next, { startStock: { ...next.session.startStock, [id]: 0 } })
@@ -148,7 +174,7 @@ function useShoppingState() {
         /* ignore */
       }
       resetRemote()
-      setState(seedState())
+      setState({ ...seedState(), signedIn: ref.current.signedIn })
       navigate({ name: "home" }, { replace: true })
     },
 
@@ -233,7 +259,7 @@ function useShoppingState() {
       }
       setState({ ...s, items, baseline: structuredClone(merged), order: [...new Set([...s.order, ...Object.keys(items)])], session, sync: null, lastSyncedAt: new Date().toISOString() })
       const total = changed.size
-      toast(total ? `Synced ${total} ${total === 1 ? "change" : "changes"} with Notion` : "Up to date with Notion")
+      toast(total ? `Synced ${total} ${total === 1 ? "change" : "changes"} with your pantry` : "Up to date with your pantry")
     }, 500)
     return () => clearTimeout(t)
   }, [phase])

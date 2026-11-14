@@ -34,7 +34,7 @@ export function Done() {
           {outgoing.length > 0 ? (
             <SplitButton
               icon={SyncIcon}
-              label="Sync with Notion"
+              label="Sync pantry"
               detail={plural(outgoing.length, "change")}
               disabled={!!state.sync}
               onClick={() => navigate({ name: "sync" })}
