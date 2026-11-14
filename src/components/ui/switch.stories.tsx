@@ -7,6 +7,7 @@ const meta = {
   title: 'UI/Switch',
   component: Switch,
   tags: ['autodocs'],
+  args: { 'aria-label': 'Toggle setting' },
   argTypes: { size: { control: 'select', options: ['default', 'sm'] } },
 } satisfies Meta<typeof Switch>
 

@@ -24,7 +24,7 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   render: (args) => (
     <Select {...args}>
-      <SelectTrigger className="w-full">
+      <SelectTrigger className="w-full" aria-label="Fruit">
         <SelectValue placeholder="Select a fruit" />
       </SelectTrigger>
       <SelectContent>
@@ -39,7 +39,7 @@ export const Default: Story = {
 export const Small: Story = {
   render: (args) => (
     <Select {...args}>
-      <SelectTrigger size="sm" className="w-full">
+      <SelectTrigger size="sm" className="w-full" aria-label="Fruit">
         <SelectValue placeholder="Select a fruit" />
       </SelectTrigger>
       <SelectContent>
@@ -53,7 +53,7 @@ export const Small: Story = {
 export const WithValue: Story = {
   render: (args) => (
     <Select defaultValue="banana" {...args}>
-      <SelectTrigger className="w-full">
+      <SelectTrigger className="w-full" aria-label="Fruit">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -67,7 +67,7 @@ export const WithValue: Story = {
 export const Disabled: Story = {
   render: (args) => (
     <Select disabled {...args}>
-      <SelectTrigger className="w-full">
+      <SelectTrigger className="w-full" aria-label="Fruit">
         <SelectValue placeholder="Disabled" />
       </SelectTrigger>
       <SelectContent>
@@ -80,7 +80,7 @@ export const Disabled: Story = {
 export const WithGroups: Story = {
   render: (args) => (
     <Select defaultOpen {...args}>
-      <SelectTrigger className="w-full">
+      <SelectTrigger className="w-full" aria-label="Fruit">
         <SelectValue placeholder="Select food" />
       </SelectTrigger>
       <SelectContent>

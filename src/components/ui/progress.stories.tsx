@@ -6,7 +6,7 @@ const meta = {
   title: 'UI/Progress',
   component: Progress,
   tags: ['autodocs'],
-  args: { value: 33 },
+  args: { value: 33, 'aria-label': 'Progress' },
   argTypes: { value: { control: { type: 'range', min: 0, max: 100, step: 1 } } },
   decorators: [(Story) => <div className="w-[320px]"><Story /></div>],
 } satisfies Meta<typeof Progress>

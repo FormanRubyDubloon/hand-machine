@@ -7,6 +7,7 @@ const meta = {
   title: 'UI/Checkbox',
   component: Checkbox,
   tags: ['autodocs'],
+  args: { 'aria-label': 'Checkbox' },
 } satisfies Meta<typeof Checkbox>
 
 export default meta
