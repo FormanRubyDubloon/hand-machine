@@ -1,0 +1,15 @@
+# Build settings for Netlify. File config overrides the settings in the Netlify dashboard.
+[build]
+  command = "pnpm build"
+  publish = "dist"
+
+  # Vite 8 needs a recent Node.
+  [build.environment]
+    NODE_VERSION = "22"
+
+# The app is the prototype, so the site root goes straight to it.
+# The repo root page is the component showcase, which isn't part of the deployed app.
+[[redirects]]
+  from = "/"
+  to = "/prototypes/shopping-list/"
+  status = 302
