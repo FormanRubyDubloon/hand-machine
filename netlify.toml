@@ -13,3 +13,5 @@
   from = "/"
   to = "/prototypes/shopping-list/"
   status = 302
+  # The showcase index.html exists at /, and a redirect only wins over a real file when forced.
+  force = true
