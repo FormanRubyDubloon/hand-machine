@@ -367,5 +367,5 @@ export function byUseFirst(a: { info: RecipeInfo; recipe: Recipe }, b: { info: R
 
 export const recipesUsing = (recipes: Recipe[], itemId: string) => recipes.filter((r) => r.ingredients.some((i) => i.itemId === itemId))
 
-export const minutesBand = (m: number) => (m < 20 ? "under20" : m <= 40 ? "20to40" : "over40")
+export const minutesBand = (m: number) => (m <= 0 ? "unknown" : m < 20 ? "under20" : m <= 40 ? "20to40" : "over40")
 export const recipeTags = (r: Recipe) => [...(r.tags ?? []), ...(r.meal ? [r.meal] : [])]

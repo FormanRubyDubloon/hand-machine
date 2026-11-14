@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { CountBox } from "@/components/ui/count-box"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { minutesText } from "../../../shared/src/pantry"
 import { haveText, nameList, plural, recipeFor, recipeSummary, type IngredientStatus, type Item, type Recipe } from "../model"
 import { goBack, navigate, Redirect } from "../router"
 import { useApp } from "../state"
@@ -25,7 +26,7 @@ export function Recipes() {
   const row = (recipe: Recipe, index: number) => {
     const { short, canCook } = recipeSummary(recipe, state)
     const detail = [
-      `${recipe.minutes} min`,
+      minutesText(recipe.minutes),
       recipe.soon,
       short.length
         ? recipe.wantToCook
@@ -117,7 +118,7 @@ export function RecipeDetail({ id }: { id: string }) {
         below={
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm text-muted-foreground">
-              {recipe.minutes} min · Serves {recipe.serves}
+              {minutesText(recipe.minutes)} · Serves {recipe.serves}
             </span>
             <TabsList>
               <TabsTrigger value="ingredients" className="data-active:bg-primary data-active:text-primary-foreground dark:data-active:border-transparent dark:data-active:bg-primary dark:data-active:text-primary-foreground">

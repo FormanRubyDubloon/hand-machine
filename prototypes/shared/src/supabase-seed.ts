@@ -2,7 +2,7 @@
 // prototypes await this before they render, so the rest of the code can keep treating the seed
 // as plain data. Read only: the publishable key can read `items`, nothing writes back yet.
 import { supabase } from "@/lib/supabase"
-import { seedItems, seedRecipes, type SharedItem } from "./pantry"
+import { seedItems, seedRecipes, type SharedItem, type SharedRecipe } from "./pantry"
 
 type Row = {
   id: string
@@ -33,9 +33,6 @@ function unitPair(u: string | null): [string, string] | undefined {
   return [one, /(ch|sh|x)$/i.test(one) ? `${one}es` : `${one}s`]
 }
 
-/** Demo recipe links that point at an item under a different name in the Notion pantry. */
-const renamed: Record<string, string> = { sourdough: "sourdough-bread", oats: "rolled-oats", peppers: "red-pepper", oranges: "oranges-citrus-fruit", "black-olives": "olives" }
-
 export function toItem(r: Row): SharedItem {
   return {
     id: r.id,
@@ -59,24 +56,68 @@ export function toItem(r: Row): SharedItem {
   }
 }
 
+type RecipeRow = {
+  id: string
+  name: string
+  intro: string | null
+  serves: number | null
+  minutes: number | null
+  prep: number | null
+  cook: number | null
+  source: string | null
+  notes: string | null
+  method: string[]
+  tags: string[]
+  meal: SharedRecipe["meal"] | null
+  want_to_cook: boolean
+  soon: string | null
+  last_cooked: string | null
+  added_by: "claude" | "you"
+  added_at: string
+  recipe_ingredients: { position: number; text: string; item_id: string | null; need: number; buy: number; partial: boolean; uses: number | null }[]
+}
+
+/**
+ * Notion's recipes don't say how much of an item each line uses, so a linked ingredient counts as
+ * "partial": having any of the item is enough. Unknown serves falls back to 2 (the app's default).
+ */
+export function toRecipe(r: RecipeRow): SharedRecipe {
+  return {
+    id: r.id,
+    name: r.name,
+    minutes: r.minutes ?? 0,
+    serves: r.serves ?? 2,
+    wantToCook: r.want_to_cook,
+    soon: r.soon ?? undefined,
+    ingredients: [...r.recipe_ingredients]
+      .sort((a, b) => a.position - b.position)
+      .map((i) => ({ text: i.text, itemId: i.item_id ?? "", need: i.need, buy: i.buy, partial: i.partial || !!i.item_id, uses: i.uses ?? undefined })),
+    method: r.method,
+    prep: r.prep ?? undefined,
+    cook: r.cook ?? undefined,
+    tags: r.tags,
+    meal: r.meal ?? undefined,
+    source: r.source ?? undefined,
+    notes: [r.intro, r.notes].filter(Boolean).join("\n\n") || undefined,
+    lastCooked: r.last_cooked,
+    addedBy: r.added_by,
+    addedAt: r.added_at,
+  }
+}
+
 let loaded: Promise<void> | null = null
 
-/** Fetches the items once and fills `seedItems`. Failing leaves the pantry empty rather than blocking the app. */
+/** Fetches the items and recipes once and fills the seed. Failing leaves the pantry empty rather than blocking the app. */
 export function loadSeedFromSupabase(): Promise<void> {
   loaded ??= (async () => {
-    const { data, error } = await supabase.from("items").select("*").order("name")
-    if (error || !data) {
-      console.error("Couldn't load the pantry from Supabase:", error?.message)
-      return
-    }
-    seedItems.splice(0, seedItems.length, ...(data as Row[]).map(toItem))
-    // Recipes written for the old demo items: keep the wording, drop links to items that aren't there.
-    const have = new Set(seedItems.map((i) => i.id))
-    for (const rec of seedRecipes)
-      for (const ing of rec.ingredients) {
-        const id = renamed[ing.itemId] ?? ing.itemId
-        ing.itemId = have.has(id) ? id : ""
-      }
+    const [items, recipes] = await Promise.all([
+      supabase.from("items").select("*").order("name"),
+      supabase.from("recipes").select("*, recipe_ingredients(position, text, item_id, need, buy, partial, uses)").order("name"),
+    ])
+    if (items.error || !items.data) console.error("Couldn't load the pantry from Supabase:", items.error?.message)
+    else seedItems.splice(0, seedItems.length, ...(items.data as Row[]).map(toItem))
+    if (recipes.error || !recipes.data) console.error("Couldn't load the recipes from Supabase:", recipes.error?.message)
+    else seedRecipes.splice(0, seedRecipes.length, ...(recipes.data as RecipeRow[]).map(toRecipe))
   })()
   return loaded
 }

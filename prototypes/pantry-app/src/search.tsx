@@ -10,6 +10,7 @@ import {
   containsText, distance, haveText, isStaple, listRows, locationLabel, namesOf, needOf, recipeInfo, shortNames, soonest, dateText,
   usesUpText, unitText, type Item,
 } from "./model"
+import { minutesText } from "../../shared/src/pantry"
 import { navigate } from "./router"
 import { usePantry } from "./state"
 import { Eyebrow, StockPill, TagPill } from "./components"
@@ -127,7 +128,7 @@ export function Search() {
                           <div className="flex min-w-0 flex-1 flex-col">
                             <span className="text-sm font-medium"><Highlight text={r.name} query={q} /></span>
                             <span className="text-xs text-muted-foreground">
-                              {r.minutes} min · {info.canCook ? usesUpText(info.usesUp) ?? "everything in stock" : `short of ${shortNames(info).toLowerCase()}`}
+                              {minutesText(r.minutes)} · {info.canCook ? usesUpText(info.usesUp) ?? "everything in stock" : `short of ${shortNames(info).toLowerCase()}`}
                             </span>
                           </div>
                           <Badge variant={info.canCook ? "solid" : "outlined"}>{info.canCook ? "Can cook" : `Short ${info.short.length}`}</Badge>

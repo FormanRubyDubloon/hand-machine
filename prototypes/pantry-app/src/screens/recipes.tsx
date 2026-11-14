@@ -10,6 +10,7 @@ import {
   byUseFirst, dateText, daysUntil, lower, minutesBand, plural, recipeInfo, recipesUsing, recipeTags, shortNames, soonest, usesUpText,
   type Item, type Recipe, type RecipeInfo,
 } from "../model"
+import { minutesText } from "../../../shared/src/pantry"
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
 import { Eyebrow, FilterGroup, FilterSidebar, PageTitle } from "../components"
@@ -20,7 +21,7 @@ type Quick = "all" | "dinner" | "quick" | "want"
 const quickTest: Record<Quick, (r: Recipe) => boolean> = {
   all: () => true,
   dinner: (r) => r.meal === "Dinner",
-  quick: (r) => r.minutes < 20,
+  quick: (r) => r.minutes > 0 && r.minutes < 20,
   want: (r) => r.wantToCook,
 }
 
@@ -35,7 +36,7 @@ function RecipeCard({ recipe, info, onCooked }: Ranked & { onCooked: () => void 
           <button type="button" className="text-left text-[15px] leading-tight font-semibold hover:underline" onClick={() => navigate({ name: "recipes", tab: "cook", recipe: recipe.id })}>
             {recipe.name}
           </button>
-          <span className="text-xs text-muted-foreground">{[`${recipe.minutes} min`, `Serves ${recipe.serves}`, ...recipeTags(recipe)].join(" · ")}</span>
+          <span className="text-xs text-muted-foreground">{[minutesText(recipe.minutes), `Serves ${recipe.serves}`, ...recipeTags(recipe)].join(" · ")}</span>
         </div>
         {info.canCook ? (
           <Button size="xs" variant="outline" className="h-8 shrink-0 border-primary" onClick={onCooked}>Cooked it</Button>
@@ -197,7 +198,7 @@ function AllRecipes({ ranked }: { ranked: Ranked[] }) {
                 <TableCell><Badge variant={info.canCook ? "solid" : "outlined"}>{info.canCook ? "Can cook" : `Short ${info.short.length}`}</Badge></TableCell>
                 <TableCell className="max-w-48 truncate">{info.canCook ? "–" : shortNames(info, 2)}</TableCell>
                 <TableCell>{info.usesUp ? `${info.usesUp.item.name}, use by ${lower(dateText(info.usesUp.date))}` : "–"}</TableCell>
-                <TableCell className="tabular-nums">{recipe.minutes} min</TableCell>
+                <TableCell className="tabular-nums">{minutesText(recipe.minutes)}</TableCell>
                 <TableCell className="tabular-nums">{recipe.serves}</TableCell>
                 <TableCell className="text-muted-foreground">{recipeTags(recipe).join(" · ")}</TableCell>
                 <TableCell className="pr-3 text-right"><WantButton recipe={recipe} size="xs" className="h-8" /></TableCell>
