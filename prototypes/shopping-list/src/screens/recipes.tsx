@@ -120,10 +120,10 @@ export function RecipeDetail({ id }: { id: string }) {
               {recipe.minutes} min · Serves {recipe.serves}
             </span>
             <TabsList>
-              <TabsTrigger value="ingredients" className="data-active:bg-primary data-active:text-primary-foreground">
+              <TabsTrigger value="ingredients" className="data-active:bg-primary data-active:text-primary-foreground dark:data-active:border-transparent dark:data-active:bg-primary dark:data-active:text-primary-foreground">
                 Ingredients
               </TabsTrigger>
-              <TabsTrigger value="method" className="data-active:bg-primary data-active:text-primary-foreground">
+              <TabsTrigger value="method" className="data-active:bg-primary data-active:text-primary-foreground dark:data-active:border-transparent dark:data-active:bg-primary dark:data-active:text-primary-foreground">
                 Method
               </TabsTrigger>
             </TabsList>

@@ -73,7 +73,7 @@ export function App() {
       <MotionConfig reducedMotion="user">
         {/* Phone-first. On a wider screen it sits in a phone-width column. */}
         <Frame />
-        <Toaster position="top-center" offset={{ top: "max(16px, env(safe-area-inset-top))" }} mobileOffset={{ top: "max(16px, env(safe-area-inset-top))" }} />
+        <Toaster theme="system" position="top-center" offset={{ top: "max(16px, env(safe-area-inset-top))" }} mobileOffset={{ top: "max(16px, env(safe-area-inset-top))" }} />
       </MotionConfig>
     </AppStateProvider>
   )
