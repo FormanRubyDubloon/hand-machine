@@ -389,7 +389,9 @@ export function merge(local: Items, baseline: Items, remote: Items, resolutions:
     const r = remote[id]
     const b = baseline[id]
     if (l && !r) {
-      // New on the phone, or deleted in the pantry. Deleting isn't modelled, so keep it.
+      // Deleted in the pantry app, and untouched here: let it go. If you changed it on the phone
+      // since the last sync, keep it, so a shop isn't lost. New on the phone: keep it.
+      if (b && l.inStock === b.inStock && sameEntries(l.entries, b.entries)) continue
       out[id] = { ...l, entries: settle(l.entries, l.inStock) }
       continue
     }

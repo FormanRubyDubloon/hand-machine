@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator"
 import { Toaster } from "@/components/ui/sonner"
 import { isToday, timeText, shortDate } from "./model"
-import { signOutOfSupabase, useAuthSession } from "./auth"
+import { signOutOfSupabase, useAuthSession } from "../../shared/src/auth"
 import { navigate, useRoute, type Route } from "./router"
 import { PantryProvider, usePantry } from "./state"
 import { Search } from "./search"
@@ -179,7 +179,7 @@ function Screen({ route }: { route: Route }) {
 
 function Shell() {
   const { db } = usePantry()
-  const session = useAuthSession()
+  const { signedIn } = useAuthSession()
   const route = useRoute()
   const [claude, setClaude] = React.useState(false)
   const [conflicts, setConflicts] = React.useState(false)
@@ -191,8 +191,8 @@ function Shell() {
     if (count > seen) setConflicts(true)
   }
 
-  if (session === undefined) return null
-  if (!session) return <SignIn />
+  if (signedIn === undefined) return null
+  if (!signedIn) return <SignIn />
   return (
     <div className="flex h-dvh min-w-[1180px] flex-col bg-background">
       <Header route={route} onAddWithClaude={() => setClaude(true)} />

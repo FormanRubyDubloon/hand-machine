@@ -8,7 +8,7 @@ import {
   aislesOf, formatTime, incomingChanges, needOf, plural, unitText,
   type Change, type Item, type State,
 } from "../model"
-import { readRemote } from "../mock-pantry"
+import { loadRemote, readRemote } from "../remote-pantry"
 import { goBack, navigate, Redirect } from "../router"
 import { useApp } from "../state"
 import { HeaderButton, MenuButton, Note, Screen, SectionHeading, SplitButton, SyncIcon } from "../layout"
@@ -57,7 +57,22 @@ function ChangeRow({ change, aisle, clash }: { change: Change; aisle?: number | 
 export function SyncReview() {
   const { state, actions, store, outgoing } = useApp()
   const offline = state.simulateOffline || !navigator.onLine
-  const incoming = React.useMemo(() => (offline ? [] : incomingChanges(readRemote(), state.baseline)), [offline, state.baseline])
+  // What's in the pantry is fetched when this screen opens. null while it loads.
+  const [remote, setRemote] = React.useState<ReturnType<typeof readRemote> | null>(null)
+  const [unreachable, setUnreachable] = React.useState(false)
+  React.useEffect(() => {
+    if (offline) return
+    let live = true
+    loadRemote().then(
+      (items) => live && setRemote(items),
+      () => live && setUnreachable(true),
+    )
+    return () => {
+      live = false
+    }
+  }, [offline])
+  const cannotCheck = offline || unreachable
+  const incoming = React.useMemo(() => (remote ? incomingChanges(remote, state.baseline) : []), [remote, state.baseline])
   // An item changed both here and in the pantry app counts once.
   const total = new Set([...outgoing, ...incoming].map((c) => c.item.id)).size
   const both = new Set(outgoing.map((c) => c.item.id))
@@ -88,9 +103,11 @@ export function SyncReview() {
       <Note className="pb-0">Check what will change. Nothing is sent until you tap Sync now.</Note>
       <SectionHeading direction="up" count={plural(outgoing.length, "item")}>Going to your pantry</SectionHeading>
       {outgoing.length ? outgoing.map((c) => <ChangeRow key={c.item.id} change={c} />) : <Note>Nothing to send.</Note>}
-      <SectionHeading direction="down" count={offline ? undefined : plural(incoming.length, "item")}>Coming from your pantry</SectionHeading>
-      {offline ? (
+      <SectionHeading direction="down" count={remote ? plural(incoming.length, "item") : undefined}>Coming from your pantry</SectionHeading>
+      {cannotCheck ? (
         <Note>Can't check your pantry without signal.</Note>
+      ) : !remote ? (
+        <Note>Checking your pantry…</Note>
       ) : incoming.length ? (
         incoming.map((c) => <ChangeRow key={c.item.id} change={c} clash={both.has(c.item.id)} />)
       ) : (

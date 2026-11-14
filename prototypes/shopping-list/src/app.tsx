@@ -1,8 +1,9 @@
 import { AnimatePresence, MotionConfig, motion } from "motion/react"
 import { Toaster } from "@/components/ui/sonner"
 import * as React from "react"
+import { useAuthSession } from "../../shared/src/auth"
 import { useRoute, type Route } from "./router"
-import { AppStateProvider, useApp } from "./state"
+import { AppStateProvider } from "./state"
 import { AislesDrawer } from "./screens/aisles"
 import { Done } from "./screens/done"
 import { EditStore } from "./screens/edit-store"
@@ -57,11 +58,11 @@ function screenFor(route: ReturnType<typeof useRoute>) {
 
 /** Signed out, only the sign-in screen shows. */
 function Frame() {
-  const { state } = useApp()
+  const { signedIn } = useAuthSession()
   return (
     <div className="min-h-dvh bg-muted">
       <div className="mx-auto max-w-[430px] bg-background shadow-sm sm:border-x sm:border-border">
-        {state.signedIn ? <CurrentScreen /> : <SignIn />}
+        {signedIn === undefined ? null : signedIn ? <CurrentScreen /> : <SignIn />}
       </div>
     </div>
   )

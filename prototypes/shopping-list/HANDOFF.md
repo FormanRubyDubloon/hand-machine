@@ -225,7 +225,7 @@ These notes are from building the first handoff. They still apply unless this fi
 
 Done in `prototypes/shopping-list/src`:
 
-- Notion is gone. `mock-notion.ts` is now `mock-pantry.ts`, and every label says "your pantry" or "the pantry app". Saved data moved to `hm-shopping-list:v2`, so old data is dropped.
+- Notion is gone. `mock-notion.ts` is now `remote-pantry.ts`, and every label says "your pantry" or "the pantry app". Saved data moved to `hm-shopping-list:v2`, so old data is dropped.
 - Model: items are counted or bulk, bulk items track whole packs and one open pack, and only full packs count towards the minimum. Staple means minimum above 0. List entries carry a source (by hand, Claude, or a recipe name). Bought entries leave the list at sync.
 - Sync conflict has two choices. Keeps the phone's value until you choose.
 - Rows: Recipe pill, "for…" and "also for…" sub-lines, bulk sub-line ("1 bag, open · keep 2") and toast ("Got 2 bags of basmati rice. You now have 3 bags, 1 open.").
