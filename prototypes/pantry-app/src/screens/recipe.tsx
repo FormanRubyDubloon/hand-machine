@@ -72,12 +72,12 @@ const metaLine = (r: Recipe) =>
     .join(" · ")
 
 function stockLine(r: IngredientRow) {
-  if (!r.item) return "Not linked to a pantry item"
+  if (!r.item) return "Not in your pantry"
   return r.item.inStock ? `have ${haveText(r.item, ", ")}` : "none in stock"
 }
 
 function IngredientLine({ row, factor, onAddPack }: { row: IngredientRow; factor: number; onAddPack: () => void }) {
-  const short = row.status === "short" || row.status === "little"
+  const short = row.status === "short" || row.status === "little" || row.status === "unlinked"
   return (
     <div className={cn("flex flex-col gap-2 border-b border-border px-3 py-3", short && "bg-muted")}>
       <div className="flex items-center gap-4">

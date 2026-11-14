@@ -324,7 +324,7 @@ const statusLabel: Record<IngredientStatus, string> = {
   listed: "On your list",
   short: "Short",
   little: "Too little",
-  unlinked: "Not linked",
+  unlinked: "Not in pantry",
 }
 
 /** Dark tick (have), light tick (some), solid pill (short), label (on your list). */
@@ -332,7 +332,7 @@ export function StockMark({ status, missing }: { status: IngredientStatus; missi
   if (status === "have" || status === "some")
     return <CheckIcon strokeWidth={2.5} className={cn("size-5 shrink-0", status === "some" && "text-ring")} aria-label={statusLabel[status]} />
   if (status === "listed") return <Eyebrow className="text-foreground">On your list</Eyebrow>
-  if (status === "unlinked") return <Eyebrow>Not linked</Eyebrow>
+  if (status === "unlinked") return <Eyebrow>Not in pantry</Eyebrow>
   if (status === "little") return <Badge variant="solid">Too little</Badge>
   return <Badge variant="solid">{missing && missing > 1 ? `Short ${missing}` : "Short"}</Badge>
 }

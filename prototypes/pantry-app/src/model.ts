@@ -328,7 +328,7 @@ export function ingredientRow(ing: Ingredient, items: Items, factor = 1): Ingred
 
 export type RecipeInfo = {
   rows: IngredientRow[]
-  /** Not in stock (whether or not it's on the list), plus packs that are too small. */
+  /** Not in stock (whether or not it's on the list), packs that are too small, and ingredients with no pantry item. */
   short: IngredientRow[]
   canCook: boolean
   /** The ingredient in stock that goes off first, if within two weeks. */
@@ -338,7 +338,8 @@ export type RecipeInfo = {
 
 export function recipeInfo(recipe: Recipe, items: Items, factor = 1): RecipeInfo {
   const rows = recipe.ingredients.map((ing) => ingredientRow(ing, items, factor))
-  const short = rows.filter((r) => r.status === "short" || r.status === "listed" || r.status === "little")
+  // An ingredient with no pantry item is short too: you don't have it, and the app can't add it to the list.
+  const short = rows.filter((r) => r.status === "short" || r.status === "listed" || r.status === "little" || r.status === "unlinked")
   let usesUp: RecipeInfo["usesUp"] = null
   for (const r of rows) {
     if (!r.item || r.status === "short" || r.status === "listed") continue
