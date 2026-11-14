@@ -7,11 +7,11 @@
 // a sync without knowing about them.
 
 /** Pantry items, shared. The phone reads and writes this at sync. */
-export const ITEMS_KEY = "hm-pantry:items:v1"
+export const ITEMS_KEY = "hm-pantry:items:v2"
 /** Stores, aisles (categories), recipes and history. Owned by the pantry app; the phone pulls at sync. */
-export const DB_KEY = "hm-pantry:db:v1"
+export const DB_KEY = "hm-pantry:db:v2"
 /** The phone's own state. The pantry app reads its last sync time from here. */
-export const PHONE_KEY = "hm-shopping-list:v3"
+export const PHONE_KEY = "hm-shopping-list:v4"
 
 export type Location = "fridge" | "freezer" | "cupboard"
 export type Category = { id: string; name: string }
@@ -163,100 +163,15 @@ export const seedStores: SharedStore[] = [
   },
 ]
 
-const bag: [string, string] = ["bag", "bags"]
-const jar: [string, string] = ["jar", "jars"]
-const bottle: [string, string] = ["bottle", "bottles"]
-const bunch: [string, string] = ["bunch", "bunches"]
-const tin: [string, string] = ["tin", "tins"]
-const pack: [string, string] = ["pack", "packs"]
+/**
+ * The pantry's items. Empty until `loadSeedFromSupabase` (supabase-seed.ts) fills it, which both
+ * prototypes await before they render. The demo items that used to live here are gone.
+ */
+export const seedItems: SharedItem[] = []
 
-type Seed = Omit<SharedItem, "where"> & { where?: string[] }
-const item = (i: Seed): SharedItem => ({ where: [], ...i })
-
-/** The pantry as the phone last saw it, at its last sync (today, 10:02). */
-export const seedItems: SharedItem[] = [
-  // Fridge
-  item({ id: "eggs", name: "Eggs", type: "counted", target: 6, inStock: 4, categoryId: "dairy-and-chilled", location: "fridge", price: 30, brand: "Clarence Court", useBy: [day(10), day(10), day(12), day(12)], otherNames: ["Egg"], uses: 40 }),
-  item({ id: "whole-milk", name: "Whole milk", type: "counted", target: 2, inStock: 1, unit: bottle, categoryId: "dairy-and-chilled", location: "fridge", price: 165, brand: "Estate Dairy", useBy: [day(3)], otherNames: ["Full-fat milk"], notes: "2 litre", uses: 38 }),
-  item({ id: "milk", name: "Milk", type: "counted", target: 0, inStock: 0, categoryId: "dairy-and-chilled", location: "fridge", notes: "Created by Claude for Pancakes" }),
-  item({ id: "butter", name: "Butter", type: "counted", target: 1, inStock: 1, unit: pack, categoryId: "dairy-and-chilled", location: "fridge", price: 210, brand: "Président", useBy: [day(28)], uses: 30 }),
-  item({ id: "cheddar", name: "Cheddar", type: "counted", target: 1, inStock: 2, unit: ["block", "blocks"], categoryId: "dairy-and-chilled", location: "fridge", price: 350, brand: "Montgomery's", useBy: [day(49)], uses: 22 }),
-  item({ id: "salmon", name: "Salmon", type: "counted", target: 0, inStock: 2, unit: ["fillet", "fillets"], categoryId: "meat-and-fish", location: "fridge", price: 550, useBy: [day(1)], where: ["fishmonger", "sainsburys"], uses: 8 }),
-  item({ id: "chicken-thighs", name: "Chicken thighs", type: "counted", target: 1, inStock: 0, unit: pack, categoryId: "meat-and-fish", location: "fridge", price: 475, where: ["sainsburys", "butcher"], uses: 9 }),
-  item({ id: "steak", name: "Steak", type: "counted", target: 2, inStock: 0, categoryId: "meat-and-fish", location: "freezer", price: 650, where: ["sainsburys", "butcher"] }),
-  item({ id: "kimchi", name: "Kimchi", type: "counted", target: 2, inStock: 1, unit: jar, categoryId: "deli-and-cured-meats", location: "fridge", price: 320, brand: "Mr Kim", useBy: [day(16)], uses: 14 }),
-  item({ id: "saucisson", name: "Saucisson", type: "counted", target: 1, inStock: 0, unit: ["piece", "pieces"], categoryId: "deli-and-cured-meats", location: "fridge", price: 450 }),
-  item({ id: "lemon-curd", name: "Lemon curd", type: "counted", target: 0, inStock: 1, unit: jar, categoryId: "tins-and-jars", location: "fridge", price: 225, useBy: [day(16)] }),
-  item({ id: "black-olives", name: "Black olives", type: "counted", target: 0, inStock: 0, unit: jar, categoryId: "deli-and-cured-meats", location: "fridge", price: 180 }),
-  item({
-    id: "fennel", name: "Fennel", type: "counted", target: 0, inStock: 0, unit: ["bulb", "bulbs"], categoryId: "fruit-and-veg", location: "fridge", price: 90,
-    entries: [{ source: { kind: "recipe", recipe: "Fennel and orange salad" }, qty: 1 }],
-  }),
-  item({ id: "chillis", name: "Chillis", type: "counted", target: 3, inStock: 1, notes: "Habanero", categoryId: "fruit-and-veg", location: "fridge", price: 25, useBy: [day(6)], otherNames: ["Chilli"] }),
-  item({ id: "spring-onions", name: "Spring onions", type: "counted", target: 0, inStock: 0, unit: bunch, categoryId: "fruit-and-veg", location: "fridge", price: 60 }),
-  item({
-    id: "parsley", name: "Parsley", type: "counted", target: 0, inStock: 0, unit: bunch, categoryId: "fruit-and-veg", location: "fridge", price: 85,
-    entries: [{ source: { kind: "recipe", recipe: "Sardine linguine" }, qty: 1 }],
-  }),
-  item({
-    id: "mint", name: "Mint", type: "counted", target: 0, inStock: 0, unit: bunch, categoryId: "fruit-and-veg", location: "fridge", price: 85,
-    entries: [{ source: { kind: "recipe", recipe: "Fennel and orange salad" }, qty: 1 }],
-  }),
-  item({ id: "thyme", name: "Thyme", type: "counted", target: 0, inStock: 0, unit: bunch, categoryId: "fruit-and-veg", location: "fridge", price: 85 }),
-  // Cupboard
-  item({ id: "lemons", name: "Lemons", type: "counted", target: 6, inStock: 2, categoryId: "fruit-and-veg", location: "cupboard", price: 35, useBy: [day(7), day(9)], otherNames: ["Lemon"], uses: 26 }),
-  item({
-    id: "oranges", name: "Oranges", type: "counted", target: 0, inStock: 0, categoryId: "fruit-and-veg", location: "cupboard", price: 40,
-    entries: [{ source: { kind: "recipe", recipe: "Fennel and orange salad" }, qty: 2 }],
-  }),
-  item({ id: "red-onions", name: "Red onions", type: "counted", target: 2, inStock: 3, categoryId: "fruit-and-veg", location: "cupboard", price: 20, otherNames: ["Red onion", "Onion"], uses: 18 }),
-  item({ id: "garlic", name: "Garlic", type: "counted", target: 1, inStock: 1, unit: ["bulb", "bulbs"], categoryId: "fruit-and-veg", location: "cupboard", price: 45, useBy: [day(20)], uses: 20 }),
-  item({ id: "sweet-potatoes", name: "Sweet potatoes", type: "counted", target: 4, inStock: 0, categoryId: "fruit-and-veg", location: "cupboard", price: 35 }),
-  item({ id: "potatoes", name: "Potatoes", type: "counted", target: 0, inStock: 0, unit: bag, categoryId: "fruit-and-veg", location: "cupboard", price: 150 }),
-  item({ id: "peppers", name: "Peppers", type: "counted", target: 0, inStock: 0, categoryId: "fruit-and-veg", location: "fridge", price: 55, otherNames: ["Pepper", "Red pepper"] }),
-  item({ id: "aubergine", name: "Aubergine", type: "counted", target: 0, inStock: 0, categoryId: "fruit-and-veg", location: "fridge", price: 90, otherNames: ["Eggplant"] }),
-  item({ id: "kiwis", name: "Kiwis", type: "counted", target: 3, inStock: 0, categoryId: "fruit-and-veg", location: "cupboard", price: 30 }),
-  item({ id: "sourdough", name: "Sourdough bread", type: "counted", target: 1, inStock: 0, unit: ["loaf", "loaves"], categoryId: "bread-and-crackers", location: "cupboard", price: 380, brand: "E5 Bakehouse", uses: 16 }),
-  item({ id: "oatcakes", name: "Oatcakes", type: "counted", target: 2, inStock: 2, unit: pack, categoryId: "bread-and-crackers", location: "cupboard", price: 150, useBy: [day(60), day(75)] }),
-  item({ id: "plain-flour", name: "Plain flour", type: "bulk", target: 2, inStock: 2, open: 1, unit: bag, packSize: { amount: 1500, measure: "g" }, categoryId: "baking", location: "cupboard", price: 180, brand: "Doves Farm", useBy: [day(130), day(220)], openedAt: [day(-12)], otherNames: ["Flour", "All-purpose flour"], uses: 12 }),
-  item({ id: "caster-sugar", name: "Caster sugar", type: "bulk", target: 0, inStock: 0, unit: bag, packSize: { amount: 1000, measure: "g" }, categoryId: "baking", location: "cupboard", price: 140 }),
-  item({ id: "breadcrumbs", name: "Breadcrumbs", type: "bulk", target: 0, inStock: 1, open: 1, unit: bag, categoryId: "baking", location: "cupboard", price: 95, useBy: [day(90)], openedAt: [day(-20)] }),
-  item({ id: "brown-rice", name: "Brown rice", type: "bulk", target: 2, inStock: 1, open: 1, unit: bag, packSize: { amount: 1000, measure: "g" }, categoryId: "grains-and-pulses", location: "cupboard", price: 240, brand: "Tilda", useBy: [day(270)], openedAt: [day(-6)], otherNames: ["Rice"], uses: 10 }),
-  item({ id: "basmati-rice", name: "Basmati rice", type: "bulk", target: 2, inStock: 1, open: 1, unit: bag, packSize: { amount: 1000, measure: "g" }, categoryId: "grains-and-pulses", location: "cupboard", price: 260, useBy: [day(300)], openedAt: [day(-30)] }),
-  item({ id: "red-lentils", name: "Red lentils", type: "bulk", target: 1, inStock: 1, open: 1, unit: bag, categoryId: "grains-and-pulses", location: "cupboard", price: 150, useBy: [day(240)], openedAt: [day(-40)] }),
-  item({ id: "oats", name: "Oats", type: "bulk", target: 0, inStock: 0, unit: bag, packSize: { amount: 1000, measure: "g" }, categoryId: "grains-and-pulses", location: "cupboard", price: 130, otherNames: ["Porridge oats"] }),
-  item({
-    id: "linguine", name: "Linguine", type: "counted", target: 0, inStock: 0, unit: pack, categoryId: "grains-and-pulses", location: "cupboard", price: 110,
-    entries: [{ source: { kind: "recipe", recipe: "Sardine linguine" }, qty: 1 }],
-  }),
-  item({ id: "sardines", name: "Sardines", type: "counted", target: 4, inStock: 7, unit: tin, categoryId: "tins-and-jars", location: "cupboard", price: 120, useBy: [day(400), day(400), day(420), day(420), day(500), day(500), day(520)], uses: 11 }),
-  item({ id: "chopped-tomatoes", name: "Chopped tomatoes", type: "counted", target: 12, inStock: 10, unit: tin, categoryId: "tins-and-jars", location: "cupboard", price: 55, brand: "Mutti", useBy: Array.from({ length: 10 }, (_, i) => day(480 + i * 10)), otherNames: ["Tinned tomatoes"], uses: 24 }),
-  item({ id: "soy-sauce", name: "Soy sauce", type: "bulk", target: 1, inStock: 1, open: 1, unit: bottle, categoryId: "sauces-and-condiments", location: "cupboard", price: 210, useBy: [day(365)], openedAt: [day(-50)] }),
-  item({ id: "sesame-oil", name: "Sesame oil", type: "bulk", target: 0, inStock: 1, open: 1, unit: bottle, categoryId: "oils-and-vinegar", location: "cupboard", price: 260, useBy: [day(200)], openedAt: [day(-60)] }),
-  item({ id: "miso", name: "Miso", type: "counted", target: 0, inStock: 0, unit: jar, categoryId: "sauces-and-condiments", location: "fridge", price: 300 }),
-  item({ id: "chilli-flakes", name: "Chilli flakes", type: "bulk", target: 0, inStock: 1, open: 1, unit: jar, categoryId: "herbs-and-spices", location: "cupboard", price: 150, useBy: [day(400)], openedAt: [day(-90)] }),
-  item({ id: "smoked-paprika", name: "Smoked paprika", type: "bulk", target: 0, inStock: 1, open: 1, unit: jar, categoryId: "herbs-and-spices", location: "cupboard", price: 220, useBy: [day(430)], openedAt: [day(-70)], otherNames: ["Paprika"] }),
-  item({ id: "turmeric", name: "Turmeric", type: "bulk", target: 0, inStock: 1, open: 1, unit: jar, categoryId: "herbs-and-spices", location: "cupboard", price: 150, useBy: [day(500)], openedAt: [day(-100)] }),
-  item({ id: "olive-oil", name: "Olive oil", type: "bulk", target: 1, inStock: 3, open: 1, unit: bottle, categoryId: "oils-and-vinegar", location: "cupboard", price: 750, brand: "Belazu", useBy: [day(330), day(400), day(400)], openedAt: [day(-14)], uses: 28 }),
-  // Freezer
-  item({ id: "peas", name: "Peas", type: "bulk", target: 1, inStock: 1, open: 1, unit: bag, categoryId: "frozen", location: "freezer", price: 150, brand: "Birds Eye", useBy: [day(120)], openedAt: [day(-3)], otherNames: ["Frozen peas"], uses: 9 }),
-  item({ id: "frozen-berries", name: "Frozen berries", type: "bulk", target: 0, inStock: 1, open: 1, unit: bag, categoryId: "frozen", location: "freezer", price: 300, useBy: [day(150)], openedAt: [day(-8)], otherNames: ["Berries"] }),
-  item({ id: "fish-fingers", name: "Fish fingers", type: "counted", target: 1, inStock: 0, unit: ["box", "boxes"], categoryId: "frozen", location: "freezer", price: 280 }),
-  // Household
-  item({ id: "steel-wool", name: "Steel wool", type: "counted", target: 1, inStock: 0, categoryId: "bathroom-and-kitchen", location: "cupboard", price: 120 }),
-  item({ id: "tin-foil", name: "Tin foil", type: "counted", target: 2, inStock: 1, unit: ["roll", "rolls"], categoryId: "bathroom-and-kitchen", location: "cupboard", price: 150 }),
-]
-
-/** The pantry now: what the phone last saw, plus what changed here or through Claude since. */
+/** The pantry now: the items loaded from Supabase, by id. */
 export function seedPantryItems(): Record<string, SharedItem> {
-  const items = Object.fromEntries(structuredClone(seedItems).map((i) => [i.id, i]))
-  items.sourdough = { ...items.sourdough, target: 2, editedAt: at(11, 15) }
-  items.lemons = { ...items.lemons, inStock: 1, useBy: [day(9)], editedAt: at(11, 40) }
-  items.tissues = {
-    id: "tissues", name: "Tissues", type: "counted", target: 0, inStock: 0, categoryId: "bathroom-and-kitchen", location: "cupboard", where: [], price: 110,
-    unit: ["box", "boxes"], entries: [{ source: { kind: "claude" }, qty: 3, at: at(11, 20) }], editedAt: at(11, 20),
-  }
-  return items
+  return Object.fromEntries(structuredClone(seedItems).map((i) => [i.id, i]))
 }
 
 type Ing = SharedIngredient

@@ -8,7 +8,7 @@ import { readRemote, readShared, resetRemote, writeRemote, writeSharedStores } f
 import { PHONE_KEY } from "../../shared/src/pantry"
 import { navigate } from "./router"
 
-// v3: one seed shared with the pantry app prototype (prototypes/shared/src/pantry.ts).
+// v4: items come from Supabase. v3: one seed shared with the pantry app prototype (prototypes/shared/src/pantry.ts).
 const KEY = PHONE_KEY
 
 function load(): State {

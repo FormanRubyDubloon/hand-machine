@@ -1,7 +1,7 @@
 // The Supabase client for the hand-machine "pantry" project (ref bgwlqmpyjfqsvoqgpdtn).
 // The URL and public key come from .env.local, which git ignores. Only the publishable key goes
 // there: it's safe in the browser, and row level security decides what it can read and write.
-// The prototypes still use localStorage; nothing imports this yet.
+// The prototypes read the pantry items through it at startup (prototypes/shared/src/supabase-seed.ts).
 import { createClient } from "@supabase/supabase-js"
 
 const url = import.meta.env.VITE_SUPABASE_URL

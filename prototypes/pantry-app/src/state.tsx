@@ -18,23 +18,8 @@ const byId = <T extends { id: string }>(list: T[]) => Object.fromEntries(list.ma
 
 // ---------- seed ----------
 
-function seedHistory(): HistoryEntry[] {
-  const base = byId(seedItems)
-  const list: HistoryEntry[] = [
-    { id: "h-tissues", at: at(11, 20), who: "claude", title: "Added Tissues to the shopping list", detail: "3 boxes", itemIds: ["tissues"], undo: { items: { tissues: null } } },
-    { id: "h-lemons", at: at(11, 40), who: "you", title: "Used 1 lemon", detail: "1 left · below minimum", itemIds: ["lemons"], undo: { items: { lemons: base.lemons } } },
-    { id: "h-sourdough-min", at: at(11, 15), who: "you", title: "Changed the minimum for Sourdough bread", detail: "1 → 2", itemIds: ["sourdough"], undo: { items: { sourdough: base.sourdough } } },
-    { id: "h-sync", at: at(10, 2), who: "phone", title: "Synced a shop", detail: "Sainsbury's · 6 items bought, stock updated", itemIds: ["eggs", "chopped-tomatoes", "sardines", "olive-oil", "butter", "garlic"] },
-    { id: "h-linguine", at: at(9, 14), who: "claude", title: "Saved the recipe Sardine linguine", detail: "Linked 6 ingredients, created Linguine and Parsley", recipeId: "sardine-linguine", itemIds: ["linguine", "parsley"] },
-    { id: "h-milk", at: at(19, 42, 1), who: "claude", title: "Saved the recipe Pancakes", detail: "Created Milk. Check whether it's the same as Whole milk.", recipeId: "pancakes", itemIds: ["milk"] },
-    { id: "h-sourdough", at: at(20, 10, 2), who: "you", title: "Used the last sourdough bread", detail: "Added to the shopping list", itemIds: ["sourdough"] },
-    { id: "h-omelette", at: at(8, 30, 3), who: "you", title: "Cooked Cheddar omelette", detail: "Eggs −3", recipeId: "cheddar-omelette", itemIds: ["eggs"] },
-    { id: "h-rice", at: at(16, 5, 4), who: "claude", title: "Changed the Brown rice minimum", detail: "1 → 2 · you approved it in Claude", itemIds: ["brown-rice"] },
-    { id: "h-flour", at: at(18, 0, 12), who: "you", title: "Opened a bag of plain flour", detail: "2 bags · 1 open", itemIds: ["plain-flour"] },
-    { id: "h-note", at: at(12, 0, 12), who: "claude", title: "Added a note to Whole milk", detail: "2 litre", itemIds: ["whole-milk"] },
-  ]
-  return list.sort((a, b) => b.at.localeCompare(a.at))
-}
+// No demo history: it described demo items that no longer exist.
+const seedHistory = (): HistoryEntry[] => []
 
 function seedDb(items: Items): Db {
   return {
