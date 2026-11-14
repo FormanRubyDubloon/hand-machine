@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in</title>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1c1917}a:hover{color:#0c0a09}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #ffffff; color: #0c0a09; font-family: 'stevie-sans', 'Figtree', sans-serif; font-size: 14px; overflow: hidden">
+<div style="flex: 1; display: flex; min-height: 0">
+<section style="width: 640px; flex: none; display: flex; flex-direction: column; justify-content: space-between; padding: 48px; background: #1c1917; color: #fafaf9">
+<span style="font-size: 18px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase">Pantry</span>
+<div style="display: flex; flex-direction: column; gap: 16px"><span style="font-size: 44px; line-height: 1.05; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase">What you have, what to cook, what to buy</span><span style="font-size: 16px; line-height: 24px; color: #d6d0cd">Your pantry, recipes and shopping list in one place, kept in step with the shopping app, the kitchen app and Claude.</span></div>
+<span style="font-size: 13px; color: #d6d0cd">Private to you</span>
+</section>
+<main style="flex: 1; display: flex; align-items: center; justify-content: center">
+<form style="width: 400px; display: flex; flex-direction: column; gap: 20px" aria-labelledby="signin-title">
+<h1 id="signin-title" style="margin: 0; font-size: 30px; line-height: 1; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase">Sign in</h1>
+<span style="margin-top: -8px; font-size: 14px; line-height: 20px; color: #7c6d67">One account for the pantry, kitchen and shopping apps.</span>
+<label style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #7c6d67">Email</span><span style="display: flex; align-items: center; gap: 8px; height: 40px; border-bottom: 2px solid #1c1917"><input type="text" placeholder="you@example.com" style="flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: inherit; font-size: 16px; color: #0c0a09"></span></label>
+<button type="button" style="height: 48px; padding: 0 16px; background: #1c1917; border: 1px solid #1c1917; color: #fafaf9; font: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: none; width: 100%">Continue</button>
+<div style="display: flex; align-items: center; gap: 12px; color: #7c6d67; font-size: 12px"><span style="flex: 1; height: 1px; background: #e7e3e1"></span>or<span style="flex: 1; height: 1px; background: #e7e3e1"></span></div>
+<button type="button" style="height: 48px; padding: 0 16px; background: #ffffff; border: 1px solid #1c1917; color: #0c0a09; font: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: none; width: 100%"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>Sign in with a passkey</button>
+<span style="font-size: 13px; line-height: 18px; color: #7c6d67">Continue sends a sign-in link to your email. You stay signed in on this computer until you sign out.</span>
+</form>
+</main>
+</div>
+</div>
+</x-dc>
+</body>
+</html>

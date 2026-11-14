@@ -17,6 +17,7 @@ export default defineConfig({
       input: {
         main: path.resolve(dirname, 'index.html'),
         'shopping-list': path.resolve(dirname, 'prototypes/shopping-list/index.html'),
+        'pantry-app': path.resolve(dirname, 'prototypes/pantry-app/index.html'),
       },
     },
   },

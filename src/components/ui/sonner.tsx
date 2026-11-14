@@ -28,8 +28,12 @@ const Toaster = ({ theme = "light", ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: "cn-toast font-sans",
+          // Descriptions sit on the dark toast too, so they need the light text colour.
+          description: "!text-primary-foreground/70",
           actionButton:
             "!rounded-none !bg-primary-foreground !text-primary !text-xs !font-semibold !tracking-widest !uppercase",
+          cancelButton:
+            "!rounded-none !bg-transparent !text-primary-foreground !text-xs !font-semibold !tracking-widest !uppercase !underline",
         },
       }}
       {...props}

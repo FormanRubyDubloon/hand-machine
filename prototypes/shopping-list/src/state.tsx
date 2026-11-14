@@ -4,11 +4,12 @@ import {
   findConflicts, incomingChanges, merge, outgoingChanges, seedState, shopAisles,
   type Filter, type Item, type Session, type State, type Store,
 } from "./model"
-import { readRemote, resetRemote, writeRemote } from "./mock-pantry"
+import { readRemote, readShared, resetRemote, writeRemote, writeSharedStores } from "./mock-pantry"
+import { PHONE_KEY } from "../../shared/src/pantry"
 import { navigate } from "./router"
 
-// v2: the pantry model (counted/bulk items, list entries, recipes) replaced the Notion one.
-const KEY = "hm-shopping-list:v2"
+// v3: one seed shared with the pantry app prototype (prototypes/shared/src/pantry.ts).
+const KEY = PHONE_KEY
 
 function load(): State {
   try {
@@ -257,7 +258,18 @@ function useShoppingState() {
           ...s.session.startStock,
         },
       }
-      setState({ ...s, items, baseline: structuredClone(merged), order: [...new Set([...s.order, ...Object.keys(items)])], session, sync: null, lastSyncedAt: new Date().toISOString() })
+      // Recipes and aisles come from the pantry app. Stores go whichever way changed: if they were
+      // edited on this phone since the last sync, the phone's win and go to the pantry.
+      const shared = readShared()
+      const storesChanged = JSON.stringify(s.stores) !== JSON.stringify(s.storesBaseline)
+      if (storesChanged) writeSharedStores(s.stores)
+      const stores = storesChanged ? s.stores : shared.stores
+      setState({
+        ...s, items, baseline: structuredClone(merged), order: [...new Set([...s.order, ...Object.keys(items)])], session, sync: null,
+        lastSyncedAt: new Date().toISOString(),
+        recipes: shared.recipes, categories: shared.categories, stores, storesBaseline: structuredClone(stores),
+        lastStoreId: stores.some((x) => x.id === s.lastStoreId) ? s.lastStoreId : stores[0]?.id ?? null,
+      })
       const total = changed.size
       toast(total ? `Synced ${total} ${total === 1 ? "change" : "changes"} with your pantry` : "Up to date with your pantry")
     }, 500)
