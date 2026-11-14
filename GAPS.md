@@ -233,6 +233,25 @@ Scopes were widened on existing tokens so they can be used where the code uses t
 
 **Tooltip.** `side` (top, bottom, left, right), `children`. The arrow is a hand-placed 10px square rotated 45°, its centre 2px inside the edge facing the trigger, centred along the edge. `max-w-xs` is not enforced, and the `kbd` slot is not modelled.
 
+## Third batch (code only, for the shopping list prototype)
+
+Added in code on 14 November 2026 and **not yet built in Figma**: `toggle`, `toggle-group`, `drawer`, `sonner` (from shadcn), Badge variants `solid` and `outlined`, and the new components `count-box`, `tick-box`, `list-row`, `item-row`, `swipe-row`, `segment-bar`, `summary-stats`, `keypad`, `sync-bar`, `filter-chips`, `store-row`, `choice-row`.
+
+- **No tokens for colours on dark rows.** The mockups use `#d6d0cd` (secondary text on a dark row) and `#57504c` (border on a dark row). Code uses `primary-foreground` at 70% and 20% opacity instead of new tokens. In Figma these need alpha variants of `primary-foreground`, or a decision to add real tokens.
+- **Rows flip on dark.** `list-row` sets `data-tone=current`, and `list-row-text` and `count-box` switch to light colours inside it. Figma would need a `tone` variant on each, not a parent-driven change.
+- **Pills are fully rounded.** Badge `solid` and `outlined` use `rounded-full` and 20px height, against the square radix-sera style everywhere else. Matches the mockups.
+- **Sonner** drops shadcn's `next-themes` dependency (this repo uses a `.dark` class), takes `theme` as a prop (default light), uses square corners, and is dark (`primary` fill) to match the dark-row language. The dark fill is my choice, not in the mockups.
+- **Drawer** is unchanged from shadcn. The keypad uses it with `modal={false}` so the list stays visible.
+- **Swipe** in `swipe-row` is behaviour only. Figma can show static frames (row shifted, action revealed).
+- **Button heights.** Footer buttons use `lg` (44px), not the mockups' 56px.
+
 ## Not yet mirrored
 
-Border widths as variables, and prototype interactions. All eighteen components in `src/components/ui` are now built in Figma.
+Border widths as variables, and prototype interactions. The third batch above is code only.
+
+## Changes to existing components, 14 November 2026 (shopping list, second handoff)
+
+Two small, backwards-compatible changes to code components. Neither is in Figma yet.
+
+- `summary-stats`: a stat can take `onClick`. Its cell then gets a chevron in the top right and the whole cell is a button. Used for the "Want to cook" count on HOME-01.
+- `item-row`: takes an optional `badge` that replaces the Out / Low pill. Used for the grey Recipe pill. The Recipe pill itself is **not** a `badge` variant: HANDOFF.md says to build "new" pieces locally and ask Isaac before adding them to the design system, so it lives in `prototypes/shopping-list/src/components.tsx`.

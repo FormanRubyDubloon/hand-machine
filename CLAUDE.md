@@ -22,7 +22,8 @@ A design system foundation: a Vite + React 19 + TypeScript app styled with Tailw
 - `pnpm dev`: Vite dev server (port 5173, see `.claude/launch.json`)
 - `pnpm build`: `tsc -b && vite build`
 - `pnpm lint`: `oxlint` (config in `.oxlintrc.json`; there is no ESLint)
-- No test runner is configured.
+- `pnpm storybook`: Storybook on port 6006. `pnpm build-storybook` builds it.
+- Tests: vitest runs every story as a browser test (Chromium via Playwright, `@storybook/addon-vitest`). There is no `test` script; run `pnpm exec vitest run`, or `pnpm exec vitest run --project storybook -t "<story name>"` for one story. Confirmed working 14 November 2026 (129 tests, about 10 seconds).
 - Add shadcn components with `pnpm dlx shadcn add <name>` (configured via `components.json`).
 
 ## Architecture
@@ -30,7 +31,10 @@ A design system foundation: a Vite + React 19 + TypeScript app styled with Tailw
 - **Path alias:** `@/*` → `src/*`, defined in both `vite.config.ts` and `tsconfig.app.json`. Keep them in sync.
 - **Theming:** all tokens live in `src/index.css`. Colours are CSS variables on `:root` (oklch values) and mapped into Tailwind by the `@theme inline` block (`--color-*`); don't wrap them in `hsl()`. Dark mode uses `@custom-variant dark (&:is(.dark *))`, i.e. a `.dark` class on an ancestor.
 - **shadcn CLI:** the root `tsconfig.json` must carry the `@/*` path alias, otherwise `shadcn add` writes into a literal `@/` folder. After adding or overwriting components, check they import `cn` from `@/lib/utils` (the CLI has emitted `from "cn"`, the unrelated npm package) and that stock `radix-sera` styling (square corners, uppercase buttons) is intact. `shadcn add` also rewrites `src/index.css` fonts (to Noto Sans and Playfair Display), `src/lib/utils.ts` and `button.tsx`, and re-adds the `cn` and `@fontsource-variable/*` packages. Revert those and keep only the new component files (`git checkout` them, then fix the `cn` import).
-- **Components:** `src/components/ui/` holds shadcn primitives (badge, button, card, input, label, separator) built on `radix-ui`, `class-variance-authority`, and the `cn()` helper in `src/lib/utils.ts`.
+- **Components:** `src/components/ui/` holds shadcn primitives built on `radix-ui`, `class-variance-authority`, and the `cn()` helper in `src/lib/utils.ts`. Each component has a `<name>.stories.tsx` beside it; add one when you add a component.
+- **Storybook:** config in `.storybook/`. Stories sort Foundations (`src/foundations/`: colour, typography, spacing, shape, motion) before UI. The Theme toolbar toggles the `.dark` class on `<html>` so portalled content (dialog, select, tooltip) follows. The a11y addon is set to `todo`, so violations show but don't fail tests.
+- **Figma mirror:** `GAPS.md` records where Figma can't match the code (oklch to sRGB, `calc()` radii as fixed px, invented primitive names). Update it whenever Figma and code diverge. `src/index.css` is the source of truth for tokens.
+- **Prototypes:** experiments live in `prototypes/<name>/`, each with its own `index.html` served by the root Vite app at `/prototypes/<name>/` (add it to `build.rollupOptions.input` in `vite.config.ts`; `tsconfig.app.json` includes `prototypes/*/src`). Prototypes import from `@/components/ui`. `prototypes/shopping-list` is the first: a phone web app that syncs with a mock pantry (`src/mock-pantry.ts`), state in localStorage. It follows `prototypes/shopping-list/HANDOFF.md` and `intent.md`; read `intent.md` before changing it. Pieces the handoff marks "new" live in `prototypes/shopping-list/src/components.tsx`, not in `src/components/ui`.
 - **Typeface:** Stevie Sans, loaded from Adobe Fonts via a Typekit stylesheet in `index.html`. `@fontsource-variable/inter` is still imported in `index.css` as a fallback.
 
 ## Gotchas

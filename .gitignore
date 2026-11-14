@@ -8,3 +8,6 @@ tsconfig.app.tsbuildinfo
 *storybook.log
 storybook-static
 .claude/settings.local.json
+
+# Netlify link state
+.netlify

@@ -70,6 +70,7 @@ function Swatch({ name, utility }: { name: string; utility: string }) {
       <div
         className="h-16 border border-border"
         style={{ background: `var(--${name})` }}
+        role="img"
         aria-label={`${name} swatch`}
       />
       <div className="grid gap-0.5">
@@ -137,7 +138,7 @@ export const Pairings: Story = {
           >
             <span className="text-xs font-semibold tracking-widest uppercase">{label}</span>
             <span className="text-sm">The quick brown fox jumps over the lazy dog.</span>
-            <span className="font-mono text-[0.6875rem] opacity-80">
+            <span className="font-mono text-[0.6875rem]">
               {bg} / {fg}
             </span>
           </div>

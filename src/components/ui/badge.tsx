@@ -15,6 +15,9 @@ const badgeVariants = cva(
         outline: "text-foreground [a]:hover:text-foreground/70",
         ghost: "text-muted-foreground hover:text-foreground",
         link: "text-foreground underline-offset-4 hover:underline",
+        // Pills: fully rounded, 20px high. Used for stock status (Out, Low).
+        solid: "h-5 rounded-full border border-primary bg-primary px-2 text-primary-foreground",
+        outlined: "h-5 rounded-full border border-primary bg-background px-2 text-foreground",
       },
     },
     defaultVariants: {
