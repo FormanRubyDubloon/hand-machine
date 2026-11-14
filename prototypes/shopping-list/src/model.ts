@@ -1,5 +1,6 @@
-// Data model, seed data and the pure functions that derive the shopping list.
+// Data model and the pure functions that derive the shopping list.
 // Shaped like the pantry described in intent.md and HANDOFF.md.
+import { at, seedCategories, seedItems, seedPantryItems, seedRecipes, seedStores } from "../../shared/src/pantry"
 
 export type Category = { id: string; name: string }
 
@@ -96,6 +97,8 @@ export type State = {
   signedIn: boolean
   order: string[]
   stores: Store[]
+  /** Stores as they were at the last sync. If they changed here, the phone's go to the pantry; otherwise the pantry's come here. */
+  storesBaseline: Store[]
   lastStoreId: string | null
   session: Session | null
   filter: Filter
@@ -105,140 +108,25 @@ export type State = {
 }
 
 // ---------- seed ----------
-
-const categories: Category[] = [
-  { id: "fruit", name: "Fruit & veg" },
-  { id: "meat", name: "Meat & fish" },
-  { id: "deli", name: "Deli & cured meats" },
-  { id: "bread", name: "Bread & crackers" },
-  { id: "pasta", name: "Pasta, rice & pulses" },
-  { id: "frozen", name: "Frozen" },
-  { id: "bathroom", name: "Bathroom & kitchen" },
-]
-
-const bag: [string, string] = ["bag", "bags"]
-
-const seedItems: Item[] = [
-  { id: "lemons", name: "Lemons", type: "counted", target: 6, inStock: 2, categoryId: "fruit", where: [] },
-  { id: "chillis", name: "Chillis", type: "counted", target: 3, inStock: 1, notes: "Habanero", categoryId: "fruit", where: [] },
-  {
-    id: "fennel", name: "Fennel", type: "counted", target: 1, inStock: 0, unit: ["bulb", "bulbs"], categoryId: "fruit", where: [],
-    entries: [{ source: { kind: "recipe", recipe: "Fennel and orange salad" }, qty: 1 }],
-  },
-  { id: "sweet-potatoes", name: "Sweet potatoes", type: "counted", target: 4, inStock: 0, categoryId: "fruit", where: [] },
-  { id: "kiwis", name: "Kiwis", type: "counted", target: 3, inStock: 0, categoryId: "fruit", where: [] },
-  { id: "asparagus", name: "Asparagus", type: "counted", target: 1, inStock: 0, unit: ["bunch", "bunches"], categoryId: "fruit", where: [] },
-  {
-    id: "oranges", name: "Oranges", type: "counted", target: 0, inStock: 0, categoryId: "fruit", where: [],
-    entries: [{ source: { kind: "recipe", recipe: "Fennel and orange salad" }, qty: 2 }],
-  },
-  { id: "red-onions", name: "Red onions", type: "counted", target: 2, inStock: 3, categoryId: "fruit", where: [] },
-  { id: "mint", name: "Mint", type: "counted", target: 0, inStock: 0, unit: ["bunch", "bunches"], categoryId: "fruit", where: [] },
-  { id: "parsley", name: "Parsley", type: "counted", target: 0, inStock: 0, unit: ["bunch", "bunches"], categoryId: "fruit", where: [] },
-  { id: "steak", name: "Steak", type: "counted", target: 2, inStock: 0, categoryId: "meat", where: ["supermarket", "butcher"] },
-  { id: "chicken", name: "Chicken", type: "counted", target: 1, inStock: 0, notes: "Thighs", categoryId: "meat", where: ["supermarket", "butcher"] },
-  { id: "salmon", name: "Salmon", type: "counted", target: 0, inStock: 2, notes: "Use by tomorrow", categoryId: "meat", where: [] },
-  { id: "kimchi", name: "Kimchi", type: "counted", target: 2, inStock: 1, categoryId: "deli", where: [] },
-  { id: "saucisson", name: "Saucisson", type: "counted", target: 1, inStock: 0, unit: ["piece", "pieces"], categoryId: "deli", where: [] },
-  { id: "black-olives", name: "Black olives", type: "counted", target: 0, inStock: 0, categoryId: "deli", where: [] },
-  { id: "sourdough", name: "Sourdough bread", type: "counted", target: 1, inStock: 0, unit: ["loaf", "loaves"], categoryId: "bread", where: [] },
-  { id: "crackers", name: "Oatcakes", type: "counted", target: 2, inStock: 2, categoryId: "bread", where: [] },
-  { id: "brown-rice", name: "Brown rice", type: "bulk", target: 2, inStock: 1, open: 1, unit: bag, categoryId: "pasta", where: [] },
-  { id: "red-lentils", name: "Red lentils", type: "bulk", target: 1, inStock: 1, open: 1, unit: bag, categoryId: "pasta", where: [] },
-  { id: "basmati-rice", name: "Basmati rice", type: "bulk", target: 2, inStock: 1, open: 1, unit: bag, categoryId: "pasta", where: [] },
-  { id: "olive-oil", name: "Olive oil", type: "bulk", target: 1, inStock: 3, open: 1, unit: ["bottle", "bottles"], categoryId: "pasta", where: [] },
-  {
-    id: "linguine", name: "Linguine", type: "counted", target: 0, inStock: 0, unit: ["pack", "packs"], categoryId: "pasta", where: [],
-    entries: [{ source: { kind: "recipe", recipe: "Sardine linguine" }, qty: 1 }],
-  },
-  { id: "sardines", name: "Sardines", type: "counted", target: 0, inStock: 2, unit: ["tin", "tins"], categoryId: "pasta", where: [] },
-  { id: "peas", name: "Peas", type: "counted", target: 1, inStock: 1, categoryId: "frozen", where: [] },
-  { id: "fish-fingers", name: "Fish fingers", type: "counted", target: 1, inStock: 0, categoryId: "frozen", where: [] },
-  { id: "steel-wool", name: "Steel wool", type: "counted", target: 1, inStock: 0, categoryId: "bathroom", where: [] },
-  { id: "tin-foil", name: "Tin foil", type: "counted", target: 2, inStock: 1, categoryId: "bathroom", where: [] },
-]
-
-const stores: Store[] = [
-  { id: "supermarket", name: "Supermarket", aisles: { fruit: 1, meat: 4, deli: 5, bread: 7, pasta: 8, frozen: null, bathroom: 12 } },
-  { id: "corner-shop", name: "Corner shop", aisles: { fruit: 2, meat: null, deli: null, bread: 1, pasta: 5, frozen: 3, bathroom: 4 } },
-  { id: "greengrocer", name: "Greengrocer", aisles: { fruit: 1, meat: null, deli: null, bread: null, pasta: null, frozen: null, bathroom: null } },
-  { id: "butcher", name: "Butcher", aisles: { fruit: null, meat: 1, deli: 2, bread: null, pasta: null, frozen: null, bathroom: null } },
-  { id: "fishmonger", name: "Fishmonger", aisles: { fruit: null, meat: 1, deli: null, bread: null, pasta: null, frozen: null, bathroom: null } },
-]
-
-// The method steps are placeholders: HANDOFF.md doesn't draw the Method tab.
-const recipes: Recipe[] = [
-  {
-    id: "fennel-orange-salad", name: "Fennel and orange salad", minutes: 15, serves: 2, wantToCook: true,
-    ingredients: [
-      { text: "1 fennel bulb, thinly sliced", itemId: "fennel", need: 1, buy: 1 },
-      { text: "2 oranges", itemId: "oranges", need: 2, buy: 2 },
-      { text: "1 lemon, juiced", itemId: "lemons", need: 1, buy: 1 },
-      { text: "½ red onion", itemId: "red-onions", need: 1, buy: 1 },
-      { text: "3 tbsp olive oil", itemId: "olive-oil", need: 1, buy: 1 },
-      { text: "Handful of black olives", itemId: "black-olives", need: 1, buy: 1 },
-      { text: "Small bunch of mint", itemId: "mint", need: 1, buy: 1 },
-    ],
-    method: [
-      "Slice the fennel as thinly as you can and put it in a bowl with the lemon juice.",
-      "Peel the oranges, cut away the pith and slice into rounds.",
-      "Slice the red onion very thinly.",
-      "Toss everything with the olive oil, olives and torn mint. Season and serve straight away.",
-    ],
-  },
-  {
-    id: "salmon-lemon-peas", name: "Salmon with lemon and peas", minutes: 25, serves: 2, wantToCook: false,
-    soon: "uses salmon, use by tomorrow",
-    ingredients: [
-      { text: "2 salmon fillets", itemId: "salmon", need: 2, buy: 2 },
-      { text: "1 lemon", itemId: "lemons", need: 1, buy: 1 },
-      { text: "200 g frozen peas", itemId: "peas", need: 1, buy: 1 },
-    ],
-    method: ["Pan-fry the salmon skin side down for 5 minutes, then turn for 2.", "Simmer the peas with lemon juice and serve alongside."],
-  },
-  {
-    id: "kimchi-fried-rice", name: "Kimchi fried rice", minutes: 20, serves: 2, wantToCook: false,
-    ingredients: [
-      { text: "300 g cooked basmati rice", itemId: "basmati-rice", need: 1, buy: 1 },
-      { text: "200 g kimchi", itemId: "kimchi", need: 1, buy: 1 },
-      { text: "1 chilli, sliced", itemId: "chillis", need: 1, buy: 1 },
-    ],
-    method: ["Fry the kimchi until it caramelises.", "Add the rice and chilli and fry hard for 5 minutes."],
-  },
-  {
-    id: "sardine-linguine", name: "Sardine linguine", minutes: 20, serves: 2, wantToCook: false,
-    ingredients: [
-      { text: "200 g linguine", itemId: "linguine", need: 1, buy: 1 },
-      { text: "1 tin sardines", itemId: "sardines", need: 1, buy: 1 },
-      { text: "Handful of parsley", itemId: "parsley", need: 1, buy: 1 },
-      { text: "1 lemon, zested", itemId: "lemons", need: 1, buy: 1 },
-    ],
-    method: ["Cook the linguine.", "Warm the sardines with lemon zest and toss through the pasta with parsley."],
-  },
-]
+// One seed for both prototypes: see prototypes/shared/src/pantry.ts.
 
 const byId = (list: Item[]): Items => Object.fromEntries(list.map((i) => [i.id, i]))
 
-function todayAt(h: number, m: number) {
-  const d = new Date()
-  d.setHours(h, m, 0, 0)
-  return d.toISOString()
-}
-
 export function seedState(): State {
-  const items = byId(seedItems)
+  const items = byId(structuredClone(seedItems))
   return {
-    categories,
+    categories: seedCategories,
     items,
     baseline: structuredClone(items),
-    recipes,
+    recipes: structuredClone(seedRecipes),
     signedIn: false,
     order: seedItems.map((i) => i.id),
-    stores,
-    lastStoreId: "supermarket",
+    stores: structuredClone(seedStores),
+    storesBaseline: structuredClone(seedStores),
+    lastStoreId: "sainsburys",
     session: null,
     filter: "all",
-    lastSyncedAt: todayAt(10, 2),
+    lastSyncedAt: at(10, 2),
     sync: null,
     simulateOffline: false,
   }
@@ -246,14 +134,7 @@ export function seedState(): State {
 
 /** What the pantry has: the baseline plus edits made in the pantry app or by Claude since the last sync. */
 export function seedRemote(): Items {
-  const remote = byId(structuredClone(seedItems))
-  remote.sourdough = { ...remote.sourdough, target: 2, editedAt: todayAt(11, 15) }
-  remote.lemons = { ...remote.lemons, inStock: 1, editedAt: todayAt(11, 40) }
-  remote.tissues = {
-    id: "tissues", name: "Tissues", type: "counted", target: 0, inStock: 0, categoryId: "bathroom", where: [],
-    entries: [{ source: { kind: "claude" }, qty: 3 }], editedAt: todayAt(11, 20),
-  }
-  return remote
+  return seedPantryItems()
 }
 
 // ---------- derive ----------
