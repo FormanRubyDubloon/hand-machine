@@ -342,6 +342,7 @@ function newItem(data: PantryData, n: Json, items: Items, now: Date): SharedItem
     otherNames: strs(n.other_names)?.length ? strs(n.other_names) : undefined,
     notes: str(n.notes),
     useBy: useBy.length ? useBy : undefined,
+    noExpiry: n.no_expiry === true || (n.no_expiry === undefined && location(n.location) === "household") || undefined,
     editedAt: now.toISOString(),
   })
 }
@@ -591,6 +592,7 @@ export const tools: Tool[] = [
               minimum: { type: "number", description: "How many to keep. Default 0 (not a Staple)." },
               stock: { type: "number", description: "How many there are now. Bulk: whole packs, including open ones." },
               use_by: { type: "array", items: { type: "string" }, description: "YYYY-MM-DD, one per unit or pack." },
+              no_expiry: { type: "boolean", description: "true for things that never go off. Household items default to true." },
               other_names: { type: "array", items: { type: "string" } },
               notes: { type: "string" },
             },
@@ -898,6 +900,7 @@ export const tools: Tool[] = [
             category: { type: ["string", "null"] },
             location: { type: ["string", "null"], enum: [...LOCATIONS, null] },
             use_by: { type: "array", items: { type: "string" }, description: "Replaces every date, one per unit or pack. YYYY-MM-DD. [] clears them." },
+            no_expiry: { type: "boolean", description: "true for things that never go off (salt, tins, cleaning products): clears every date and stops the item asking for one. false to track dates again." },
             use_by_one: {
               type: "object",
               properties: { position: { type: "number", description: "1 = the soonest date, as search_pantry numbers them." }, date: { type: ["string", "null"], description: "YYYY-MM-DD, or null to make that unit undated." } },
@@ -961,6 +964,11 @@ export const tools: Tool[] = [
       if (has("category")) { next.categoryId = cleared("category") ? "" : findCategory(ctx.data, c.category); said.push(next.categoryId ? "shop or aisle" : "category cleared") }
       if (has("location")) { next.location = cleared("location") ? undefined : location(c.location); said.push(next.location ? "location" : "location cleared") }
       if (Array.isArray(c.use_by)) { next.useBy = (strs(c.use_by) ?? []).map(isoDate).sort(); said.push(next.useBy.length ? "use-by dates" : "use-by dates cleared") }
+      if (typeof c.no_expiry === "boolean") {
+        next.noExpiry = c.no_expiry || undefined
+        if (c.no_expiry) next.useBy = []
+        said.push(c.no_expiry ? "marked as not expiring" : "use-by dates tracked again")
+      }
       if (c.use_by_one && typeof c.use_by_one === "object") {
         const one = c.use_by_one as Json
         const dates = normalise(next).useBy ?? []

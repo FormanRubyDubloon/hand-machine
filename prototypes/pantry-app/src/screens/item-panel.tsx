@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -72,6 +73,9 @@ function Slots({ draft, setDraft }: { draft: Item; setDraft: (i: Item) => void }
     setDraft(normalise({ ...draft, useBy: next, open: o + 1, openedAt: [...(draft.openedAt ?? []), todayIso()] }))
   }
 
+  if (draft.noExpiry && !bulk) {
+    return <p className="text-sm text-muted-foreground">Doesn't expire, so no use-by dates are kept.</p>
+  }
   if (!bulk && !perUnit) {
     return (
       <div className="flex flex-col">
@@ -100,7 +104,7 @@ function Slots({ draft, setDraft }: { draft: Item; setDraft: (i: Item) => void }
             />
           )
         const isOpen = bulk && k < (draft.open ?? 0)
-        const dateEl = perUnit || k === 0 ? <DateInput label={`Use by, ${word.toLowerCase()} ${k + 1}`} value={dates[k] ?? null} onChange={(v) => setDate(k, v)} /> : <span className="font-normal text-muted-foreground">{dateText(dates[0])}</span>
+        const dateEl = draft.noExpiry ? <span className="font-normal text-muted-foreground">No expiry</span> : perUnit || k === 0 ? <DateInput label={`Use by, ${word.toLowerCase()} ${k + 1}`} value={dates[k] ?? null} onChange={(v) => setDate(k, v)} /> : <span className="font-normal text-muted-foreground">{dateText(dates[0])}</span>
         return (
           <UnitRow
             key={k}
@@ -273,7 +277,7 @@ export function ItemPanel({ id, prefill, onClose }: { id?: string; prefill?: str
 
           <div className="flex flex-col gap-2">
             <Eyebrow className={cn(tried && !draft.location && "text-destructive")}>Location</Eyebrow>
-            <Segmented label="Location" value={draft.location} onChange={(location) => set({ location })} options={locations} />
+            <Segmented label="Location" value={draft.location} onChange={(location) => set(location === "household" && draft.noExpiry === undefined ? { location, noExpiry: true } : { location })} options={locations} />
           </div>
 
           <div className="grid grid-cols-2 gap-5">
@@ -315,7 +319,13 @@ export function ItemPanel({ id, prefill, onClose }: { id?: string; prefill?: str
           </div>
 
           <section className="flex flex-col gap-2">
-            <Eyebrow>{bulk ? "Packs and use-by dates" : "Units and use-by dates"}</Eyebrow>
+            <div className="flex items-center justify-between gap-3">
+              <Eyebrow>{draft.noExpiry ? (bulk ? "Packs" : "Units") : bulk ? "Packs and use-by dates" : "Units and use-by dates"}</Eyebrow>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                Doesn't expire
+                <Switch size="sm" checked={!!draft.noExpiry} onCheckedChange={(on) => set({ noExpiry: on || undefined })} aria-label="Doesn't expire" />
+              </label>
+            </div>
             <Slots draft={draft} setDraft={setDraft} />
           </section>
 

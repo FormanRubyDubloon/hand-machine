@@ -24,7 +24,9 @@ export function itemLine(i: SharedItem, categories: Category[]) {
   if (need > 0) parts.push(`${need} on the shopping list`)
   // Every unit's date, numbered as update_item's use_by_one counts them, when there's more than one.
   const dates = i.inStock > 0 ? (normalise(i).useBy ?? []) : []
-  if (dates.length > 1 && dates.some(Boolean)) {
+  if (i.noExpiry) {
+    parts.push("doesn't expire")
+  } else if (dates.length > 1 && dates.some(Boolean)) {
     parts.push(`use-by dates: ${dates.map((x, n) => `${n + 1}) ${x ? dateWithDays(x) : "undated"}`).join(", ")}`)
   } else {
     const d = soonest(i)
