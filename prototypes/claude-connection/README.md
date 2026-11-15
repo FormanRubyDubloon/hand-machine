@@ -24,8 +24,8 @@ Supabase Auth is the OAuth server. Claude is registered by hand as one OAuth app
 ## Deploying
 
 1. Supabase dashboard > Authentication > OAuth Server: turn it on, set the authorization path to `/prototypes/claude-connection/`, leave dynamic client registration off. (`supabase/config.toml` says the same, but CLI 2.75 doesn't push these settings.)
-2. Authentication > OAuth Apps: add an app called Claude, confidential, redirect URI `https://claude.ai/api/mcp/auth_callback`. Keep the client secret out of the repo.
+2. Authentication > OAuth Apps: add an app called Claude, **public** (no secret), redirect URI `https://claude.ai/api/mcp/auth_callback`. Not confidential: Claude sends a secret in the form body (`client_secret_post`), and a confidential app in Supabase only accepts it in a header (`client_secret_basic`), so sign-in fails after Allow with "Authorization with Claude failed". The Supabase auth log says "client is registered for 'client_secret_basic' but 'client_secret_post' was used". If an app's auth method can be set to `client_secret_post`, a confidential app works too. A public app is still safe here: the redirect only goes to claude.ai, sign-in uses PKCE, and sign-ups are off.
 3. `supabase config push` for the consent page's redirect URLs.
 4. `pnpm build:mcp && supabase functions deploy mcp --use-api --no-verify-jwt`
 5. The consent page goes live with the next Netlify deploy of `main`.
-6. In Claude: Settings > Connectors > Add custom connector, address `https://bgwlqmpyjfqsvoqgpdtn.supabase.co/functions/v1/mcp`, and the client ID and secret under Advanced settings.
+6. In Claude: Settings > Connectors > Add custom connector, address `https://bgwlqmpyjfqsvoqgpdtn.supabase.co/functions/v1/mcp`, and the client ID under Advanced settings (leave the secret empty).

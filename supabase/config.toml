@@ -353,7 +353,8 @@ enabled = false
 # domain = "example.clerk.accounts.dev"
 
 # OAuth server configuration. On for the Claude connection (prototypes/claude-connection): Claude is
-# registered by hand as an OAuth app (redirect https://claude.ai/api/mcp/auth_callback), sends you to
+# registered by hand as a public OAuth app, no secret (redirect https://claude.ai/api/mcp/auth_callback;
+# see the README for why not confidential), sends you to
 # the consent page below on site_url, and gets a token for your account. Sign-ups stay off, so only
 # an account made in the dashboard can approve.
 [auth.oauth_server]
