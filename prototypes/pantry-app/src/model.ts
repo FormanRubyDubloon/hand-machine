@@ -4,6 +4,7 @@
 import type {
   Category, ListEntry, ListSource, Location, SharedIngredient, SharedItem, SharedRecipe, SharedStore,
 } from "../../shared/src/pantry"
+import { settings } from "../../shared/src/settings"
 
 export type { Category, ListEntry, ListSource, Location }
 export type Item = SharedItem
@@ -88,8 +89,8 @@ export const isBulk = (i: Item) => i.type === "bulk"
 /** Each unit has its own use-by date when you keep more than one. */
 export const perUnitDates = (i: Item) => i.target > 1
 
-/** Whole packs that count towards the minimum. An open pack doesn't. */
-export const fullOf = (i: Item, total = i.inStock) => (isBulk(i) ? Math.max(0, total - (i.open ?? 0)) : total)
+/** Whole packs that count towards the minimum. An open pack doesn't, unless the setting says it does. */
+export const fullOf = (i: Item, total = i.inStock) => (isBulk(i) && !settings.openCountsTowardsMinimum ? Math.max(0, total - (i.open ?? 0)) : total)
 /** How many a Staple is short of its minimum. */
 export const shortfall = (i: Item) => Math.max(0, i.target - fullOf(i))
 export const entryTotal = (i: Item) => (i.entries ?? []).reduce((n, e) => n + e.qty, 0)
@@ -224,7 +225,7 @@ export function stockSentence(i: Item) {
     const e = entryTotal(i)
     return e ? `Not a Staple. ${e} on the shopping list.` : "Not a Staple, so it only goes on the list when you add it."
   }
-  if (isBulk(i) && i.open) {
+  if (isBulk(i) && i.open && !settings.openCountsTowardsMinimum) {
     return `${cap(haveText(i, ", "))}. An open ${i.unit?.[0] ?? "pack"} counts as less than a full one, ${listed}`
   }
   const s = shortfall(i)

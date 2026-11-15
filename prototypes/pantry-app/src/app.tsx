@@ -19,6 +19,8 @@ import { PantryScreen } from "./screens/pantry"
 import { RecipeFull } from "./screens/recipe"
 import { RecipesScreen } from "./screens/recipes"
 import { Settings } from "./screens/settings"
+import { settingsVersion, subscribeSettings } from "../../shared/src/settings"
+import { isDark, subscribeTheme } from "./theme"
 import { SignIn } from "./screens/signin"
 
 const nav: { label: string; route: Route; match: Route["name"][] }[] = [
@@ -128,7 +130,7 @@ function Header({ route, onAddWithClaude }: { route: Route; onAddWithClaude: () 
       <div className="flex shrink-0 items-center gap-2">
         <SyncButton />
         <DemoMenu />
-        <Button variant="outline" size="icon" aria-label="Settings" title="Settings" onClick={() => navigate({ name: "settings", tab: "stores" })}>
+        <Button variant="outline" size="icon" aria-label="Settings" title="Settings" onClick={() => navigate({ name: "settings", tab: "general" })}>
           <SettingsIcon className="size-4.5" />
         </Button>
         {onRecipes ? (
@@ -215,11 +217,14 @@ function Shell() {
 }
 
 export function App() {
+  // The counting settings change what every screen shows, so a change redraws them all.
+  React.useSyncExternalStore(subscribeSettings, settingsVersion)
+  const dark = React.useSyncExternalStore(subscribeTheme, isDark)
   return (
     <PantryProvider>
       <Shell />
       {/* Bottom left, so a toast never covers the buttons of a right-hand panel. */}
-      <Toaster theme="system" position="bottom-left" />
+      <Toaster theme={dark ? "dark" : "light"} position="bottom-left" />
     </PantryProvider>
   )
 }

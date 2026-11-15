@@ -1,5 +1,6 @@
 // Data model and the pure functions that derive the shopping list.
 // Shaped like the pantry described in intent.md and HANDOFF.md.
+import { settings } from "../../shared/src/settings"
 import { at, seedCategories, seedItems, seedPantryItems, seedRecipes, seedStores } from "../../shared/src/pantry"
 
 export type Category = { id: string; name: string }
@@ -146,8 +147,8 @@ export function seedRemote(): Items {
 export const isStaple = (i: Item) => i.target > 0
 const isBulk = (i: Item) => i.type === "bulk"
 
-/** Whole packs that count towards the minimum. An open pack doesn't. */
-export const fullOf = (i: Item, total = i.inStock) => (isBulk(i) ? Math.max(0, total - (i.open ?? 0)) : total)
+/** Whole packs that count towards the minimum. An open pack doesn't, unless the setting says it does. */
+export const fullOf = (i: Item, total = i.inStock) => (isBulk(i) && !settings.openCountsTowardsMinimum ? Math.max(0, total - (i.open ?? 0)) : total)
 
 /** How many a Staple is short of its minimum. Never counts the open pack. */
 const shortfall = (i: Item, total = i.inStock) => Math.max(0, i.target - fullOf(i, total))

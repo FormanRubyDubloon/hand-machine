@@ -8,6 +8,7 @@
 // Without a valid token the answer is 401 with a WWW-Authenticate header pointing at that
 // metadata, which is how Claude finds Supabase's sign-in and starts OAuth.
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { applySettings } from "../../shared/src/settings"
 import { supabaseBackend, type Backend, type PantryData } from "./backend"
 import { callTool, tools } from "./tools"
 
@@ -73,7 +74,10 @@ export function createHandler(opts: ServerOptions) {
     if (!client) return unauthorised("The sign-in has expired or was revoked.")
     const backend = (opts.backendFor ?? supabaseBackend)(client)
     let cached: Promise<PantryData> | null = null
-    const data = () => (cached ??= backend.load())
+    const data = () => (cached ??= backend.load().then((d) => {
+      applySettings(d.settings ?? { openCountsTowardsMinimum: false })
+      return d
+    }))
 
     let body: unknown
     try {
