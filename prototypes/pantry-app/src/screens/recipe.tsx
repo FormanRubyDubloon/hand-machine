@@ -14,11 +14,12 @@ import {
   dateText, guessPlace, haveText, ingredientName, isBulk, locations, lower, measureText, nameList, needOf, plural, shortfall, recipeInfo, recipesUsing, recipeTags, shortDate, unitText, unitWord,
   withStock, type IngredientRow, type Item, type Recipe,
 } from "../model"
-import { navigate } from "../router"
+import { href, navigate } from "../router"
 import { usePantry } from "../state"
 import { Eyebrow, NewPill, Segmented, SidePanel, Stepper } from "../components"
 import { RecipeEditor } from "./recipe-edit"
 import { ItemPicker } from "../link-picker"
+import { ItemPanel } from "./item-panel"
 
 // ---------- putting ingredients on the list ----------
 
@@ -213,7 +214,8 @@ function IngredientLine({
           <span className="text-xs text-muted-foreground">
             {row.item && (
               <>
-                <a className="underline underline-offset-4" href={`#/pantry/${row.item.id}`} onClick={(e) => e.stopPropagation()}>{row.item.name}</a>
+                {/* Opens the item's side panel over the full-screen recipe; from the side panel this expands the recipe first. */}
+                <a className="underline underline-offset-4" href={href({ name: "recipe-full", id: recipe.id, item: row.item.id })} onClick={(e) => e.stopPropagation()}>{row.item.name}</a>
                 {row.item.packSize ? ` (${measureText(row.item.packSize.amount, row.item.packSize.measure)} ${row.item.unit?.[0] ?? "pack"})` : ""} ·{" "}
               </>
             )}
@@ -433,7 +435,7 @@ export function RecipePanel({ id, edit, onClose }: { id?: string; edit?: boolean
 
 // ---------- REC-10 full screen ----------
 
-export function RecipeFull({ id }: { id: string }) {
+export function RecipeFull({ id, item }: { id: string; item?: string }) {
   const { db } = usePantry()
   const recipe = db.recipes.find((r) => r.id === id)
   const [serves, setServes] = React.useState(recipe?.serves ?? 2)
@@ -499,6 +501,7 @@ export function RecipeFull({ id }: { id: string }) {
       </div>
       <CookedDialog open={cooked} onOpenChange={setCooked} recipe={recipe} serves={serves} />
       <DeleteRecipeDialog open={remove} onOpenChange={setRemove} recipe={recipe} onDone={() => navigate({ name: "recipes", tab: "cook" })} />
+      <ItemPanel id={item} onClose={() => navigate({ name: "recipe-full", id: recipe.id })} />
     </div>
   )
 }
