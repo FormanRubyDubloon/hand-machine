@@ -214,6 +214,44 @@ describe("edits and deletes need asking", () => {
     expect(mem.history[0]).toMatchObject({ title: "Changed Eggs", detail: "Minimum 6 → 12" })
   })
 
+  it("changes one unit's date and leaves the others", async () => {
+    const { call, mem } = setup()
+    await call("update_item", { item: "eggs", changes: { use_by: ["2026-11-20", "2026-11-28"] }, confirmed: true })
+    const listed = await call("search_pantry", { query: "eggs" })
+    expect(listed.text).toContain("use-by dates: 1) 2026-11-20")
+    expect(listed.text).toContain("3) undated")
+    await call("update_item", { item: "eggs", changes: { use_by_one: { position: 3, date: "2026-11-18" } }, confirmed: true })
+    expect(mem.state.items.eggs.useBy?.slice(0, 3)).toEqual(["2026-11-18", "2026-11-20", "2026-11-28"])
+    expect(mem.history[0].detail).toBe("Use-by undated → 2026-11-18")
+    const bad = await call("update_item", { item: "eggs", changes: { use_by_one: { position: 9, date: "2026-11-18" } }, confirmed: true })
+    expect(bad.isError).toBe(true)
+  })
+
+  it("sets a bulk item's pack size and opened dates", async () => {
+    const { call, mem } = setup()
+    await call("update_item", { item: "rice", changes: { pack_size: { amount: 1000, measure: "g" }, opened_at: ["2026-11-10"] }, confirmed: true })
+    expect(mem.state.items.rice).toMatchObject({ packSize: { amount: 1000, measure: "g" }, openedAt: ["2026-11-10"] })
+    const listed = await call("search_pantry", { query: "rice" })
+    expect(listed.text).toContain("pack size 1000 g")
+    expect(listed.text).toContain("opened 2026-11-10")
+    // One pack is open, so two opened dates is one too many.
+    expect((await call("update_item", { item: "rice", changes: { opened_at: ["2026-11-10", "2026-11-11"] }, confirmed: true })).isError).toBe(true)
+    // Counted items don't have packs.
+    expect((await call("update_item", { item: "eggs", changes: { pack_size: { amount: 60, measure: "g" } }, confirmed: true })).isError).toBe(true)
+  })
+
+  it("clears properties with null, and leaves out ones it isn't given", async () => {
+    const { call, mem } = setup()
+    await call("update_item", { item: "chopped-tomatoes", changes: { brand: "Mutti", location: "cupboard", price_pence: 120 }, confirmed: true })
+    await call("update_item", { item: "chopped-tomatoes", changes: { location: null, category: null, unit: null, price_pence: null }, confirmed: true })
+    const t = mem.state.items["chopped-tomatoes"]
+    expect(t.location).toBeUndefined()
+    expect(t.categoryId).toBe("")
+    expect(t.unit).toBeUndefined()
+    expect(t.price).toBeUndefined()
+    expect(t.brand).toBe("Mutti")
+  })
+
   it("deletes an item once confirmed, and the recipe loses the link", async () => {
     const { call, mem } = setup()
     const no = await call("delete_item", { item: "eggs" })
