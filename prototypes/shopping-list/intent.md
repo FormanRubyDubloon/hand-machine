@@ -92,7 +92,7 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - Categories reach the shopping app when it syncs, like stores and aisles.
 
 **Undo**
-- I can undo a merge or a delete from History on the same day. This includes removing a category.
+- I can undo any change from History on the same day, including a merge, a delete and removing a category. Changes Claude makes can be undone the same way.
 
 **What Claude can do**
 - Claude can read pantry stock, the shopping list and my saved recipes, and search them.
