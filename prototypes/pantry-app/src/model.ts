@@ -128,7 +128,8 @@ export function normalise(i: Item): Item {
   while (dates.length < want) dates.push(null)
   const opened = [...(i.openedAt ?? [])].slice(0, open ?? 0)
   while (opened.length < (open ?? 0)) opened.push(null)
-  return { ...i, open, useBy: dates, openedAt: isBulk(i) ? opened : undefined }
+  // New (made from a recipe, not bought yet) until some arrives.
+  return { ...i, open, useBy: dates, openedAt: isBulk(i) ? opened : undefined, review: i.review && i.inStock <= 0 ? true : undefined }
 }
 
 /** Sets stock. Using takes the soonest date first; buying adds an undated unit at the end. */
@@ -392,3 +393,36 @@ export const recipesUsing = (recipes: Recipe[], itemId: string) => recipes.filte
 
 export const minutesBand = (m: number) => (m <= 0 ? "unknown" : m < 20 ? "under20" : m <= 40 ? "20to40" : "over40")
 export const recipeTags = (r: Recipe) => [...(r.tags ?? []), ...(r.meal ? [r.meal] : [])]
+
+// ---------- ingredients that aren't in the pantry ----------
+
+const UNIT_WORDS = "g|kg|ml|l|litres?|tsp|tbsp|teaspoons?|tablespoons?|cups?|handfuls?|bunch(?:es)?|pinch(?:es)?|tins?|cans?|packs?|packets?|bags?|jars?|cloves?|slices?|sprigs?|large|small|medium|big|a|an|some|of"
+
+/**
+ * A name for a pantry item from the recipe's wording: "15g Parmesan, finely grated, plus extra" becomes
+ * "Parmesan". A guess, for the shopping list; it can be changed when the item is reviewed.
+ */
+export function ingredientName(text: string) {
+  const base = text.split(",")[0].replace(/\(.*?\)/g, " ").replace(/\b(plus|to serve|to taste|optional)\b.*$/i, " ")
+  let t = base.trim()
+  for (;;) {
+    const next = t.replace(new RegExp(`^(?:[\\d½¼¾⅓⅔./-]+\\s*)?(?:${UNIT_WORDS})\\b\\s*`, "i"), "").replace(/^[\d½¼¾⅓⅔./-]+\s*/, "")
+    if (next === t) break
+    t = next
+  }
+  return cap(t.trim() || text.trim())
+}
+
+/** Category and location for a new item, taken from the pantry item whose name shares the most words with it. */
+export function guessPlace(name: string, items: Items): { categoryId: string; location?: Item["location"] } {
+  const words = lower(name).split(/\s+/).filter((w) => w.length > 2)
+  let best: Item | undefined
+  let score = 0
+  for (const i of Object.values(items)) {
+    if (i.oneOff || !i.categoryId) continue
+    const theirs = lower(i.name).split(/\s+/)
+    const n = words.filter((w) => theirs.includes(w)).length
+    if (n > score) (score = n), (best = i)
+  }
+  return best ? { categoryId: best.categoryId, location: best.location } : { categoryId: "" }
+}

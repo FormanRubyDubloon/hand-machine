@@ -41,6 +41,7 @@ export type Row = {
   brand: string | null
   use_by: string[]
   one_off: boolean
+  needs_review?: boolean
   uses: number
   list_entries: ListEntryRow[] | null
   opened_at: string[]
@@ -75,6 +76,7 @@ export function toItem(r: Row): SharedItem {
     brand: r.brand ?? undefined,
     useBy: r.use_by.length ? r.use_by : undefined,
     oneOff: r.one_off || undefined,
+    review: r.needs_review || undefined,
     uses: r.uses || undefined,
     entries: r.list_entries?.length ? [...r.list_entries].sort((a, b) => a.position - b.position).map(toEntry) : undefined,
     openedAt: r.opened_at?.length ? r.opened_at : undefined,
@@ -159,6 +161,7 @@ export function toRow(i: SharedItem, knownCategories: Set<string>) {
     use_by: (i.useBy ?? []).filter((d): d is string => !!d),
     opened_at: (i.openedAt ?? []).filter((d): d is string => !!d),
     one_off: !!i.oneOff,
+    needs_review: !!i.review,
     uses: i.uses ?? 0,
     edited_at: i.editedAt ?? new Date().toISOString(),
   }

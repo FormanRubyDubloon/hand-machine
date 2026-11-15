@@ -1,0 +1,183 @@
+/*
+  Warm reskin for the pantry app and the shopping list only.
+  Handoff: prototypes/shared/RESKIN-WARM.md
+
+  This file sits on top of src/index.css. It doesn't change the hand-machine
+  design system: src/index.css and src/components/ui stay as they are.
+  Everything not set here (spacing, shadows, motion, z-index, the radius
+  scale maths, the @theme mapping) comes from the design system unchanged.
+
+  To turn it on in an app:
+    1. main.tsx: import "../../shared/src/theme-warm.css" after "@/index.css".
+    2. main.tsx: document.documentElement.classList.add("theme-warm")
+       before the first render. system-theme.ts still adds .dark.
+  Remove the class and the app is back on the design system.
+
+  Hex in the comments is what the mockups use. "generated" means Claude
+  filled the gap from the ten swatches (see Tokens-Warm, TOKENS-01).
+*/
+
+/* Colour: light */
+:root.theme-warm {
+  --radius: 4px;
+
+  --font-sans: "stevie-sans", "Figtree", sans-serif;
+  --font-serif: "dejanire-text", Georgia, serif;
+
+  --background: oklch(0.951 0.016 95.2); /* #F2EFE3 */
+  --foreground: oklch(0.307 0.034 54.8); /* #3D2B1F */
+  --card: oklch(0.951 0.016 95.2); /* #F2EFE3 generated */
+  --card-foreground: oklch(0.307 0.034 54.8); /* #3D2B1F */
+  --popover: oklch(0.951 0.016 95.2); /* #F2EFE3 generated */
+  --popover-foreground: oklch(0.307 0.034 54.8); /* #3D2B1F */
+  --primary: oklch(0.525 0.061 86.1); /* #7A6840 */
+  --primary-foreground: oklch(0.993 0.033 107.0); /* #FFFFE6 */
+  --secondary: oklch(0.921 0.018 96.1); /* #E8E5D8 */
+  --secondary-foreground: oklch(0.307 0.034 54.8); /* #3D2B1F generated */
+  --muted: oklch(0.921 0.018 96.1); /* #E8E5D8 */
+  --muted-foreground: oklch(0.458 0.042 51.3); /* #6B5142 */
+  --accent: oklch(0.921 0.018 96.1); /* #E8E5D8 */
+  --accent-foreground: oklch(0.307 0.034 54.8); /* #3D2B1F generated */
+  --destructive: oklch(0.470 0.140 31.1); /* #9A3324 */
+  --destructive-foreground: oklch(0.993 0.033 107.0); /* #FFFFE6 generated */
+  --border: oklch(0.861 0.021 91.6); /* #D6D1C2 */
+  --input: oklch(0.861 0.021 91.6); /* #D6D1C2 */
+  --ring: oklch(0.525 0.061 86.1); /* #7A6840 changed from the mockups for contrast */
+  --chart-1: oklch(0.837 0.060 84.5); /* #DCC79D generated */
+  --chart-2: oklch(0.740 0.086 87.5); /* #C2A86A generated */
+  --chart-3: oklch(0.577 0.078 89.0); /* #8C7740 generated */
+  --chart-4: oklch(0.458 0.042 51.3); /* #6B5142 generated */
+  --chart-5: oklch(0.307 0.034 54.8); /* #3D2B1F generated */
+  --sidebar: oklch(0.951 0.016 95.2); /* #F2EFE3 generated */
+  --sidebar-foreground: oklch(0.307 0.034 54.8); /* #3D2B1F generated */
+  --sidebar-primary: oklch(0.525 0.061 86.1); /* #7A6840 generated */
+  --sidebar-primary-foreground: oklch(0.993 0.033 107.0); /* #FFFFE6 generated */
+  --sidebar-accent: oklch(0.921 0.018 96.1); /* #E8E5D8 generated */
+  --sidebar-accent-foreground: oklch(0.307 0.034 54.8); /* #3D2B1F generated */
+  --sidebar-border: oklch(0.861 0.021 91.6); /* #D6D1C2 generated */
+  --sidebar-ring: oklch(0.525 0.061 86.1); /* #7A6840 changed from the mockups for contrast */
+}
+
+/* Colour: dark. .theme-warm.dark outranks the design system's .dark. */
+:root.theme-warm.dark {
+  --background: oklch(0.244 0.025 52.8); /* #2A1D15 */
+  --foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 */
+  --card: oklch(0.277 0.030 53.1); /* #34241A generated */
+  --card-foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 */
+  --popover: oklch(0.277 0.030 53.1); /* #34241A generated */
+  --popover-foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 */
+  --primary: oklch(0.740 0.086 87.5); /* #C2A86A */
+  --primary-foreground: oklch(0.244 0.025 52.8); /* #2A1D15 */
+  --secondary: oklch(0.307 0.034 54.8); /* #3D2B1F */
+  --secondary-foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 */
+  --muted: oklch(0.307 0.034 54.8); /* #3D2B1F */
+  --muted-foreground: oklch(0.795 0.020 93.7); /* #C0BCAE */
+  --accent: oklch(0.307 0.034 54.8); /* #3D2B1F */
+  --accent-foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 */
+  --destructive: oklch(0.756 0.095 35.6); /* #E59A86 */
+  --destructive-foreground: oklch(0.244 0.025 52.8); /* #2A1D15 generated */
+  --border: oklch(0.392 0.032 51.5); /* #544136 */
+  --input: oklch(0.392 0.032 51.5); /* #544136 */
+  --ring: oklch(0.740 0.086 87.5); /* #C2A86A changed from the mockups for contrast */
+  --chart-1: oklch(0.988 0.060 107.5); /* #FFFFD0 generated */
+  --chart-2: oklch(0.837 0.060 84.5); /* #DCC79D generated */
+  --chart-3: oklch(0.740 0.086 87.5); /* #C2A86A generated */
+  --chart-4: oklch(0.661 0.083 88.8); /* #A79055 generated */
+  --chart-5: oklch(0.577 0.078 89.0); /* #8C7740 generated */
+  --sidebar: oklch(0.277 0.030 53.1); /* #34241A generated */
+  --sidebar-foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 generated */
+  --sidebar-primary: oklch(0.740 0.086 87.5); /* #C2A86A generated */
+  --sidebar-primary-foreground: oklch(0.244 0.025 52.8); /* #2A1D15 generated */
+  --sidebar-accent: oklch(0.307 0.034 54.8); /* #3D2B1F generated */
+  --sidebar-accent-foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 generated */
+  --sidebar-border: oklch(0.392 0.032 51.5); /* #544136 generated */
+  --sidebar-ring: oklch(0.740 0.086 87.5); /* #C2A86A changed from the mockups for contrast */
+}
+
+/*
+  Type. Only display, title and lead change: they move to Dejanire, and
+  display and title go from 600 to 700. Every other size is unchanged and
+  stays on Stevie Sans with the design system's Tailwind classes.
+*/
+:root.theme-warm {
+  --text-display: 40px;
+  --text-display--line-height: 1;
+  --text-display--letter-spacing: 0.03em;
+  --text-title: 30px;
+  --text-title--line-height: 1;
+  --text-title--letter-spacing: 0.04em;
+  --text-lead: 17px;
+  --text-lead--line-height: 26px;
+}
+
+.theme-warm .type-display {
+  font-family: var(--font-serif);
+  font-size: var(--text-display);
+  line-height: var(--text-display--line-height);
+  letter-spacing: var(--text-display--letter-spacing);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.theme-warm .type-title {
+  font-family: var(--font-serif);
+  font-size: var(--text-title);
+  line-height: var(--text-title--line-height);
+  letter-spacing: var(--text-title--letter-spacing);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.theme-warm .type-lead {
+  font-family: var(--font-serif);
+  font-size: var(--text-lead);
+  line-height: var(--text-lead--line-height);
+  font-weight: 400;
+}
+
+/*
+  Radius. The design system's components hard-code rounded-none, so a new
+  --radius alone changes nothing. These rules round the pieces the warm
+  boards round, inside .theme-warm only. Unlayered CSS beats Tailwind's
+  utilities layer, so no !important is needed except for sonner.
+  Pills (rounded-full) stay round. Underline fields stay square.
+*/
+.theme-warm :is(
+  [data-slot="button"],
+  [data-slot="toggle"],
+  [data-slot="checkbox"],
+  [data-slot="card"],
+  [data-slot="dialog-content"],
+  [data-slot="popover-content"],
+  [data-slot="select-content"],
+  [data-slot="tooltip-content"],
+  [data-slot="command"],
+  [data-slot="table-container"]
+) {
+  border-radius: var(--radius);
+}
+.theme-warm [data-slot="badge"]:not(.rounded-full) {
+  border-radius: var(--radius);
+}
+.theme-warm [data-sonner-toast] {
+  border-radius: var(--radius) !important;
+}
+
+/* Joined groups (segmented controls, steppers): round the group, square the inside. */
+.theme-warm [data-slot="toggle-group"][data-spacing="0"],
+.theme-warm [role="group"]:has(> [data-slot="button"]) {
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.theme-warm [data-slot="toggle-group"][data-spacing="0"] > [data-slot="toggle-group-item"],
+.theme-warm [role="group"] > [data-slot="button"] {
+  border-radius: 0;
+}
+
+/*
+  Focus. The design system draws the ring at 30 to 50% opacity, which fails
+  3:1 on cream even with the darker ring. Draw it solid in this theme.
+  Light #7A6840 on the page is 4.7:1, dark #C2A86A is 7.1:1.
+*/
+.theme-warm :focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}

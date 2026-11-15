@@ -198,7 +198,7 @@ function StoresAndAisles() {
           </DialogHeader>
           <DialogFooter className="sm:justify-between">
             <Button variant="outline" onClick={() => setConfirm(false)}>Cancel</Button>
-            <Button className="bg-destructive text-white hover:bg-destructive/80" onClick={() => { actions.deleteStore(store.id); setConfirm(false); setSelectedId(db.defaultStoreId) }}>Delete store</Button>
+            <Button className="bg-destructive text-destructive-foreground hover:bg-destructive/80" onClick={() => { actions.deleteStore(store.id); setConfirm(false); setSelectedId(db.defaultStoreId) }}>Delete store</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -294,7 +294,7 @@ function RemoveCategory({ category, onClose }: { category: Category; onClose: ()
       </div>
       <DialogFooter className="sm:justify-between">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button className="bg-destructive text-white hover:bg-destructive/80" disabled={!empty} onClick={() => { actions.removeCategory(category.id); onClose() }}>
+        <Button className="bg-destructive text-destructive-foreground hover:bg-destructive/80" disabled={!empty} onClick={() => { actions.removeCategory(category.id); onClose() }}>
           Remove category
         </Button>
       </DialogFooter>
@@ -578,7 +578,7 @@ function Account() {
           </DialogHeader>
           <DialogFooter className="sm:justify-between">
             <Button variant="outline" onClick={() => setConfirm(false)}>Cancel</Button>
-            <Button className="bg-destructive text-white hover:bg-destructive/80" onClick={() => { actions.resetDemo(false); setConfirm(false) }}>Delete account</Button>
+            <Button className="bg-destructive text-destructive-foreground hover:bg-destructive/80" onClick={() => { actions.resetDemo(false); setConfirm(false) }}>Delete account</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

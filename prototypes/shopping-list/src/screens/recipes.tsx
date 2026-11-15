@@ -177,7 +177,7 @@ export function RecipeDetail({ id }: { id: string }) {
             {recipe.method.map((step, i) => (
               <li key={i} className="flex items-start gap-4 border-b border-border px-5 py-4">
                 <CountBox size="sm" aria-hidden="true">{i + 1}</CountBox>
-                <p className="pt-1.5 text-[17px] leading-6">{step}</p>
+                <p className="type-lead pt-1.5 text-[17px] leading-6">{step}</p>
               </li>
             ))}
           </motion.ol>

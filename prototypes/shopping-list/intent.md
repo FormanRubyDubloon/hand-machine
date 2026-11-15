@@ -37,7 +37,7 @@ Preferred brand is for online shopping. It shows in the pantry admin app but not
 
 Each recipe records:
 - name
-- ingredients, each with an amount and linked to a pantry item
+- ingredients, each with an amount, linked to a pantry item when there is one
 - method
 - servings
 - prep and cook time
@@ -53,6 +53,11 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - Any Staple below its minimum goes on the list automatically, showing how many to buy. I can also add extra items by hand.
 - When checking off an item, I can tick one unit at a time, enter an amount, or check off all of it at once.
 - An item leaves the list once what I've checked off brings stock back above its minimum.
+- The list can hold things that aren't in the pantry yet, such as a recipe ingredient I've never bought. These stay on the list only and don't appear in the pantry while I'm shopping.
+- When I check one of these off and sync, it becomes a pantry item with the amount I bought and a minimum of 0. The app guesses its category and location, and I can change them. It is linked to the recipe ingredient it came from.
+- A new item made this way is marked "New" in the admin app until I've reviewed and saved it, because its category and location are guesses.
+- If I undo the check-off on the phone, the item doesn't go into the pantry.
+- Items that are already in the pantry stay there while they're on the list. If I have none, they show as Out.
 
 **Syncing**
 - Stock from the shopping app updates when I sync, not on each tap.
@@ -69,15 +74,18 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 
 **Recipes**
 - I add recipes through Claude. I give Claude a recipe (typed, pasted, a web link or a file) and it saves it.
-- When Claude saves a recipe, it matches each ingredient to my pantry. Clear matches are linked without asking. Ingredients with nothing similar become new pantry items. If Claude is unsure (for example, "onion" when I have red and brown onions), it asks me.
+- When Claude saves a recipe, it matches each ingredient to my pantry. Clear matches are linked without asking. Ingredients with nothing similar are kept on the recipe as "not in your pantry yet". No pantry item is created for them until I buy one. If Claude is unsure (for example, "onion" when I have red and brown onions), it asks me.
 - After saving, Claude tells me what it linked, what it created and what it asked about.
 - A recipe keeps its own wording for each ingredient (such as "400 g tin chopped tomatoes") as well as the link to the pantry item.
 - I can merge two pantry items into one in the admin app, and their recipe links move across. Stock from both items is added together, and the higher of the two minimums is kept.
-- Every ingredient is a pantry item. If a recipe uses something that isn't in the pantry yet, a pantry item is created for it. Items created this way get a minimum of 0 unless I set one, so they aren't Staples and don't land on the shopping list by themselves.
+- An ingredient that isn't in the pantry yet becomes a pantry item only once I've bought it (see The shopping list). Items created this way get a minimum of 0 unless I set one, so they aren't Staples and don't land on the shopping list by themselves.
 - Each recipe shows which ingredients I have and which I'm short of.
 - I can filter to recipes I can cook now with current stock. Recipes that use things close to their use-by date are ranked first.
 - Changing the number of servings scales the ingredient amounts.
 - Each recipe has a "Want to cook" button. When I click it, the ingredients I'm short of are added to the shopping list.
+- I can also add any single ingredient to the shopping list from the recipe, including ones I already have some of. Adding one puts 1 pack or unit on the list. The list item's note says what the recipe needs, for example "Sardine linguine: 200 g".
+- Once an ingredient is on the list, the recipe shows a number I can raise or lower. Taking it below 1 removes it from the list.
+- An "Add all missing" action adds 1 of every ingredient I'm short of that isn't already on the list.
 - The kitchen app has a step-by-step cooking view to follow while I cook.
 - When I mark a recipe as cooked, I check what was used and then stock goes down. Counted ingredients are filled in with the recipe amounts, which I can change. Each bulk ingredient has a "finished it" tick, and ticking it takes one pack off stock.
 - For bulk ingredients, a recipe shows that I have some, not whether I have enough. If a bulk item has a pack size, the app warns me when a recipe needs more than my packs could hold (for example, 1.5 kg of flour when I have one 1 kg bag).
@@ -137,4 +145,5 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - **Notion import:** which Notion fields map to the new item and recipe fields, and what do I do with items or recipes that don't fit?
 - **Categories and Claude:** Claude only uses the categories that exist (decided 15 Nov). Revisit if that gets in the way.
 - **Sharing later:** if others join, do they see the same pantry, and does anyone have different permissions?
+- **Want to cook and Add all missing:** both put missing ingredients on the list. Do I need both, or should Want to cook do only that and also mark the recipe for download to the shopping app?
 - **Online shopping:** preferred brand exists for online orders. Is ordering online in scope, or is the brand just a note for now?

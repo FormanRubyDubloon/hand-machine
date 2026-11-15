@@ -1,6 +1,6 @@
 # Shopping list app: design handoff
 
-**Date:** 14 November 2026 (second version, replaces the first one from earlier today)
+**Date:** 14 November 2026 (second version, replaces the first one from earlier today; warm reskin noted 15 November)
 **Status:** Working design, not final
 **Intent:** [intent.md](intent.md). This is a copy of the latest version from the Hand & Machine project. It replaces the older Notion version that was here.
 **Design canvas:** "Shopping list app: 5 versions" on claude.ai, page "Shopping list app". The `screens/` folder has a copy of each screen as it stood when this was written.
@@ -155,6 +155,10 @@ Components are in `src/components/ui/`, shadcn style `radix-sera` (square corner
 | Sign-in fields and buttons | `input`, `label`, `button` | Passkey button has a key icon. |
 
 ## Colours
+
+> **Warm reskin, 15 November 2026:** this app and the pantry app now use the warm palette, Dejanire and 4px corners. See [../shared/RESKIN-WARM.md](../shared/RESKIN-WARM.md). The values below are the design system's, kept for reference. The variables are the same, so build with them as before.
+
+Recipe entries added from a recipe's ingredients list now carry a note, and an ingredient not in the pantry can sit on the list with no pantry item until it's ticked off and synced. See "Ingredients list on a recipe (REC-10)" in [../pantry-app/HANDOFF.md](../pantry-app/HANDOFF.md).
 
 | Hex in mockups | Variable | Used for |
 | --- | --- | --- |

@@ -4,58 +4,142 @@ import * as React from "react"
 import { CheckIcon, Maximize2Icon, Minimize2Icon, PencilIcon, Trash2Icon, ArrowLeftIcon } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-  dateText, haveText, isBulk, lower, measureText, nameList, plural, shortfall, recipeInfo, recipesUsing, recipeTags, shortDate, unitText, unitWord,
-  withStock, type IngredientRow, type Recipe,
+  dateText, guessPlace, haveText, ingredientName, isBulk, locations, lower, measureText, nameList, needOf, plural, shortfall, recipeInfo, recipesUsing, recipeTags, shortDate, unitText, unitWord,
+  withStock, type IngredientRow, type Item, type Recipe,
 } from "../model"
 import { navigate } from "../router"
 import { usePantry } from "../state"
-import { Eyebrow, SidePanel, Stepper, StockMark } from "../components"
+import { Eyebrow, NewPill, Segmented, SidePanel, Stepper } from "../components"
 import { RecipeEditor } from "./recipe-edit"
 
-// ---------- want to cook ----------
+// ---------- putting ingredients on the list ----------
 
-/** Puts what's short on the list and shows REC-13 as a toast with Undo. */
-export function useWantToCook() {
-  const { items, actions } = usePantry()
-  return (recipe: Recipe, factor = 1) => {
-    const info = recipeInfo(recipe, items, factor)
-    const rows = info.short
-      .filter((r) => r.item && r.status !== "listed")
-      .map((r) => ({
-        itemId: r.item!.id,
-        qty: r.status === "little" && r.item!.packSize ? Math.max(1, Math.ceil((r.required! - r.capacity!) / r.item!.packSize.amount)) : Math.max(1, r.missing),
-      }))
-    const entryId = actions.wantToCook(recipe, rows)
-    const names = rows.map((r) => `${items[r.itemId].name} (${unitText(items[r.itemId], r.qty)})`)
-    toast(rows.length ? `Added ${plural(rows.length, "thing")} to your shopping list` : `Saved ${recipe.name} to your phone`, {
-      description: rows.length
-        ? `${nameList(names)}, marked "For ${recipe.name}". The recipe is saved to your phone so you can read it in the shop without signal.`
-        : "Nothing to buy: it's all in stock or already on the list. You can read it in the shop without signal.",
-      action: { label: "Undo", onClick: () => actions.undo(entryId) },
-      cancel: { label: "See the list", onClick: () => navigate({ name: "list" }) },
-      duration: 8000,
-    })
-  }
+type Draft = { position: number; name: string; type: Item["type"]; categoryId: string; location: Item["location"] }
+
+/**
+ * An ingredient the pantry doesn't have can't go on the list until it's a pantry item, so this asks for what the
+ * pantry needs (name, type, location, aisle), guessed from the recipe's wording and similar items. Confirming
+ * adds each to the pantry and the shopping list. They show as New in the pantry until they're bought.
+ */
+function NewItemsDialog({ recipe, positions, onClose }: { recipe: Recipe; positions: number[]; onClose: () => void }) {
+  const { items, db, actions } = usePantry()
+  const [drafts, setDrafts] = React.useState<Draft[]>(() =>
+    positions.map((position) => {
+      const name = ingredientName(recipe.ingredients[position]?.text ?? "")
+      const place = guessPlace(name, items)
+      return { position, name, type: "counted", categoryId: place.categoryId, location: place.location }
+    }),
+  )
+  const [tried, setTried] = React.useState(false)
+  const set = (k: number, patch: Partial<Draft>) => setDrafts((d) => d.map((x, n) => (n === k ? { ...x, ...patch } : x)))
+  const complete = drafts.every((d) => d.name.trim() && d.categoryId && d.location)
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] gap-5 overflow-y-auto p-8 sm:max-w-[640px]">
+        <DialogHeader>
+          <Eyebrow>Not in your pantry yet</Eyebrow>
+          <DialogTitle className="text-[22px] tracking-[0.04em] uppercase">Add {plural(drafts.length, "ingredient")} to your pantry</DialogTitle>
+          <DialogDescription>
+            To put {drafts.length === 1 ? "it" : "them"} on the shopping list, {drafts.length === 1 ? "it needs" : "they need"} a place in the pantry. We've guessed. Check {drafts.length === 1 ? "it" : "them"}. {drafts.length === 1 ? "It shows" : "They show"} as New until you buy {drafts.length === 1 ? "it" : "them"}.
+          </DialogDescription>
+        </DialogHeader>
+        {drafts.map((d, k) => (
+          <section key={d.position} className="flex flex-col gap-3 border-t border-border pt-4">
+            <span className="text-xs text-muted-foreground">{recipe.ingredients[d.position]?.text}</span>
+            <Input value={d.name} onChange={(e) => set(k, { name: e.target.value })} aria-label="Name" aria-invalid={tried && !d.name.trim()} />
+            <div className="flex flex-wrap items-center gap-4">
+              <Segmented label="Type" value={d.type} onChange={(type) => set(k, { type })} options={[{ value: "counted", label: "Counted" }, { value: "bulk", label: "Bulk" }]} />
+              <Segmented label="Location" value={d.location} onChange={(location) => set(k, { location })} options={locations} />
+            </div>
+            <Select value={d.categoryId || undefined} onValueChange={(categoryId) => set(k, { categoryId })}>
+              <SelectTrigger className="w-full" aria-invalid={tried && !d.categoryId}>
+                <SelectValue placeholder="Choose an aisle" />
+              </SelectTrigger>
+              <SelectContent>
+                {db.categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {tried && !d.location && <span className="text-xs text-destructive">Choose a location.</span>}
+          </section>
+        ))}
+        <DialogFooter className="sm:justify-between">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            onClick={() => {
+              setTried(true)
+              if (!complete) return
+              actions.addNewIngredients(recipe, drafts.map((d) => ({ ...d, location: d.location! })))
+              onClose()
+            }}
+          >
+            Add to pantry and list
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
-export function WantButton({ recipe, factor = 1, size = "default", className }: { recipe: Recipe; factor?: number; size?: "default" | "sm" | "xs"; className?: string }) {
-  const want = useWantToCook()
+/** On the list: this recipe's entry for the item, or anything else that has it listed. */
+const isListedItem = (row: IngredientRow, recipe: Recipe) => !!row.item && (recipeQty(row, recipe) > 0 || needOf(row.item) > 0)
+
+/**
+ * Adding ingredients to the list from a recipe. One at a time, or everything missing. Pantry items go straight on;
+ * ones the pantry doesn't have open the dialog first. Render `dialog` somewhere in the screen.
+ */
+export function useRecipeList(recipe: Recipe) {
+  const { items, actions } = usePantry()
+  const [pending, setPending] = React.useState<number[] | null>(null)
+  const rows = recipeInfo(recipe, items).rows
+  const missing = rows.flatMap((r, k) => (r.item ? ((r.status === "short" || r.status === "little") && !isListedItem(r, recipe) ? [k] : []) : [k]))
+  const add = (positions: number[]) => {
+    const linked = positions.filter((k) => rows[k].item).map((k) => ({ itemId: rows[k].item!.id, qty: 1 }))
+    const fresh = positions.filter((k) => !rows[k].item)
+    actions.addIngredients(recipe, linked)
+    if (fresh.length) setPending(fresh)
+  }
+  const dialog = pending ? <NewItemsDialog key={pending.join()} recipe={recipe} positions={pending} onClose={() => setPending(null)} /> : null
+  return { missing, add, dialog }
+}
+
+/** Want to cook: the phone saves the recipe for the shop, and what's missing goes on the list (REC-13 toast with Undo). */
+export function WantButton({ recipe, size = "default", className }: { recipe: Recipe; size?: "default" | "sm" | "xs"; className?: string }) {
   const { actions } = usePantry()
+  const list = useRecipeList(recipe)
   if (recipe.wantToCook)
     return (
-      <Button size={size} className={className} onClick={() => actions.unwant(recipe)} title="On the list. Click to take its items off.">
+      <Button size={size} className={className} onClick={() => actions.unwant(recipe)} title="Saved to your phone. Click to stop saving it.">
         <CheckIcon />
-        On the list
+        Saved to phone
       </Button>
     )
   return (
-    <Button size={size} variant="outline" className={cn("border-primary", className)} onClick={() => want(recipe, factor)}>
-      Want to cook
-    </Button>
+    <>
+      <Button
+        size={size}
+        variant="outline"
+        className={cn("border-primary", className)}
+        onClick={() => {
+          const entryId = actions.wantToCook(recipe)
+          list.add(list.missing)
+          toast(`Saved ${recipe.name} to your phone`, {
+            description: list.missing.length ? `${plural(list.missing.length, "missing ingredient")} going on your shopping list. You can read the recipe in the shop without signal.` : "Nothing to buy. You can read it in the shop without signal.",
+            action: { label: "Undo", onClick: () => actions.undo(entryId) },
+            duration: 8000,
+          })
+        }}
+      >
+        Want to cook
+      </Button>
+      {list.dialog}
+    </>
   )
 }
 
@@ -76,32 +160,79 @@ function stockLine(r: IngredientRow) {
   return r.item.inStock ? `have ${haveText(r.item, ", ")}` : "none in stock"
 }
 
-function IngredientLine({ row, factor, onAddPack }: { row: IngredientRow; factor: number; onAddPack: () => void }) {
+/** What this recipe has put on the list for the ingredient. */
+function recipeQty(row: IngredientRow, recipe: Recipe) {
+  if (!row.item) return 0
+  return (row.item.entries ?? []).filter((e) => e.source.kind === "recipe" && e.source.recipe === recipe.name).reduce((n, e) => n + e.qty, 0)
+}
+function IngredientLine({
+  row, recipe, factor, onAdd, onSet, onAddPack,
+}: { row: IngredientRow; recipe: Recipe; factor: number; onAdd: () => void; onSet: (n: number) => void; onAddPack: () => void }) {
+  const qty = recipeQty(row, recipe)
+  const onList = qty > 0
+  const listedElsewhere = !onList && isListedItem(row, recipe)
   const short = row.status === "short" || row.status === "little" || row.status === "unlinked"
+  const canAdd = true
+  const unit = row.item ? (qty === 1 ? row.item.unit?.[0] : row.item.unit?.[1]) ?? (qty === 1 ? "unit" : "units") : qty === 1 ? "unit" : "units"
+  const label = row.item?.name ?? row.text
+  const status =
+    row.status === "unlinked" ? (
+      <NewPill tip="It isn't in your pantry yet. It will be added when you tick it off in the shop." />
+    ) : row.status === "have" || row.status === "some" || row.status === "listed" ? (
+      <CheckIcon strokeWidth={2.5} className={cn("size-5 shrink-0", row.status === "some" && "text-ring")} aria-label={row.status === "some" ? "Have an open pack" : "Have it"} />
+    ) : row.status === "little" ? (
+      <Badge variant="solid">Too little</Badge>
+    ) : (
+      <Badge variant="solid">{row.missing > 1 ? `Short ${row.missing}` : "Short"}</Badge>
+    )
   return (
-    <div className={cn("flex flex-col gap-2 border-b border-border px-3 py-3", short && "bg-muted")}>
+    <div
+      className={cn("group flex flex-col gap-2 border-b border-border px-3 py-3 transition-colors hover:bg-muted focus-within:bg-muted", canAdd && !onList && !listedElsewhere && "cursor-pointer")}
+      onClick={() => canAdd && !onList && !listedElsewhere && onAdd()}
+    >
       <div className="flex items-center gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className={cn("text-[15px] leading-snug", short ? "font-semibold" : "font-medium")}>{row.text}</span>
           <span className="text-xs text-muted-foreground">
             {row.item && (
               <>
-                <a className="underline underline-offset-4" href={`#/pantry/${row.item.id}`}>{row.item.name}</a>
+                <a className="underline underline-offset-4" href={`#/pantry/${row.item.id}`} onClick={(e) => e.stopPropagation()}>{row.item.name}</a>
                 {row.item.packSize ? ` (${measureText(row.item.packSize.amount, row.item.packSize.measure)} ${row.item.unit?.[0] ?? "pack"})` : ""} ·{" "}
               </>
             )}
             {stockLine(row)}
           </span>
         </div>
-        <StockMark status={row.status} missing={row.missing} />
+        {onList ? (
+          <div onClick={(e) => e.stopPropagation()} title={`${qty} ${unit} of ${lower(label)} on your list`}>
+            <Stepper size="sm" label={`${label}: ${qty} ${unit} on your list`} value={qty} min={0} onChange={onSet} />
+          </div>
+        ) : listedElsewhere ? (
+          <Eyebrow className="text-foreground">On your list</Eyebrow>
+        ) : (
+          <div className="relative flex h-7 min-w-16 items-center justify-end">
+            <span className={cn("flex items-center transition-opacity", canAdd && "group-hover:opacity-0 group-focus-within:opacity-0")}>{status}</span>
+            <Button
+              size="xs"
+              variant={row.status === "short" || row.status === "little" ? "default" : "outline"}
+              className={cn("absolute right-0 h-7 opacity-0 transition-opacity", canAdd && "group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100")}
+              disabled={!canAdd}
+              tabIndex={canAdd ? 0 : -1}
+              aria-label={`Add ${label} to your shopping list`}
+              onClick={(e) => { e.stopPropagation(); onAdd() }}
+            >
+              + List
+            </Button>
+          </div>
+        )}
       </div>
-      {row.status === "little" && row.item?.packSize && (
+      {row.status === "little" && row.item?.packSize && !onList && (
         <div className="flex items-center justify-between gap-4 pl-0">
           <span className="text-xs">
             Needs {measureText(row.required!, row.item.packSize.measure)}{factor !== 1 ? "" : ""}. You have {unitText(row.item, row.item.inStock)}, which{" "}
             {row.item.inStock === 1 ? "holds" : "hold"} {measureText(row.capacity!, row.item.packSize.measure)} at most{row.item.open ? `, and ${row.item.inStock === 1 ? "it's" : "one's"} open` : ""}.
           </span>
-          <Button size="xs" variant="outline" className="h-8 shrink-0 border-primary bg-background" onClick={onAddPack}>
+          <Button size="xs" variant="outline" className="h-8 shrink-0 border-primary bg-background" onClick={(e) => { e.stopPropagation(); onAddPack() }}>
             Add 1 {row.item.unit?.[0] ?? "pack"} to the list
           </Button>
         </div>
@@ -118,6 +249,9 @@ export function RecipeBody({ recipe, serves, setServes, columns }: { recipe: Rec
   const listed = info.rows.filter((r) => r.status === "listed")
   const little = info.rows.filter((r) => r.status === "little")
   const truelyShort = info.rows.filter((r) => r.status === "short")
+  const list = useRecipeList(recipe)
+  const onListCount = info.rows.filter((r) => isListedItem(r, recipe)).length
+  const toAdd = list.missing
 
   const summary =
     factor !== 1 && (little.length || info.short.length) ? (
@@ -144,16 +278,34 @@ export function RecipeBody({ recipe, serves, setServes, columns }: { recipe: Rec
           <Stepper size="sm" label="Servings" value={serves} min={1} max={24} onChange={setServes} />
         </div>
       </div>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-xs text-muted-foreground">
+          {info.short.length} missing · {onListCount} on your list
+        </span>
+        <Button
+          size="xs"
+          variant={toAdd.length ? "outline" : "secondary"}
+          className={cn("h-8", toAdd.length ? "border-primary" : "bg-muted")}
+          aria-disabled={!toAdd.length}
+          onClick={() => toAdd.length && list.add(toAdd)}
+        >
+          {toAdd.length ? `Add all missing (${toAdd.length})` : "All missing added"}
+        </Button>
+      </div>
       <div className="flex flex-col border-t border-border">
         {info.rows.map((row, k) => (
           <IngredientLine
             key={k}
             row={row}
+            recipe={recipe}
             factor={factor}
-            onAddPack={() => row.item && actions.addToList(row.item.id, 1, false)}
+            onAdd={() => list.add([k])}
+            onSet={(n) => row.item && actions.setIngredientQty(recipe, row.item.id, n)}
+            onAddPack={() => list.add([k])}
           />
         ))}
       </div>
+      {list.dialog}
       {info.rows.some((r) => r.status === "some") && <span className="text-xs text-muted-foreground">A light tick means there's an open pack. The app doesn't measure what's left in it.</span>}
     </section>
   )
@@ -165,7 +317,7 @@ export function RecipeBody({ recipe, serves, setServes, columns }: { recipe: Rec
         {recipe.method.map((step, k) => (
           <li key={k} className="flex gap-4">
             <span className="flex size-7 shrink-0 items-center justify-center border border-primary text-xs font-semibold">{k + 1}</span>
-            <span className="text-[15px] leading-relaxed">{step}</span>
+            <span className="type-lead text-[15px] leading-relaxed">{step}</span>
           </li>
         ))}
       </ol>
@@ -247,7 +399,7 @@ export function RecipePanel({ id, edit, onClose }: { id?: string; edit?: boolean
               <Button variant="destructive" onClick={() => setRemove(true)}>Delete</Button>
               <span className="flex-1" />
               <Button variant="outline" className="border-primary" onClick={() => setCooked(true)}>Cooked it</Button>
-              <WantButton recipe={recipe} factor={serves / recipe.serves} />
+              <WantButton recipe={recipe} />
             </>
           )
         }
@@ -299,10 +451,10 @@ export function RecipeFull({ id }: { id: string }) {
         <div className="flex items-start justify-between gap-6">
           <div className="flex flex-col gap-2">
             <Eyebrow>{recipeTags(recipe).join(" · ")}</Eyebrow>
-            <h1 className="text-[40px] leading-none font-semibold tracking-[0.02em] uppercase">{recipe.name}</h1>
+            <h1 className="type-display text-[40px] leading-none font-semibold tracking-[0.02em] uppercase">{recipe.name}</h1>
           </div>
           <div className="flex shrink-0 gap-2">
-            <WantButton recipe={recipe} factor={serves / recipe.serves} />
+            <WantButton recipe={recipe} />
             <Button variant="outline" className="border-primary" onClick={() => setCooked(true)}>Cooked it</Button>
             <Button variant="outline" onClick={() => navigate({ name: "recipes", tab: "cook", recipe: recipe.id, edit: true })}>
               <PencilIcon />
@@ -468,7 +620,7 @@ export function DeleteRecipeDialog({ open, onOpenChange, recipe, onDone }: { ope
         <p className="text-[13px] text-muted-foreground">You can undo this from History today.</p>
         <DialogFooter className="sm:justify-between">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button className="bg-destructive text-white hover:bg-destructive/80" onClick={() => { actions.deleteRecipe(recipe, listed.length > 0 && offList); onOpenChange(false); onDone() }}>
+          <Button className="bg-destructive text-destructive-foreground hover:bg-destructive/80" onClick={() => { actions.deleteRecipe(recipe, listed.length > 0 && offList); onOpenChange(false); onDone() }}>
             Delete recipe
           </Button>
         </DialogFooter>

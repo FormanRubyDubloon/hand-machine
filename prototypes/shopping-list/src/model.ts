@@ -32,6 +32,10 @@ export type Item = {
   entries?: ListEntry[]
   /** When it last changed in the pantry app (mock only). */
   editedAt?: string
+  /** On the list only, not a pantry item (see SharedItem). */
+  oneOff?: boolean
+  /** New: made from a recipe ingredient, not bought yet. Cleared at the sync that brings stock above 0. */
+  review?: boolean
 }
 
 export type RecipeIngredient = {
@@ -404,6 +408,8 @@ export function merge(local: Items, baseline: Items, remote: Items, resolutions:
     const entries = b && sameEntries(l.entries, b.entries) ? r.entries : l.entries
     const bought = stockChanged ? Math.max(0, l.inStock - (b?.inStock ?? 0)) : 0
     out[id] = { ...r, inStock, entries: settle(entries, bought) }
+    // Bought: it's not New any more.
+    if (r.review && bought > 0) out[id] = { ...out[id], review: undefined }
   }
   return out
 }

@@ -5,6 +5,7 @@ import { CheckIcon, MinusIcon, PlusIcon, Undo2Icon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -22,7 +23,7 @@ export function PageTitle({ title, subtitle, children }: { title: React.ReactNod
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="flex min-w-0 flex-col gap-1.5">
-        <h1 className="text-3xl leading-none font-semibold tracking-[0.04em] uppercase">{title}</h1>
+        <h1 className="type-title text-3xl leading-none font-semibold tracking-[0.04em] uppercase">{title}</h1>
         {subtitle && <p className="text-[13px] text-muted-foreground">{subtitle}</p>}
       </div>
       {children}
@@ -46,6 +47,26 @@ export function StockPill({ item }: { item: Item }) {
 /** Grey rounded pill: Staple, Recipe, Claude, One-off. */
 export function TagPill({ children, className }: { children: React.ReactNode; className?: string }) {
   return <Badge className={cn("h-5 rounded-full border border-border bg-muted px-2 text-foreground", className)}>{children}</Badge>
+}
+
+/** The New pill: gold, with a tooltip saying why. For an ingredient not in the pantry yet, and an item made from a shop. */
+export function NewPill({ tip }: { tip: string }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            tabIndex={0}
+            className="inline-flex h-6 items-center gap-1.5 rounded-full border border-[#7A6840] bg-[#C2A86A] px-2.5 text-[10px] font-semibold tracking-[0.1em] text-[#2A1D15] uppercase shadow-[0_0_8px_rgb(194_168_106/0.6)]"
+          >
+            <span className="size-1.5 rounded-full bg-[#2A1D15]" aria-hidden="true" />
+            New
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{tip}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
 }
 
 // ---------- stepper ----------

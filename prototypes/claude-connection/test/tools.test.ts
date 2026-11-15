@@ -157,7 +157,7 @@ describe("adding, no asking", () => {
     expect(bad.isError).toBe(true)
   })
 
-  it("saves a recipe, linking and creating items", async () => {
+  it("saves a recipe, linking matches and leaving the rest unlinked", async () => {
     const { call, mem } = setup()
     const r = await call("save_recipe", {
       name: "Sumac onions",
@@ -165,17 +165,18 @@ describe("adding, no asking", () => {
       method: ["Slice", "Toss with sumac"],
       ingredients: [
         { text: "2 red onions", item: "red-onions", need: 2 },
-        { text: "1 tbsp sumac", new_item: { name: "Sumac", type: "bulk", unit: "jar" }, partial: true },
+        { text: "1 tbsp sumac", partial: true },
         { text: "Water" },
       ],
     })
     expect(r.isError).toBe(false)
     const saved = mem.state.recipes.find((x) => x.id === "sumac-onions")!
     expect(saved).toMatchObject({ addedBy: "claude", serves: 2 })
-    expect(saved.ingredients.map((g) => g.itemId)).toEqual(["red-onions", "sumac", ""])
-    expect(mem.state.items.sumac.target).toBe(0)
-    expect(mem.history[0]).toMatchObject({ title: "Saved Sumac onions", item_ids: ["sumac"], recipe_id: "sumac-onions" })
-    expect(r.text).toContain("Not linked to the pantry (1): Water")
+    expect(saved.ingredients.map((g) => g.itemId)).toEqual(["red-onions", "", ""])
+    // Nothing similar: no pantry item is made.
+    expect(mem.state.items.sumac).toBeUndefined()
+    expect(mem.history[0]).toMatchObject({ title: "Saved Sumac onions", recipe_id: "sumac-onions" })
+    expect(r.text).toContain("Not linked to the pantry (2): 1 tbsp sumac; Water")
   })
 
   it("want to cook puts what's short on the list, marked with the recipe", async () => {

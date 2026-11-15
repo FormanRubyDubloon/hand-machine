@@ -14,7 +14,7 @@ import {
 } from "../model"
 import { navigate } from "../router"
 import { usePantry } from "../state"
-import { Eyebrow, Field, HistoryRow, Segmented, SidePanel, Stepper, StockPill, TagPill, UnitRow } from "../components"
+import { Eyebrow, Field, HistoryRow, NewPill, Segmented, SidePanel, Stepper, StockPill, TagPill, UnitRow } from "../components"
 
 /** "bag" → "bags", "loaf" → "loaves", "box" → "boxes". */
 export function pluralise(word: string) {
@@ -186,7 +186,7 @@ export function ItemPanel({ id, prefill, onClose }: { id?: string; prefill?: str
         width={560}
         eyebrow={isNew ? "New item" : [locationLabel(draft.location), category].filter(Boolean).join(" · ")}
         title={isNew ? "Add item" : saved?.name}
-        badges={!isNew && saved && <>{<StockPill item={saved} />}{isStaple(saved) && <TagPill>Staple</TagPill>}</>}
+        badges={!isNew && saved && <>{<StockPill item={saved} />}{isStaple(saved) && <TagPill>Staple</TagPill>}{saved.review && <NewPill tip="Added from a recipe and not bought yet." />}</>}
         description={!isNew && saved ? stockSentence(draft) : undefined}
         footer={
           isNew ? (
@@ -494,7 +494,7 @@ export function DeleteDialog({ open, onOpenChange, item, onMerge, onDone }: { op
         <DialogFooter className="sm:justify-between">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
-            className="bg-destructive text-white hover:bg-destructive/80"
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/80"
             onClick={() => {
               actions.deleteItem(item.id)
               onOpenChange(false)
