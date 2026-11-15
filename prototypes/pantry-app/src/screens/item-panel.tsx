@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import {
   cap, dateText, entryTotal, haveText, inDaysText, isBulk, isStaple, locationLabel, locations, money, nameList, needOf, normalise,
-  perUnitDates, plural, recipesUsing, shortDate, shortfall, stockOf, stockSentence, todayIso, unitText, type Item,
+  perUnitDates, plural, recipesUsing, shortDate, shortfall, stockOf, stockSentence, todayIso, unitText, type Item, categoriesAtoZ,
 } from "../model"
 import { navigate } from "../router"
 import { usePantry } from "../state"
@@ -287,7 +287,7 @@ export function ItemPanel({ id, prefill, onClose }: { id?: string; prefill?: str
                   <SelectValue placeholder="Choose an aisle" />
                 </SelectTrigger>
                 <SelectContent>
-                  {db.categories.map((c) => (
+                  {categoriesAtoZ(db.categories).map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>

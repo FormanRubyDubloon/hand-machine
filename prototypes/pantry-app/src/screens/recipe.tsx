@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   dateText, guessPlace, haveText, ingredientName, isBulk, locations, lower, measureText, nameList, needOf, plural, shortfall, recipeInfo, recipesUsing, recipeTags, shortDate, unitText, unitWord,
-  withStock, type IngredientRow, type Item, type Recipe,
+  withStock, type IngredientRow, type Item, type Recipe, categoriesAtoZ,
 } from "../model"
 import { href, navigate } from "../router"
 import { usePantry } from "../state"
@@ -65,7 +65,7 @@ function NewItemsDialog({ recipe, positions, onClose }: { recipe: Recipe; positi
                 <SelectValue placeholder="Choose an aisle" />
               </SelectTrigger>
               <SelectContent>
-                {db.categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                {categoriesAtoZ(db.categories).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
             {tried && !d.location && <span className="text-xs text-destructive">Choose a location.</span>}

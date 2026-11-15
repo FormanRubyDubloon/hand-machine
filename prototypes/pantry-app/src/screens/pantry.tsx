@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   daysUntil, dateText, haveText, isBulk, isStaple, locationLabel, locations, money, needOf, plural, shortfall, soonest, stockOf, unitWord,
-  type Item, type Location,
+  type Item, type Location, categoriesAtoZ,
 } from "../model"
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
@@ -91,7 +91,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
           label="Shop or aisle"
           value={f.aisle}
           onChange={(v) => set("aisle", v)}
-          options={db.categories.map((c) => ({ value: c.id, label: c.name, count: count("aisle", (i) => i.categoryId === c.id) })).filter((o) => o.count > 0)}
+          options={categoriesAtoZ(db.categories).map((c) => ({ value: c.id, label: c.name, count: count("aisle", (i) => i.categoryId === c.id) })).filter((o) => o.count > 0)}
         />
       </FilterSidebar>
 

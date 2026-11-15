@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
-import { cap, locations, matchesName, normalise, plural, type Item, type Items, type Location } from "../model"
+import { categoriesAtoZ, cap, locations, matchesName, normalise, plural, type Item, type Items, type Location } from "../model"
 import { navigate } from "../router"
 import { usePantry } from "../state"
 import { Eyebrow, PageTitle, Segmented } from "../components"
@@ -212,7 +212,7 @@ export function ImportScreen() {
                           {r.existing ? <span className="text-muted-foreground">{db.categories.find((c) => c.id === r.categoryId)?.name}</span> : (
                             <Select value={r.categoryId || undefined} onValueChange={(categoryId) => edit(r.key, { categoryId })}>
                               <SelectTrigger size="sm" className="h-7 w-full" aria-label={`Aisle for ${r.name}`}><SelectValue placeholder="Choose" /></SelectTrigger>
-                              <SelectContent>{db.categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                              <SelectContent>{categoriesAtoZ(db.categories).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                             </Select>
                           )}
                         </TableCell>
