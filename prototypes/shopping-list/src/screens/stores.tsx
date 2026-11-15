@@ -24,7 +24,7 @@ export function Stores() {
       <Note className="border-b border-border">Tap a store to shop there. Tap the pencil to change its name or aisle numbers.</Note>
       {state.stores.map((store) => {
         const items = toGetAt(state, store)
-        const aisles = aislesOf(store, state.categories).filter((a) =>
+        const aisles = aislesOf(store, state.categories, state.stores).filter((a) =>
           items.some((i) => a.categoryIds.includes(i.categoryId))
         )
         return (

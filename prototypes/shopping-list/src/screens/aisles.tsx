@@ -89,7 +89,7 @@ function AislesContent({ close }: { close: () => void }) {
           const done = aisle.items.every((li) => li.remaining === 0 || li.skipped)
           const box = done ? (skippedHere ? "skipped" : "done") : "default"
           return (
-            <ListRow key={aisle.number} asChild tone={current ? "current" : "default"} size={current ? "lg" : "default"}>
+            <ListRow key={aisle.number ?? "none"} asChild tone={current ? "current" : "default"} size={current ? "lg" : "default"}>
               <button
                 type="button"
                 aria-current={current ? "page" : undefined}
@@ -99,7 +99,7 @@ function AislesContent({ close }: { close: () => void }) {
                 }}
               >
                 <span className="w-6 shrink-0 text-sm font-semibold text-muted-foreground group-data-[tone=current]/list-row:text-primary-foreground/70">
-                  {aisle.number}
+                  {aisle.number ?? "–"}
                 </span>
                 <ListRowText
                   title={aisle.name}
