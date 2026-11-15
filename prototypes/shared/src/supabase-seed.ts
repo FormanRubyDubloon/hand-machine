@@ -3,6 +3,7 @@
 // as plain data. This file only reads. The pantry app writes changes back at Sync (pantry-app/src/sync.ts).
 import { supabase } from "@/lib/supabase"
 import { seedItems, seedRecipes } from "./pantry"
+import { applySettings, fromSettingsRow, type SettingsRow } from "./settings"
 import { ITEM_SELECT, toItem, toRecipe, type RecipeRow, type Row } from "./rows"
 
 export * from "./rows"
@@ -12,10 +13,13 @@ let loaded: Promise<void> | null = null
 /** Fetches the items and recipes once and fills the seed. Failing leaves the pantry empty rather than blocking the app. */
 export function loadSeedFromSupabase(): Promise<void> {
   loaded ??= (async () => {
-    const [items, recipes] = await Promise.all([
+    const [items, recipes, saved] = await Promise.all([
       supabase.from("items").select(ITEM_SELECT).order("name"),
       supabase.from("recipes").select("*, recipe_ingredients(position, text, item_id, need, buy, partial, uses)").order("name"),
+      supabase.from("settings").select("open_counts_towards_minimum").maybeSingle(),
     ])
+    if (saved.data) applySettings(fromSettingsRow(saved.data as SettingsRow))
+    else if (saved.error) console.error("Couldn't load the settings from Supabase:", saved.error.message)
     if (items.error || !items.data) console.error("Couldn't load the pantry from Supabase:", items.error?.message)
     else seedItems.splice(0, seedItems.length, ...(items.data as Row[]).map(toItem))
     if (recipes.error || !recipes.data) console.error("Couldn't load the recipes from Supabase:", recipes.error?.message)

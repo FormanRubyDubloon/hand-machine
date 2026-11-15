@@ -3,6 +3,17 @@
 // prototypes/claude-connection/edge/index.ts
 import { createClient } from "npm:@supabase/supabase-js@2.119.0";
 
+// prototypes/shared/src/settings.ts
+var settings = { openCountsTowardsMinimum: false };
+var listeners = /* @__PURE__ */ new Set();
+var version = 0;
+function applySettings(next) {
+  Object.assign(settings, next);
+  version++;
+  listeners.forEach((l) => l());
+}
+var fromSettingsRow = (r) => ({ openCountsTowardsMinimum: !!r.open_counts_towards_minimum });
+
 // prototypes/shared/src/rows.ts
 var ITEM_SELECT = "*, list_entries(position, kind, recipe, qty, at)";
 var toEntry = (r) => ({
@@ -166,16 +177,18 @@ function check(res) {
 function supabaseBackend(db) {
   return {
     async load() {
-      const [items, recipes, categories, stores, aisles] = await Promise.all([
+      const [items, recipes, categories, stores, aisles, saved] = await Promise.all([
         db.from("items").select(ITEM_SELECT).order("name"),
         db.from("recipes").select(RECIPE_SELECT).order("name"),
         db.from("categories").select("id, name, sort").order("sort"),
         db.from("stores").select("id, name, kind, place, sort").order("sort"),
-        db.from("store_aisles").select("store_id, category_id, number")
+        db.from("store_aisles").select("store_id, category_id, number"),
+        db.from("settings").select("open_counts_towards_minimum").maybeSingle()
       ]);
       const rows = check(recipes);
       const numbers = check(aisles);
       return {
+        settings: saved.data ? fromSettingsRow(saved.data) : void 0,
         items: Object.fromEntries(check(items).map((r) => [r.id, toItem(r)])),
         recipes: rows.map(toRecipe),
         recipeRows: Object.fromEntries(rows.map((r) => [r.id, r])),
@@ -242,7 +255,7 @@ var locationLabel = (l) => locations.find((x) => x.value === l)?.label ?? "No lo
 var isStaple = (i) => i.target > 0;
 var isBulk = (i) => i.type === "bulk";
 var perUnitDates = (i) => i.target > 1;
-var fullOf = (i, total = i.inStock) => isBulk(i) ? Math.max(0, total - (i.open ?? 0)) : total;
+var fullOf = (i, total = i.inStock) => isBulk(i) && !settings.openCountsTowardsMinimum ? Math.max(0, total - (i.open ?? 0)) : total;
 var shortfall = (i) => Math.max(0, i.target - fullOf(i));
 var entryTotal = (i) => (i.entries ?? []).reduce((n, e) => n + e.qty, 0);
 var needOf = (i) => Math.max(shortfall(i), entryTotal(i));
@@ -1580,7 +1593,10 @@ function createHandler(opts) {
     if (!client) return unauthorised("The sign-in has expired or was revoked.");
     const backend = (opts.backendFor ?? supabaseBackend)(client);
     let cached = null;
-    const data = () => cached ??= backend.load();
+    const data = () => cached ??= backend.load().then((d) => {
+      applySettings(d.settings ?? { openCountsTowardsMinimum: false });
+      return d;
+    });
     let body;
     try {
       body = await req.json();
