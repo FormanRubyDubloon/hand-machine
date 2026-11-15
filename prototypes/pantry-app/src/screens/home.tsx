@@ -189,6 +189,7 @@ export function Home() {
                 { value: "fridge", label: "Fridge", count: byLocation("fridge").length },
                 { value: "cupboard", label: "Cupboard", count: byLocation("cupboard").length },
                 { value: "freezer", label: "Freezer", count: byLocation("freezer").length },
+                { value: "household", label: "Household", count: byLocation("household").length },
               ]}
             />
           )}

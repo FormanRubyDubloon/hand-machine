@@ -77,6 +77,7 @@ export const locations: { value: Location; label: string }[] = [
   { value: "fridge", label: "Fridge" },
   { value: "freezer", label: "Freezer" },
   { value: "cupboard", label: "Cupboard" },
+  { value: "household", label: "Household" },
 ]
 export const locationLabel = (l?: Location) => locations.find((x) => x.value === l)?.label ?? "No location"
 

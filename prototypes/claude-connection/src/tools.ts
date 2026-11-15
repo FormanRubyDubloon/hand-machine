@@ -239,7 +239,7 @@ function findStore(data: PantryData, ref: unknown) {
   return s
 }
 
-const LOCATIONS: Location[] = ["fridge", "freezer", "cupboard"]
+const LOCATIONS: Location[] = ["fridge", "freezer", "cupboard", "household"]
 function location(v: unknown): Location | undefined {
   const s = str(v)?.toLowerCase()
   if (!s) return undefined
