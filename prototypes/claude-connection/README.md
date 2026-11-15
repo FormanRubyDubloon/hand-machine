@@ -12,7 +12,7 @@ The fourth part of the pantry system (see `../shopping-list/intent.md` and `../p
 | `src/text.ts` | How items, recipes and list rows read to Claude. |
 | `src/consent.tsx` | The page Supabase Auth sends you to when Claude connects: sign in, see what Claude can do, Allow or Cancel. Served at `/prototypes/claude-connection/`. |
 | `edge/index.ts` | The Supabase Edge Function entry (Deno). |
-| `build.mjs` | Bundles the server into `supabase/functions/mcp/index.js` (`pnpm build:mcp`). The bundle is generated: don't edit it. |
+| `build.mjs`, `build-options.mjs` | Bundles the server into `supabase/functions/mcp/index.js` (`pnpm build:mcp`). The bundle is generated: don't edit it. `test/bundle.test.ts` fails when it no longer matches the source, for example after a change to `model.ts`: rebuild, commit, and redeploy. |
 | `test/` | Tool tests against an in-memory pantry: `pnpm exec vitest run --project claude-connection`. |
 
 The stock, list and recipe rules are imported from `../pantry-app/src/model.ts`, and the row mapping from `../shared/src/rows.ts`, so the server and the apps can't drift apart.
