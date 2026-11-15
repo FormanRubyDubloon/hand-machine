@@ -1,6 +1,6 @@
 # Pantry app: design handoff
 
-**Date:** 14 November 2026 (categories added late on 14 November)
+**Date:** 14 November 2026 (categories added late on 14 November; Claude connection and sync on opening, 15 November)
 **Status:** Working design, not final
 **Intent:** [../shopping-list/intent.md](../shopping-list/intent.md). The pantry app and the shopping app share one intent, so there is one copy. Read it before building or changing anything.
 **Design canvas:** "Shopping list app: 5 versions" on claude.ai, page "Pantry explorations". The `screens/` folder has a copy of each screen as it stood when this was written.
@@ -17,7 +17,7 @@ The desktop app I use at my desk to manage the pantry. It's where items, minimum
 | **Pantry app (this one)** | Desktop web | Manage items, stock, recipes, the shopping list, stores, settings |
 | Shopping app | iPhone web, offline | Tick things off in shops, sync when I choose |
 | Kitchen app | Phone web, later | Quick stock jobs and cooking. Not designed yet. |
-| Claude connection | Claude apps | Read and change the same data through an MCP server |
+| Claude connection | Claude apps | Read and change the same data through an MCP server. Built: `prototypes/claude-connection` |
 
 The pantry app is online. It's the place where the data lives, so it doesn't sync the way the phone does. It only needs to handle changes from the phone arriving through a phone sync (PAN-19).
 
@@ -146,10 +146,11 @@ The canvas IDs are kept, so there are gaps in the numbers. The screens not liste
 
 - The phone syncs when you choose. If an item changed in both places since its last sync, PAN-19 asks which to keep. Until you choose, this app keeps its own value and the rest of the sync goes through.
 - Claude can add items, stock, list entries and recipes without asking, and take used things off stock without asking. It must ask before any other edit or delete. That asking happens in the Claude chat, so this app doesn't need an approval queue. Claude's changes show in History, marked Claude.
+- Claude writes straight to Supabase, often while this app is closed. So the app syncs once when it opens (signed in), and Claude's and the phone's changes show without pressing Sync. That sync shows a message only if something came in or went out.
 
 ### Sign in and settings
 
-- Email link or passkey, no password. You stay signed in on each device.
+- Email and password, or an email link. Passkeys aren't built. You stay signed in on each device.
 - SET-01 edits the same stores and aisle numbers as the phone's STORE screens.
 - SET-02 lists Claude's permissions as fixed rules (from the intent), not switches.
 
@@ -183,7 +184,7 @@ All of it is shared with the shopping app and the Claude connection. The fields 
 
 Worked out, not stored: Staple, Low or Out, how many to buy, whether a recipe can be cooked and what it's short of, the estimated total.
 
-The shopping prototype keeps its mock pantry in `prototypes/shopping-list/src/remote-pantry.ts`, with data in localStorage. Both prototypes run on the same site, so the pantry app could read and write the same mock. Then a change here would show on the phone after a sync. That's Isaac's call. It needs a shared seed (see the next section).
+All of it lives in Supabase (see CLAUDE.md). This app and the shopping app sync with it, and the Claude connection reads and writes it directly. The phone still gets categories, stores, aisles and recipes from this app through localStorage.
 
 ## Mockup inconsistencies
 
@@ -254,7 +255,7 @@ Stevie Sans (kit `tvk6fub`), falling back to Figtree in the mockups. Use Bold wh
 - **Skip this time:** LIST-01 has it. Does a skipped item come back on the next list, and does the phone see it?
 - **Editing recipes here:** both recipe screens have an Edit button. In or out?
 - **Sync time in the top bar:** keep it as the phone's last sync, or drop it from desktop?
-- **Sharing the mock pantry with the shopping prototype:** worth it for the demo?
+- ~~**Sharing the mock pantry with the shopping prototype:** worth it for the demo?~~ **Superseded: both apps use Supabase.**
 - **Naming:** the intent and the code now say "category". The item panel (PAN-11, PAN-12, PAN-16), the table column and the filters still say "Shop or aisle". Change them to "Category".
 - ~~**Aisle and shop kinds:** worth storing?~~ **Decided 14 November: left out.** A shop category is simply the only aisle in its store.
 - **Add and rename in two places:** the first build adds and renames categories inside SET-01. Keep that as a shortcut, or move it all to SET-04?
@@ -305,3 +306,19 @@ What the AI got wrong on the way (caught in testing):
 - Cooked it said Lemons "drops below its minimum" when it was already below.
 - Import put "coconut milk 4 tins" in the fridge under Dairy because "milk" beat "tins".
 - `shadcn add` emitted `import { cn } from "cn"` again and added the `cn` package; both reverted, as CLAUDE.md warns.
+
+### Claude connection (15 November 2026)
+
+Built in `prototypes/claude-connection` (see its README): an MCP server on Supabase, with Claude signing in through Supabase Auth.
+
+What changed from the screens:
+
+- **SET-02 is real.** The address is the server's. "Connected" comes from whether you've approved Claude in Supabase, not a switch, and Disconnect revokes that approval. **The Connect button is gone:** connecting can only start in Claude. "Add with Claude" reads the same state.
+- **New, not drawn: the consent page** (`/prototypes/claude-connection/`). Claude sends you there when it connects: sign in, see what Claude can do and what it asks first, then Allow or Cancel. Laid out for a phone, because it often opens in the Claude phone app. Password comes first, because on a phone an email link opens in another browser. A plain first take for review.
+- **Sync on opening**, so Claude's changes show without pressing Sync (see "Changes from the phone and from Claude").
+
+What the AI got wrong on the way:
+
+- Told Isaac to register Claude in Supabase as a confidential app with a secret. Claude sends the secret one way and Supabase only accepts the other, so sign-in failed after Allow. A Supabase log found it; Claude is now a public app with no secret.
+- The ingredient matcher called "1 onion" "no clear match" instead of "unsure" between red and brown onions. Caught by a test.
+- The first version couldn't change a bulk item's pack size, one unit's use-by date, or clear a field. Added after Isaac asked whether Claude could edit everything.
