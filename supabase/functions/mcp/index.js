@@ -233,7 +233,8 @@ function supabaseBackend(db) {
 var locations = [
   { value: "fridge", label: "Fridge" },
   { value: "freezer", label: "Freezer" },
-  { value: "cupboard", label: "Cupboard" }
+  { value: "cupboard", label: "Cupboard" },
+  { value: "household", label: "Household" }
 ];
 var locationLabel = (l) => locations.find((x) => x.value === l)?.label ?? "No location";
 var isStaple = (i) => i.target > 0;
@@ -603,7 +604,7 @@ function findStore(data, ref) {
   if (!s) throw new ToolError(`No store matches "${q}". Stores: ${data.stores.map((x) => x.name).join(", ")}.`);
   return s;
 }
-var LOCATIONS = ["fridge", "freezer", "cupboard"];
+var LOCATIONS = ["fridge", "freezer", "cupboard", "household"];
 function location(v) {
   const s = str(v)?.toLowerCase();
   if (!s) return void 0;

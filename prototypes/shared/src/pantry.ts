@@ -13,7 +13,7 @@ export const DB_KEY = "hm-pantry:db:v3"
 /** The phone's own state. The pantry app reads its last sync time from here. */
 export const PHONE_KEY = "hm-shopping-list:v5"
 
-export type Location = "fridge" | "freezer" | "cupboard"
+export type Location = "fridge" | "freezer" | "cupboard" | "household"
 export type Category = { id: string; name: string }
 export type ListSource = { kind: "hand" } | { kind: "claude" } | { kind: "recipe"; recipe: string }
 export type ListEntry = { source: ListSource; qty: number; at?: string }
