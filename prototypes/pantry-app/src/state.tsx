@@ -551,7 +551,7 @@ function usePantryState() {
      * point at them), recipes after the items (so ingredients can link to new ones), and removed
      * categories are deleted last (once their items have moved). Which store is the default stays here.
      */
-    async syncNow() {
+    async syncNow(opts: { quiet?: boolean } = {}) {
       if (syncing) return
       setSyncing(true)
       const started = ref.current
@@ -612,7 +612,10 @@ function usePantryState() {
           result.uncategorised ? `${plural(result.uncategorised, "item")} saved without a category: Supabase doesn't have it.` : "",
           kept.length ? `${nameList(kept.map((c) => c.name))} stayed in Supabase: items there still use ${kept.length === 1 ? "it" : "them"}. Sync tries again next time.` : "",
         ].filter(Boolean)
-        toast(parts.length ? `Synced · ${parts.join(", ")}` : "Already up to date", { description: notes.join(" ") || undefined })
+        // The sync on opening the app stays quiet unless something came or went.
+        if (!opts.quiet || parts.length || notes.length) {
+          toast(parts.length ? `Synced · ${parts.join(", ")}` : "Already up to date", { description: notes.join(" ") || undefined })
+        }
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e)
         toast.error("Couldn't sync", {
