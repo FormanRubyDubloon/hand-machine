@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { aisleOrder, isStaple, isToday, nameList, numberedAisles, plural, shortDate, timeText, whenText, type Category, type Store } from "../model"
+import { aisleOrder, categoriesAtoZ, isStaple, isToday, nameList, numberedAisles, plural, shortDate, timeText, whenText, type Category, type Store } from "../model"
 import { navigate, type SettingsTab } from "../router"
 import { usePantry } from "../state"
 import { getTheme, setTheme, type ThemeChoice } from "../theme"
@@ -248,7 +248,7 @@ function NameForm({ initial, placeholder, submit, onSubmit, onCancel }: { initia
 function RemoveCategory({ category, onClose }: { category: Category; onClose: () => void }) {
   const { db, items, actions } = usePantry()
   const inIt = Object.values(items).filter((i) => i.categoryId === category.id)
-  const others = db.categories.filter((c) => c.id !== category.id)
+  const others = categoriesAtoZ(db.categories).filter((c) => c.id !== category.id)
   const [moveTo, setMoveTo] = React.useState("")
   const losing = db.stores.filter((s) => s.aisles[category.id] != null)
   const names = inIt.map((i) => i.name)
@@ -349,7 +349,7 @@ function Categories({ intro }: { intro: string }) {
                 <TableCell colSpan={2} className="text-xs text-muted-foreground">Gets an aisle number in each store from Stores and aisles</TableCell>
               </TableRow>
             )}
-            {db.categories.map((c) => {
+            {categoriesAtoZ(db.categories).map((c) => {
               const n = counts(c.id)
               const where = numberedIn(c, db.stores)
               const editing = renaming === c.id

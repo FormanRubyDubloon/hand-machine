@@ -334,8 +334,9 @@ function soldAt(i, store) {
   if (aisle === null || aisle === void 0) return false;
   return i.where.length === 0 || i.where.includes(store.id);
 }
+var categoriesAtoZ = (categories) => [...categories].sort((a, b) => a.name.localeCompare(b.name));
 function aisleOrder(store, categories) {
-  return [...categories].sort((a, b) => (store.aisles[a.id] ?? 999) - (store.aisles[b.id] ?? 999));
+  return categoriesAtoZ(categories).sort((a, b) => (store.aisles[a.id] ?? 999) - (store.aisles[b.id] ?? 999));
 }
 function scaleText(text, factor) {
   if (factor === 1) return text;
