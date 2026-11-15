@@ -196,29 +196,36 @@ export const stockOf = (i: Item, total = i.inStock): Stock =>
 
 export const matchesFilter = (stock: Stock, filter: Filter) => filter === "all" || stock === filter
 
-export function soldAt(item: Item, store: Store) {
+/** A category no store gives a number yet (new ones, like Health Foods). It shows at every store, at the end. */
+export const unplaced = (categoryId: string, stores: Store[]) => !stores.some((s) => s.aisles[categoryId] != null)
+
+/**
+ * A blank number means the store doesn't sell that category, unless no store numbers it: then it's sold
+ * everywhere until it gets a number somewhere.
+ */
+export function soldAt(item: Item, store: Store, stores: Store[]) {
   const aisle = store.aisles[item.categoryId]
-  if (aisle === null || aisle === undefined) return false
+  if ((aisle === null || aisle === undefined) && !unplaced(item.categoryId, stores)) return false
   return item.where.length === 0 || item.where.includes(store.id)
 }
 
-export type Aisle = { number: number; categoryIds: string[]; name: string }
+/** `number` is null for the last group: categories no store has numbered. */
+export type Aisle = { number: number | null; categoryIds: string[]; name: string }
 
 /** A store's aisles, lowest number first. Categories sharing a number merge into one aisle. */
-export function aislesOf(store: Store, cats: Category[]): Aisle[] {
+export function aislesOf(store: Store, cats: Category[], stores: Store[]): Aisle[] {
   const groups = new Map<number, string[]>()
   for (const c of cats) {
     const n = store.aisles[c.id]
     if (n === null || n === undefined) continue
     groups.set(n, [...(groups.get(n) ?? []), c.id])
   }
-  return [...groups.entries()]
+  const nameOf = (ids: string[]) => ids.map((id) => cats.find((c) => c.id === id)!.name).join(" · ")
+  const numbered: Aisle[] = [...groups.entries()]
     .sort(([a], [b]) => a - b)
-    .map(([number, ids]) => ({
-      number,
-      categoryIds: ids,
-      name: ids.map((id) => cats.find((c) => c.id === id)!.name).join(" · "),
-    }))
+    .map(([number, ids]) => ({ number, categoryIds: ids, name: nameOf(ids) }))
+  const rest = cats.filter((c) => unplaced(c.id, stores)).sort((a, b) => a.name.localeCompare(b.name)).map((c) => c.id)
+  return rest.length ? [...numbered, { number: null, categoryIds: rest, name: nameOf(rest) }] : numbered
 }
 
 export type ListItem = {
@@ -288,10 +295,10 @@ export function shopAisles(state: State, session: Session): ShopAisle[] {
   if (!store) return []
   const list = state.order
     .map((id) => state.items[id])
-    .filter((i) => i && soldAt(i, store))
+    .filter((i) => i && soldAt(i, store, state.stores))
     .map((i) => listItem(i, session))
     .filter((li) => li.needed > 0)
-  return aislesOf(store, state.categories)
+  return aislesOf(store, state.categories, state.stores)
     .map((a) => ({ ...a, items: list.filter((li) => a.categoryIds.includes(li.item.categoryId)) }))
     .filter((a) => a.items.length > 0)
 }
@@ -300,7 +307,7 @@ export function shopAisles(state: State, session: Session): ShopAisle[] {
 export function toGetAt(state: State, store: Store) {
   return state.order
     .map((id) => state.items[id])
-    .filter((i) => i && soldAt(i, store) && needOf(i, state.baseline) > 0)
+    .filter((i) => i && soldAt(i, store, state.stores) && needOf(i, state.baseline) > 0)
 }
 
 export function nameList(names: string[]) {

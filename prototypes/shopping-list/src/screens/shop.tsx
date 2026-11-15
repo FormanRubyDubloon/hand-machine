@@ -46,7 +46,7 @@ export function Shop() {
   // aisleIndex -1 is the "All items" view: every aisle's items in one list.
   const index = session.aisleIndex < 0 ? -1 : Math.min(session.aisleIndex, aisles.length - 1)
   // Keyed by aisle so the row order is fixed while you're in it.
-  return <AisleView key={index < 0 ? "all" : aisles[index].number} index={index} />
+  return <AisleView key={index < 0 ? "all" : aisles[index].number ?? "none"} index={index} />
 }
 
 function AisleView({ index }: { index: number }) {
@@ -108,7 +108,7 @@ function AisleView({ index }: { index: number }) {
   return (
     <Screen
       top={all ? undefined : <SegmentBar total={aisles.length} filled={index + 1} aria-label={`Aisle ${index + 1} of ${aisles.length}`} />}
-      eyebrow={all ? `${sessionStore!.name} · every aisle` : `${sessionStore!.name} · aisle ${aisle.number}`}
+      eyebrow={all ? `${sessionStore!.name} · every aisle` : aisle.number == null ? `${sessionStore!.name} · no aisle number` : `${sessionStore!.name} · aisle ${aisle.number}`}
       title={aisle.name}
       aside={
         <>

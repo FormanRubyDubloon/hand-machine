@@ -200,7 +200,7 @@ export function SyncOffline() {
   const { state, actions, store, outgoing } = useApp()
   const aisleOf = (categoryId: string) => {
     if (!store) return null
-    return aislesOf(store, state.categories).find((a) => a.categoryIds.includes(categoryId))?.number ?? null
+    return aislesOf(store, state.categories, state.stores).find((a) => a.categoryIds.includes(categoryId))?.number ?? null
   }
 
   return (

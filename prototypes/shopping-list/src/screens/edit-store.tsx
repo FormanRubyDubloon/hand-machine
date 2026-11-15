@@ -103,7 +103,7 @@ function EditStoreForm({ existing }: { existing: Store | null }) {
         </h2>
         <Note className="pt-0">
           The list follows these numbers, lowest first. Tap a row to set its number. Leave one blank if this store
-          doesn't sell it.
+          doesn't sell it. A category no store has numbered goes at the end of every list.
         </Note>
       </div>
       {state.categories.map((c) => {

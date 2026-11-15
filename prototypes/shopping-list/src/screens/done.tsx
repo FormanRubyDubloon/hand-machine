@@ -66,7 +66,7 @@ export function Done() {
               <ListRowText
                 titleSize="sm"
                 title={li.item.name}
-                description={`Aisle ${li.aisle} · ${li.got ? `got ${li.got} of ${li.needed}` : unitText(li.item, li.needed) ?? `${li.needed} to get`}`}
+                description={`${li.aisle == null ? "No aisle number" : `Aisle ${li.aisle}`} · ${li.got ? `got ${li.got} of ${li.needed}` : unitText(li.item, li.needed) ?? `${li.needed} to get`}`}
               />
               <CountBox size="sm">{li.remaining}</CountBox>
             </ListRow>
@@ -82,7 +82,7 @@ export function Done() {
                 titleSize="sm"
                 title={li.item.name}
                 titleClassName="line-through"
-                description={`Aisle ${li.aisle} · ${unitText(li.item, li.remaining) ?? `${li.remaining} to get`}`}
+                description={`${li.aisle == null ? "No aisle number" : `Aisle ${li.aisle}`} · ${unitText(li.item, li.remaining) ?? `${li.remaining} to get`}`}
                 descriptionClassName="text-foreground"
               />
               <CountBox size="sm" variant="skipped" />
