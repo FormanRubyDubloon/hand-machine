@@ -178,8 +178,16 @@ function Screen({ route }: { route: Route }) {
 }
 
 function Shell() {
-  const { db } = usePantry()
-  const { signedIn } = useAuthSession()
+  const { db, actions } = usePantry()
+  const { signedIn, session } = useAuthSession()
+  // Sync once on opening, so changes made elsewhere (Claude, the phone) show without pressing Sync.
+  // It waits for a live session: a stored token alone can't reach Supabase.
+  const opened = React.useRef(false)
+  React.useEffect(() => {
+    if (!session || opened.current) return
+    opened.current = true
+    void actions.syncNow({ quiet: true })
+  }, [session, actions])
   const route = useRoute()
   const [claude, setClaude] = React.useState(false)
   const [conflicts, setConflicts] = React.useState(false)
