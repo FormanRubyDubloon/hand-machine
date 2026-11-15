@@ -6,6 +6,7 @@ import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, us
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { cn } from "@/lib/utils"
+import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -411,7 +412,32 @@ function Categories({ intro }: { intro: string }) {
 
 // ---------- SET-02 ----------
 
-const ADDRESS = "https://pantry.example.com/mcp"
+/** The MCP server: a Supabase Edge Function (prototypes/claude-connection). */
+const ADDRESS = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mcp`
+
+type Grant = { clientId: string; name: string; grantedAt: string }
+
+/**
+ * Whether Claude is connected: the OAuth grants you've given in Supabase Auth (on the consent
+ * page). Disconnecting revokes the grant, which signs Claude out straight away.
+ */
+function useClaudeGrants() {
+  const [grants, setGrants] = React.useState<Grant[] | null | "error">(null)
+  const load = React.useCallback(async () => {
+    const { data, error } = await supabase.auth.oauth.listGrants()
+    setGrants(error || !data ? "error" : data.map((g) => ({ clientId: g.client.id, name: g.client.name, grantedAt: g.granted_at })))
+  }, [])
+  React.useEffect(() => { void load() }, [load])
+  const disconnect = async () => {
+    if (!Array.isArray(grants)) return
+    for (const g of grants) {
+      const { error } = await supabase.auth.oauth.revokeGrant({ clientId: g.clientId })
+      if (error) toast("Couldn't disconnect Claude", { description: error.message })
+    }
+    await load()
+  }
+  return { grants, disconnect }
+}
 
 function Permission({ title, sub, label }: { title: string; sub: string; label: string }) {
   return (
@@ -427,16 +453,29 @@ function Permission({ title, sub, label }: { title: string; sub: string; label: 
 
 function ClaudeConnection() {
   const { db, actions } = usePantry()
+  const { grants, disconnect } = useClaudeGrants()
+  const [busy, setBusy] = React.useState(false)
   const recent = db.history.filter((h) => h.who === "claude").slice(0, 4)
   const lastUsed = recent[0]?.at
+  const connected = Array.isArray(grants) ? grants.length > 0 : db.claudeConnected
+  // Keep the saved flag in step, so "Add with Claude" knows too.
+  React.useEffect(() => {
+    if (Array.isArray(grants) && grants.length > 0 !== db.claudeConnected) actions.setClaudeConnected(grants.length > 0)
+  }, [grants, db.claudeConnected, actions])
+  const status = grants === null ? "Checking…"
+    : grants === "error" ? "Couldn't check with Supabase. Sync, or sign in again, and come back."
+      : connected ? (lastUsed ? `Last used ${whenText(lastUsed).toLowerCase()}` : `Connected ${shortDate(grants[0].grantedAt)} · not used yet`)
+        : "Add the address below as a connector in Claude to connect."
   return (
     <div className="flex max-w-3xl flex-col gap-8">
-      <div className={cn("flex items-center justify-between gap-4 border p-5", db.claudeConnected ? "border-primary" : "border-dashed border-ring")}>
+      <div className={cn("flex items-center justify-between gap-4 border p-5", connected ? "border-primary" : "border-dashed border-ring")}>
         <span className="flex flex-col gap-0.5">
-          <span className="flex items-center gap-2 text-sm font-semibold">{db.claudeConnected && <CheckIcon className="size-4" />}{db.claudeConnected ? "Connected" : "Not connected"}</span>
-          <span className="text-xs text-muted-foreground">{db.claudeConnected ? (lastUsed ? `Last used ${whenText(lastUsed).toLowerCase()}` : "Not used yet") : "Add the address below in Claude to connect."}</span>
+          <span className="flex items-center gap-2 text-sm font-semibold">{connected && <CheckIcon className="size-4" />}{connected ? "Connected" : "Not connected"}</span>
+          <span className="text-xs text-muted-foreground">{status}</span>
         </span>
-        <Button variant="outline" onClick={() => actions.setClaudeConnected(!db.claudeConnected)}>{db.claudeConnected ? "Disconnect" : "Connect"}</Button>
+        {connected && Array.isArray(grants) && (
+          <Button variant="outline" disabled={busy} onClick={async () => { setBusy(true); await disconnect(); setBusy(false) }}>Disconnect</Button>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">

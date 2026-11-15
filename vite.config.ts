@@ -18,6 +18,7 @@ export default defineConfig({
         main: path.resolve(dirname, 'index.html'),
         'shopping-list': path.resolve(dirname, 'prototypes/shopping-list/index.html'),
         'pantry-app': path.resolve(dirname, 'prototypes/pantry-app/index.html'),
+        'claude-connection': path.resolve(dirname, 'prototypes/claude-connection/index.html'),
       },
     },
   },
@@ -28,6 +29,14 @@ export default defineConfig({
   },
   test: {
     projects: [{
+      // The Claude connection's server: plain Node, no browser.
+      extends: true,
+      test: {
+        name: 'claude-connection',
+        include: ['prototypes/claude-connection/test/**/*.test.ts'],
+        environment: 'node',
+      },
+    }, {
       extends: true,
       plugins: [
       // The plugin will run tests for the stories defined in your Storybook config
