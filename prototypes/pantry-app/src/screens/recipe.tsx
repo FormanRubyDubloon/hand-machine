@@ -9,17 +9,16 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   dateText, guessPlace, haveText, ingredientName, isBulk, locations, lower, measureText, nameList, needOf, plural, shortfall, recipeInfo, recipesUsing, recipeTags, shortDate, unitText, unitWord,
-  withStock, namesOf, containsText, type IngredientRow, type Item, type Recipe,
+  withStock, type IngredientRow, type Item, type Recipe,
 } from "../model"
 import { navigate } from "../router"
 import { usePantry } from "../state"
 import { Eyebrow, NewPill, Segmented, SidePanel, Stepper } from "../components"
 import { RecipeEditor } from "./recipe-edit"
+import { ItemPicker } from "../link-picker"
 
 // ---------- putting ingredients on the list ----------
 
@@ -157,54 +156,19 @@ const metaLine = (r: Recipe) =>
     .filter(Boolean)
     .join(" · ")
 
-/**
- * Links an ingredient the pantry doesn't know to an existing item. Items whose name (or another name) appears in
- * the recipe's wording come first; the search covers the whole pantry.
- */
-/** Words in a recipe's wording that describe preparation or size, not the ingredient. */
-const PREP_WORDS = new Set(
-  "chopped sliced diced minced grated peeled crushed ground fresh dried large small big medium handful handfuls tbsp tsp cup cups glass pinch the and for optional roughly finely about".split(" "),
-)
-
+/** Links an ingredient the pantry doesn't know to an existing item. */
 function LinkPicker({ recipe, position, text }: { recipe: Recipe; position: number; text: string }) {
-  const { items, actions } = usePantry()
-  const [open, setOpen] = React.useState(false)
-  const pantry = Object.values(items).filter((i) => !i.oneOff).sort((a, b) => a.name.localeCompare(b.name))
-  const words = text.toLowerCase().replace(/[^a-z\s-]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !PREP_WORDS.has(w))
-  const likely = pantry.filter((i) => namesOf(i).some((n) => {
-    const name = n.toLowerCase()
-    return text.toLowerCase().includes(name) || words.some((w) => name.split(/\s+/).some((p) => p.replace(/(es|s)$/, "") === w.replace(/(es|s)$/, "")))
-  }))
-  // A name that appears whole in the wording ("tomato purée" in "70g tomato purée") beats a shared word.
-  const whole = (i: Item) => namesOf(i).some((n) => text.toLowerCase().includes(n.toLowerCase()))
-  likely.sort((a, b) => Number(whole(b)) - Number(whole(a)))
-  const rest = pantry.filter((i) => !likely.includes(i))
-  const pick = (id: string) => { setOpen(false); actions.linkIngredient(recipe, position, id) }
-  const row = (i: Item) => (
-    <CommandItem key={i.id} value={i.id} keywords={namesOf(i)} onSelect={() => pick(i.id)}>
-      <span className="flex-1 truncate">{i.name}</span>
-      <span className="text-xs text-muted-foreground">{i.inStock ? haveText(i) : "none"}</span>
-    </CommandItem>
-  )
+  const { actions } = usePantry()
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <ItemPicker
+      text={text}
+      onPick={(id) => actions.linkIngredient(recipe, position, id)}
+      trigger={
         <button type="button" className="underline underline-offset-4 hover:text-foreground" onClick={(e) => e.stopPropagation()}>
           Link to an item
         </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 p-0" onClick={(e) => e.stopPropagation()}>
-        {/* Plain "contains" matching, like the top-bar search. cmdk's fuzzy default finds Sourdough for "sug". */}
-        <Command filter={(_, search, keywords) => (keywords ?? []).some((n) => containsText(n, search)) ? 1 : 0}>
-          <CommandInput placeholder="Search the pantry" aria-label={`Pantry item for ${text}`} />
-          <CommandList>
-            <CommandEmpty>Nothing in the pantry by that name.</CommandEmpty>
-            {likely.length > 0 && <CommandGroup heading="Likely">{likely.map(row)}</CommandGroup>}
-            <CommandGroup heading={likely.length ? "Everything else" : "Pantry"}>{rest.map(row)}</CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+      }
+    />
   )
 }
 
