@@ -7,8 +7,8 @@ import {
   at, DB_KEY, fillAisles, ITEMS_KEY, PHONE_KEY, readJson, seedCategories, seedItems, seedPantryItems, seedRecipes, seedStores, writeJson,
 } from "../../shared/src/pantry"
 import {
-  fingerprint, pendingCategoryIds, pendingIds, pendingRecipeIds, pendingStoreIds, recipeFingerprint, storeFingerprint, syncCategories, syncItems,
-  syncRecipes, syncStores,
+  fingerprint, historyFingerprint, pendingCategoryIds, pendingHistoryIds, pendingIds, pendingRecipeIds, pendingStoreIds, recipeFingerprint, storeFingerprint, syncCategories, syncItems,
+  syncHistory, syncRecipes, syncStores,
 } from "./sync"
 import { deleteCategories } from "../../shared/src/pantry-remote"
 import {
@@ -86,6 +86,17 @@ function readPhoneSync(): string {
 }
 
 // ---------- helpers ----------
+
+/**
+ * History after a sync: the merged list, except any entry added or changed here while the sync ran,
+ * which stays as it is now (it isn't in the synced base, so it goes out next time).
+ */
+function mergeHistory(now: HistoryEntry[], synced: HistoryEntry[], started: HistoryEntry[]): HistoryEntry[] {
+  const was = Object.fromEntries(started.map((h) => [h.id, historyFingerprint(h)]))
+  const edited = now.filter((h) => was[h.id] !== historyFingerprint(h))
+  const ids = new Set(edited.map((h) => h.id))
+  return [...edited, ...synced.filter((h) => !ids.has(h.id))].sort((a, b) => b.at.localeCompare(a.at))
+}
 
 const singular = (name: string) => name.replace(/oes$/i, "o").replace(/([^s])s$/i, "$1")
 /** "1 lemon", "2 eggs", "1 bottle of whole milk". */
@@ -555,6 +566,7 @@ function usePantryState() {
         const result = await syncItems(started.items, started.db.syncedItems)
         const cookbook = await syncRecipes(started.db.recipes, started.db.syncedRecipes, new Set(Object.keys(result.items)))
         const kept = await deleteCategories(cats.remove)
+        const log = await syncHistory(started.db.history, started.db.syncedHistory)
         const now = new Date().toISOString()
         setState((s) => {
           // Anything edited while the sync ran is kept as it is now and goes out next time.
@@ -585,14 +597,17 @@ function usePantryState() {
               recipes: recipesUnchanged ? cookbook.recipes : s.db.recipes,
               syncedRecipes: cookbook.recipes,
               syncedItems: result.items,
+              // Entries made while the sync ran (or changed since) stay at the top and go out next time.
+              history: mergeHistory(s.db.history, log.history, started.db.history),
+              syncedHistory: log.base,
               // A category Supabase wouldn't delete yet stays in the base, so the next sync tries again.
               syncedCategories: [...cats.categories, ...kept],
               syncedAt: now,
             },
           }
         })
-        const sent = result.pushed + cats.pushed + shops.pushed + cookbook.pushed - kept.length
-        const received = result.pulled + cats.pulled + shops.pulled + cookbook.pulled
+        const sent = result.pushed + cats.pushed + shops.pushed + cookbook.pushed + log.pushed - kept.length
+        const received = result.pulled + cats.pulled + shops.pulled + cookbook.pulled + log.pulled
         const parts = [
           sent ? `${plural(sent, "change")} sent` : "",
           received ? `${plural(received, "change")} received` : "",
@@ -723,7 +738,8 @@ function usePantryState() {
     pendingIds(state.items, state.db.syncedItems).length +
     pendingCategoryIds(state.db.categories, state.db.syncedCategories).length +
     pendingStoreIds(state.db.stores, state.db.syncedStores).length +
-    pendingRecipeIds(state.db.recipes, state.db.syncedRecipes).length
+    pendingRecipeIds(state.db.recipes, state.db.syncedRecipes).length +
+    pendingHistoryIds(state.db.history, state.db.syncedHistory).length
   return { state, items: state.items, db: state.db, actions, phoneSyncedAt, store, syncing, pending }
 }
 

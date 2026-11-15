@@ -2,7 +2,28 @@
 // prototypes await this before they render, so the rest of the code can keep treating the seed
 // as plain data. This file only reads. The pantry app writes changes back at Sync (pantry-app/src/sync.ts).
 import { supabase } from "@/lib/supabase"
-import { seedItems, seedRecipes, type ListEntry, type SharedItem, type SharedRecipe } from "./pantry"
+import { seedItems, seedRecipes, type ListEntry, type ListSource, type SharedItem, type SharedRecipe } from "./pantry"
+
+/** One row of `list_entries`: an entry on the shopping list for an item. */
+export type ListEntryRow = { position: number; kind: ListSource["kind"]; recipe: string | null; qty: number; at: string | null }
+
+/** The columns to select from `items`, with each item's list entries. */
+export const ITEM_SELECT = "*, list_entries(position, kind, recipe, qty, at)"
+
+export const toEntry = (r: ListEntryRow): ListEntry => ({
+  source: r.kind === "recipe" ? { kind: "recipe", recipe: r.recipe ?? "" } : { kind: r.kind },
+  qty: Number(r.qty),
+  // Supabase hands a time back in its own format; keep one format so a round trip isn't a change.
+  ...(r.at ? { at: new Date(r.at).toISOString() } : {}),
+})
+
+export const toEntryRow = (e: ListEntry, position: number): ListEntryRow => ({
+  position,
+  kind: e.source.kind,
+  recipe: e.source.kind === "recipe" ? e.source.recipe : null,
+  qty: e.qty,
+  at: e.at ? new Date(e.at).toISOString() : null,
+})
 
 export type Row = {
   id: string
@@ -23,7 +44,7 @@ export type Row = {
   use_by: string[]
   one_off: boolean
   uses: number
-  entries: ListEntry[]
+  list_entries: ListEntryRow[] | null
   opened_at: string[]
   edited_at: string
 }
@@ -56,7 +77,7 @@ export function toItem(r: Row): SharedItem {
     useBy: r.use_by.length ? r.use_by : undefined,
     oneOff: r.one_off || undefined,
     uses: r.uses || undefined,
-    entries: r.entries?.length ? r.entries : undefined,
+    entries: r.list_entries?.length ? [...r.list_entries].sort((a, b) => a.position - b.position).map(toEntry) : undefined,
     openedAt: r.opened_at?.length ? r.opened_at : undefined,
     editedAt: r.edited_at,
   }
@@ -118,7 +139,7 @@ let loaded: Promise<void> | null = null
 export function loadSeedFromSupabase(): Promise<void> {
   loaded ??= (async () => {
     const [items, recipes] = await Promise.all([
-      supabase.from("items").select("*").order("name"),
+      supabase.from("items").select(ITEM_SELECT).order("name"),
       supabase.from("recipes").select("*, recipe_ingredients(position, text, item_id, need, buy, partial, uses)").order("name"),
     ])
     if (items.error || !items.data) console.error("Couldn't load the pantry from Supabase:", items.error?.message)

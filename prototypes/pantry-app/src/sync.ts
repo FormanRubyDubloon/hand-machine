@@ -5,9 +5,9 @@
 // in Supabase. Changed only here: pushed. Changed only in Supabase: pulled. Changed in both and
 // different: the later edit wins, and the sync says how many that was.
 import {
-  deleteRecipes, deleteStores, fetchCategories, fetchRecipeRows, toRecipe, writeRecipes, fetchRemote, fetchStores, fingerprint, upsertCategories, writeRemote, writeStores, type CategoryRow,
+  deleteRecipes, deleteStores, fetchCategories, fetchRecipeRows, toRecipe, writeRecipes, fetchRemote, fetchHistory, fetchStores, fingerprint, sortKeys, writeHistory, upsertCategories, writeRemote, writeStores, type CategoryRow, type HistoryRow,
 } from "../../shared/src/pantry-remote"
-import { normalise, type Category, type Item, type Items, type Recipe, type Store } from "./model"
+import { normalise, type Category, type HistoryEntry, type Item, type Items, type Recipe, type Store } from "./model"
 
 export { fingerprint }
 
@@ -298,4 +298,75 @@ export async function syncRecipes(local: Recipe[], base: Recipe[] | undefined, i
   // This computer's order, then recipes only Supabase has (by name).
   const order = [...local.map((r) => r.id), ...Object.keys(rows).filter((id) => !here[id])].filter((id) => merged[id])
   return { recipes: order.map((id) => merged[id]), pushed: push.length + remove.length, pulled }
+}
+
+// ---------- history ----------
+
+/** What counts as a change to a History entry: all of it, written the same way on both sides. */
+export function historyFingerprint(h: HistoryEntry | undefined): string {
+  if (!h) return ""
+  return JSON.stringify([
+    iso(h.at), h.who, h.title, h.detail ?? "", h.itemIds ?? [], h.recipeId ?? "", !!h.undone, h.key ?? "", sortKeys(h.undo ?? null),
+  ])
+}
+
+const toHistory = (r: HistoryRow): HistoryEntry => ({
+  id: r.id, at: new Date(r.at).toISOString(), who: r.who, title: r.title,
+  detail: r.detail ?? undefined,
+  itemIds: r.item_ids.length ? r.item_ids : undefined,
+  recipeId: r.recipe_id ?? undefined,
+  undo: (r.undo as HistoryEntry["undo"]) ?? undefined,
+  undone: r.undone || undefined,
+  key: r.key ?? undefined,
+})
+
+const toHistoryRow = (h: HistoryEntry): HistoryRow => ({
+  id: h.id, at: h.at, who: h.who, title: h.title, detail: h.detail ?? null, item_ids: h.itemIds ?? [],
+  recipe_id: h.recipeId ?? null, undo: h.undo ?? null, undone: !!h.undone, key: h.key ?? null,
+})
+
+/** The History entries that differ from the last sync. `base` maps entry id to its fingerprint then. */
+export function pendingHistoryIds(local: HistoryEntry[], base: Record<string, string> | undefined): string[] {
+  if (!base) return []
+  return local.filter((h) => base[h.id] !== historyFingerprint(h)).map((h) => h.id)
+}
+
+export type HistorySync = { history: HistoryEntry[]; base: Record<string, string>; pushed: number; pulled: number }
+
+/**
+ * Merges History by id. New entries go up, entries only Supabase has come down. An entry that
+ * changed here (a merged stepper tap, or undone) is sent; one changed only in Supabase is taken.
+ * Undone wins either way, so an undo is never lost. Entries removed in Supabase since the last
+ * sync are dropped here. Only the newest 500 come back.
+ */
+export async function syncHistory(local: HistoryEntry[], base: Record<string, string> | undefined): Promise<HistorySync> {
+  const remote = Object.fromEntries((await fetchHistory()).map((r) => [r.id, toHistory(r)]))
+  const here = Object.fromEntries(local.map((h) => [h.id, h]))
+  const merged: Record<string, HistoryEntry> = {}
+  const push: HistoryEntry[] = []
+  let pulled = 0
+  for (const id of new Set([...Object.keys(here), ...Object.keys(remote)])) {
+    const l = here[id]
+    const r = remote[id]
+    if (l && r) {
+      if (historyFingerprint(l) === historyFingerprint(r)) merged[id] = l
+      else if (base && base[id] === historyFingerprint(l)) {
+        merged[id] = r
+        pulled++
+      } else {
+        merged[id] = { ...l, undone: l.undone || r.undone || undefined }
+        push.push(merged[id])
+      }
+    } else if (l) {
+      if (base && id in base) continue
+      merged[id] = l
+      push.push(l)
+    } else {
+      merged[id] = r
+      pulled++
+    }
+  }
+  await writeHistory(push.map(toHistoryRow))
+  const history = Object.values(merged).sort((a, b) => b.at.localeCompare(a.at))
+  return { history, base: Object.fromEntries(history.map((h) => [h.id, historyFingerprint(h)])), pushed: push.length, pulled }
 }
