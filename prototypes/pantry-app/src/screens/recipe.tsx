@@ -383,16 +383,16 @@ export function RecipeBody({ recipe, serves, setServes, columns }: { recipe: Rec
 
 // ---------- REC-09 side panel ----------
 
-export function RecipePanel({ id, edit, onClose }: { id?: string; edit?: boolean; onClose: () => void }) {
+export function RecipePanel({ id, edit, serves: initial, onClose }: { id?: string; edit?: boolean; serves?: number; onClose: () => void }) {
   const { db } = usePantry()
   const recipe = id ? db.recipes.find((r) => r.id === id) : undefined
-  const [serves, setServes] = React.useState(recipe?.serves ?? 2)
+  const [serves, setServes] = React.useState(initial ?? recipe?.serves ?? 2)
   const [cooked, setCooked] = React.useState(false)
   const [remove, setRemove] = React.useState(false)
   const [last, setLast] = React.useState(id)
   if (id !== last) {
     setLast(id)
-    setServes(recipe?.serves ?? 2)
+    setServes(initial ?? recipe?.serves ?? 2)
   }
   if (id === "new" || (recipe && edit)) return <RecipeEditor recipe={recipe} onClose={() => (recipe ? navigate({ name: "recipes", tab: "cook", recipe: recipe.id }, { replace: true }) : onClose())} onCancel={onClose} />
   return (
@@ -482,7 +482,7 @@ export function RecipeFull({ id, item, serves: initial }: { id: string; item?: s
               <PencilIcon />
               Edit
             </Button>
-            <Button variant="outline" size="icon" aria-label="Back to the side panel" title="Back to the side panel" onClick={() => navigate({ name: "recipes", tab: "cook", recipe: recipe.id })}>
+            <Button variant="outline" size="icon" aria-label="Back to the side panel" title="Back to the side panel" onClick={() => navigate({ name: "recipes", tab: "cook", recipe: recipe.id, serves })}>
               <Minimize2Icon />
             </Button>
             <Button variant="outline" size="icon" aria-label="Delete recipe" title="Delete recipe" onClick={() => setRemove(true)}>
