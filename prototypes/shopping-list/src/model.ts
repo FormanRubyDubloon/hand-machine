@@ -188,9 +188,11 @@ export function needOf(i: Item, baseline: Items) {
 }
 
 export type Stock = "out" | "low" | null
+/** Low means half the minimum or fewer. Between half and the minimum it's below minimum, but not Low. */
+export const LOW_AT = 0.5
 /** Only Staples are Out or Low. Bulk items go Low while you have packs but too few full ones. */
 export const stockOf = (i: Item, total = i.inStock): Stock =>
-  !isStaple(i) ? null : total <= 0 ? "out" : fullOf(i, total) < i.target ? "low" : null
+  !isStaple(i) ? null : total <= 0 ? "out" : fullOf(i, total) <= i.target * LOW_AT ? "low" : null
 
 export const matchesFilter = (stock: Stock, filter: Filter) => filter === "all" || stock === filter
 

@@ -6,12 +6,12 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  daysUntil, dateText, haveText, isBulk, isStaple, locationLabel, locations, money, needOf, plural, soonest, stockOf, unitWord,
+  daysUntil, dateText, haveText, isBulk, isStaple, locationLabel, locations, money, needOf, plural, shortfall, soonest, stockOf, unitWord,
   type Item, type Location,
 } from "../model"
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
-import { FilterGroup, FilterSidebar, NewPill, PageTitle, Segmented, SortSelect, Stepper, StockPill } from "../components"
+import { FilterGroup, FilterSidebar, HeadingTip, NewPill, PageTitle, Segmented, SortSelect, Stepper, StockPill, statusHelp } from "../components"
 import { ItemPanel } from "./item-panel"
 
 type Show = "staples" | "not" | "soon"
@@ -60,7 +60,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
 
   const title = [f.show ? showLabels[f.show] : f.type ? (f.type === "bulk" ? "Bulk items" : "Counted items") : f.aisle ? category(f.aisle) : "All items", f.location !== "all" ? `in the ${locationLabel(f.location).toLowerCase()}` : ""].join(" ")
   const staples = rows.filter(isStaple).length
-  const below = rows.filter((i) => stockOf(i)).length
+  const below = rows.filter((i) => isStaple(i) && shortfall(i) > 0).length
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -95,7 +95,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
         />
       </FilterSidebar>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-8 py-7">
+      <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-8 py-7 [&_[data-slot=table-container]]:overflow-visible">
         <PageTitle
           title={title}
           subtitle={`${plural(rows.length, "item")} · ${plural(staples, "Staple")} · ${below} below minimum · sorted by ${sorts[sort].summary}`}
@@ -121,12 +121,13 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
           </div>
         </PageTitle>
 
+        {/* The headers stick at -top-7, the page container's py-7, so they sit flush with its top edge and leave no gap. */}
         <Table className="text-sm">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               {["Item", "Location", "In stock", "Minimum", "Status", "Use by", "Preferred brand", "Shop or aisle", "Price"].map((h) => (
-                <TableHead key={h} className={cn("h-10 text-[10px] font-semibold tracking-widest", (h === "Minimum" || h === "Price") && "text-right")}>
-                  {h}
+                <TableHead key={h} className={cn("sticky -top-7 z-10 h-10 bg-background text-[10px] font-semibold tracking-widest shadow-[inset_0_-1px_0_var(--border)]", (h === "Minimum" || h === "Price") && "text-right")}>
+                  {h === "Status" ? <HeadingTip label={h} tip={statusHelp} /> : h}
                 </TableHead>
               ))}
             </TableRow>

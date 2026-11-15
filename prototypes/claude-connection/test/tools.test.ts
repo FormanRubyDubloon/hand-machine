@@ -70,7 +70,9 @@ describe("reading", () => {
     const { call } = setup()
     const r = await call("search_pantry", { query: "egg" })
     expect(r.text).toContain("Eggs [id: eggs]")
-    expect(r.text).toContain("LOW")
+    // 4 of 6 is below the minimum and on the list, but not Low: that is half or fewer.
+    expect(r.text).toContain("2 on the shopping list")
+    expect(r.text).not.toContain("LOW")
   })
 
   it("lists the shopping list in a store's aisle order", async () => {

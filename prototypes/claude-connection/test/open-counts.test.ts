@@ -15,3 +15,23 @@ describe("open packs and the minimum, per item", () => {
     expect(stockOf(counted)).toBeNull()
   })
 })
+
+describe("Low status", () => {
+  const eggs = (inStock: number, target = 6): Item => ({ id: "eggs", name: "Eggs", type: "counted", target, inStock, categoryId: "x", where: [] })
+
+  it("is half the minimum or fewer", () => {
+    expect(stockOf(eggs(4))).toBeNull()
+    expect(stockOf(eggs(3))).toBe("low")
+    expect(stockOf(eggs(1))).toBe("low")
+    expect(stockOf(eggs(0))).toBe("out")
+  })
+
+  it("still counts as short of the minimum above half", () => {
+    expect(shortfall(eggs(4))).toBe(2)
+  })
+
+  it("never shows Low for a minimum of 1, only Out", () => {
+    expect(stockOf(eggs(1, 1))).toBeNull()
+    expect(stockOf(eggs(0, 1))).toBe("out")
+  })
+})

@@ -97,8 +97,10 @@ export const entryTotal = (i: Item) => (i.entries ?? []).reduce((n, e) => n + e.
 export const needOf = (i: Item) => Math.max(shortfall(i), entryTotal(i))
 
 export type Stock = "out" | "low" | null
+/** Low means half the minimum or fewer. Between half and the minimum it's below minimum, but not Low. */
+export const LOW_AT = 0.5
 /** Only Staples are Out or Low. */
-export const stockOf = (i: Item): Stock => (!isStaple(i) ? null : i.inStock <= 0 ? "out" : fullOf(i) < i.target ? "low" : null)
+export const stockOf = (i: Item): Stock => (!isStaple(i) ? null : i.inStock <= 0 ? "out" : fullOf(i) <= i.target * LOW_AT ? "low" : null)
 
 export function unitText(i: Item, n: number) {
   if (!i.unit) return String(n)

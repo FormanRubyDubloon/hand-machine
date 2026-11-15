@@ -402,7 +402,7 @@ export const tools: Tool[] = [
       type: "object",
       properties: {
         query: { type: "string", description: "Part of a name, another name, or a category name." },
-        filter: { type: "string", enum: ["all", "staples", "low_or_out", "out", "use_soon", "not_staples"], description: "use_soon: has a use-by date in the next 7 days." },
+        filter: { type: "string", enum: ["all", "staples", "low_or_out", "out", "use_soon", "not_staples"], description: "low_or_out: Out, or Low (half the minimum or fewer). use_soon: has a use-by date in the next 7 days." },
       },
     },
     annotations: { readOnlyHint: true },
