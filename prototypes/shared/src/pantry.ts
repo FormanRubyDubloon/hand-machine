@@ -54,6 +54,11 @@ export type SharedItem = {
   openedAt?: (string | null)[]
   /** A one-off on the list: not a pantry item, stock isn't tracked. */
   oneOff?: boolean
+  /**
+   * New: made from a recipe ingredient the pantry didn't have, and not bought yet. It's on the shopping
+   * list and shown as New in the pantry app until some arrives (stock above 0).
+   */
+  review?: boolean
   /** How often it's recorded as used. Orders the Home tiles. */
   uses?: number
 }

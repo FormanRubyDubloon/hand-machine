@@ -406,19 +406,51 @@ function usePantryState() {
       )
       toast(`${recipe.name} is no longer saved to your phone`)
     },
-    /** Puts ingredients on the list from a recipe: one pack or unit each, never the recipe's amount. Returns the History entry id. */
+    /** Puts ingredients that are pantry items on the list from a recipe: one pack or unit each, never the recipe's amount. Returns the History entry id. */
     addIngredients(recipe: Recipe, rows: { itemId: string; qty: number }[]) {
       if (!rows.length) return undefined
+      const now = new Date().toISOString()
       const names = rows.map((r) => ref.current.items[r.itemId]?.name).filter(Boolean)
       return commit(
         (s) => {
           let next = s
           for (const r of rows) {
-            next = edit(next, r.itemId, (x) => ({ ...x, entries: [...(x.entries ?? []), { source: { kind: "recipe", recipe: recipe.name }, qty: r.qty, at: new Date().toISOString() }] }))
+            next = edit(next, r.itemId, (x) => ({ ...x, entries: [...(x.entries ?? []), { source: { kind: "recipe", recipe: recipe.name }, qty: r.qty, at: now }] }))
           }
           return next
         },
         { title: `Added ${nameList(names as string[])} to the shopping list`, detail: `For ${recipe.name}`, recipeId: recipe.id, itemIds: rows.map((r) => r.itemId) },
+      )
+    },
+    /**
+     * Ingredients the pantry doesn't have, put on the list from a recipe. Each becomes a pantry item with the fields
+     * the user filled in (minimum 0, none in stock), linked to the recipe ingredient and on the list, 1 of it.
+     * It's marked New until some is bought.
+     */
+    addNewIngredients(recipe: Recipe, news: { position: number; name: string; type: Item["type"]; categoryId: string; location: NonNullable<Item["location"]> }[]) {
+      if (!news.length) return undefined
+      const now = new Date().toISOString()
+      const made: Item[] = []
+      const taken = (id: string) => !!ref.current.items[id] || made.some((m) => m.id === id)
+      for (const n of news) {
+        const name = cap(n.name.trim())
+        let id = uid("item")
+        while (taken(id)) id = uid("item")
+        made.push(normalise({
+          id, name, type: n.type, target: 0, inStock: 0, open: n.type === "bulk" ? 0 : undefined, unit: n.type === "bulk" ? ["bag", "bags"] : undefined,
+          categoryId: n.categoryId, location: n.location, where: [], review: true, editedAt: now,
+          entries: [{ source: { kind: "recipe", recipe: recipe.name }, qty: 1, at: now }],
+        }))
+      }
+      return commit(
+        (s) => {
+          let next = setItems(s, byId(made))
+          next = setRecipes(next, (rs) =>
+            rs.map((r) => (r.id === recipe.id ? { ...r, ingredients: r.ingredients.map((g, k) => { const m = news.findIndex((n) => n.position === k); return m >= 0 && !g.itemId ? { ...g, itemId: made[m].id } : g }) } : r)),
+          )
+          return next
+        },
+        { title: `Added ${nameList(made.map((m) => m.name))} to the pantry and the shopping list`, detail: `New items from ${recipe.name}`, recipeId: recipe.id, itemIds: made.map((m) => m.id) },
       )
     },
     /** Sets how many of an ingredient this recipe has put on the list. Below 1 takes it off. */

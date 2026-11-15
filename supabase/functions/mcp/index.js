@@ -43,6 +43,7 @@ function toItem(r) {
     brand: r.brand ?? void 0,
     useBy: r.use_by.length ? r.use_by : void 0,
     oneOff: r.one_off || void 0,
+    review: r.needs_review || void 0,
     uses: r.uses || void 0,
     entries: r.list_entries?.length ? [...r.list_entries].sort((a, b) => a.position - b.position).map(toEntry) : void 0,
     openedAt: r.opened_at?.length ? r.opened_at : void 0,
@@ -93,6 +94,7 @@ function toRow(i, knownCategories) {
     use_by: (i.useBy ?? []).filter((d) => !!d),
     opened_at: (i.openedAt ?? []).filter((d) => !!d),
     one_off: !!i.oneOff,
+    needs_review: !!i.review,
     uses: i.uses ?? 0,
     edited_at: i.editedAt ?? (/* @__PURE__ */ new Date()).toISOString()
   };
@@ -264,7 +266,7 @@ function normalise(i) {
   while (dates.length < want) dates.push(null);
   const opened = [...i.openedAt ?? []].slice(0, open ?? 0);
   while (opened.length < (open ?? 0)) opened.push(null);
-  return { ...i, open, useBy: dates, openedAt: isBulk(i) ? opened : void 0 };
+  return { ...i, open, useBy: dates, openedAt: isBulk(i) ? opened : void 0, review: i.review && i.inStock <= 0 ? true : void 0 };
 }
 function withStock(i, n) {
   const next = Math.max(0, n);
@@ -630,7 +632,6 @@ var ingredientSchema = {
   properties: {
     text: { type: "string", description: `The recipe's own wording: "400 g tin chopped tomatoes".` },
     item: { type: "string", description: "The pantry item's id, when it's a clear match." },
-    new_item: { type: "object", properties: newItemProps, required: ["name", "type"], description: "When nothing in the pantry is similar: a new item to create (minimum 0, so it isn't a Staple)." },
     need: { type: "number", description: "Counted items: how many the recipe uses at its servings. Default 1." },
     buy: { type: "number", description: "How many to put on the list when short. Default 1." },
     partial: { type: "boolean", description: "Uses part of a unit (a clove of garlic, some milk): any stock will do." }
@@ -648,7 +649,7 @@ var recipeFields = {
   source: { type: "string", description: "Where it came from: a link, a book, a person." },
   notes: { type: "string" }
 };
-function buildIngredients(data, input, now) {
+function buildIngredients(data, input, _now) {
   if (!Array.isArray(input) || !input.length) throw new ToolError("A recipe needs its ingredients.");
   const created = [];
   const linked = [];
@@ -662,19 +663,6 @@ function buildIngredients(data, input, now) {
     if (str(g.item)) {
       itemId = findItem(all(), g.item).id;
       linked.push(`${text} \u2192 ${all()[itemId].name}`);
-    } else if (g.new_item && typeof g.new_item === "object") {
-      const n = g.new_item;
-      const name = str(n.name);
-      if (!name) throw new ToolError(`The new item for "${text}" needs a name.`);
-      const same = Object.values(all()).find((i) => matchesName(i, name));
-      if (same) {
-        itemId = same.id;
-        linked.push(`${text} \u2192 ${same.name} (already in the pantry)`);
-      } else {
-        const item = newItem(data, n, all(), now);
-        created.push(item);
-        itemId = item.id;
-      }
     } else unlinked.push(text);
     return { text, itemId, need: Math.max(1, num(g.need) ?? 1), buy: Math.max(1, num(g.buy) ?? 1), partial: g.partial === true || void 0 };
   });
@@ -855,7 +843,7 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
   {
     name: "match_ingredients",
     title: "Match ingredients to the pantry",
-    description: 'Before saving a recipe: finds the pantry items each ingredient line might mean. A line with one clear match can be linked without asking. A line with several plausible matches ("onion" when there are red and brown onions) needs the user to choose. A line with no match becomes a new item.',
+    description: `Before saving a recipe: finds the pantry items each ingredient line might mean. A line with one clear match can be linked without asking. A line with several plausible matches ("onion" when there are red and brown onions) needs the user to choose. A line with no match is left unlinked: it isn't created as a pantry item.`,
     inputSchema: { type: "object", properties: { lines: { type: "array", items: { type: "string" } } }, required: ["lines"] },
     annotations: { readOnlyHint: true },
     async run(args, { data }) {
@@ -870,9 +858,9 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
         if (best.length > 1) return `"${line}": unsure, could be ${idList(best)}. Ask the user.`;
         const core = l.replace(/[\d½¼¾⅓⅔/.,()-]+/g, " ").replace(/\b(g|kg|ml|l|tbsp|tsp|cups?|tins?|cans?|jars?|cloves?|bunch(es)?|handfuls?|pinch(es)?|of|x|large|small|medium|fresh|chopped|sliced|diced|finely|roughly|a|an|some)\b/g, " ").replace(/\s+/g, " ").trim();
         const near = core ? nearItems(data.items, core, 4) : [];
-        if (near.length > 1) return `"${line}": unsure, could be ${idList(near)}. Ask the user, or create a new item if it's none of these.`;
-        if (near.length === 1) return `"${line}": possible match \u2192 ${idList(near)}. Check with the user, or create a new item.`;
-        return `"${line}": nothing similar. Create a new item.`;
+        if (near.length > 1) return `"${line}": unsure, could be ${idList(near)}. Ask the user, or leave it unlinked if it's none of these.`;
+        if (near.length === 1) return `"${line}": possible match \u2192 ${idList(near)}. Check with the user, or leave it unlinked.`;
+        return `"${line}": nothing similar. Leave it unlinked (not in the pantry yet).`;
       }).join("\n");
     }
   },
@@ -1078,7 +1066,7 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
   {
     name: "save_recipe",
     title: "Save a recipe",
-    description: "Saves a new recipe. First run match_ingredients on the ingredient lines. Link clear matches with item; for lines with nothing similar, give new_item (it becomes a pantry item with minimum 0). If a line could mean more than one item, ask the user before saving. Every ingredient should be a pantry item; leave item and new_item out only for things like water. Afterwards, tell the user what was linked, what was created and what you asked about.",
+    description: "Saves a new recipe. First run match_ingredients on the ingredient lines. Link clear matches with item; for lines with nothing similar, leave item out: the ingredient stays on the recipe as not in the pantry yet, and no pantry item is made. It's added to the pantry when the user puts it on the shopping list. If a line could mean more than one item, ask the user before saving. Afterwards, tell the user what was linked, which ingredients aren't in the pantry yet, and what you asked about.",
     inputSchema: {
       type: "object",
       properties: {

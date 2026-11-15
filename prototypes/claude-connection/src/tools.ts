@@ -275,7 +275,6 @@ const ingredientSchema = {
   properties: {
     text: { type: "string", description: "The recipe's own wording: \"400 g tin chopped tomatoes\"." },
     item: { type: "string", description: "The pantry item's id, when it's a clear match." },
-    new_item: { type: "object", properties: newItemProps, required: ["name", "type"], description: "When nothing in the pantry is similar: a new item to create (minimum 0, so it isn't a Staple)." },
     need: { type: "number", description: "Counted items: how many the recipe uses at its servings. Default 1." },
     buy: { type: "number", description: "How many to put on the list when short. Default 1." },
     partial: { type: "boolean", description: "Uses part of a unit (a clove of garlic, some milk): any stock will do." },
@@ -298,8 +297,12 @@ const recipeFields = {
 
 type NewItems = { created: SharedItem[]; linked: string[]; unlinked: string[] }
 
-/** Turns Claude's ingredient lines into the app's, creating new items where asked. */
-function buildIngredients(data: PantryData, input: unknown, now: Date): { ingredients: SharedIngredient[] } & NewItems {
+/**
+ * Turns Claude's ingredient lines into the app's. A line with no pantry item stays on the recipe, not linked:
+ * it becomes a pantry item only when the user puts it on the shopping list (the pantry app asks for its
+ * category and location then).
+ */
+function buildIngredients(data: PantryData, input: unknown, _now: Date): { ingredients: SharedIngredient[] } & NewItems {
   if (!Array.isArray(input) || !input.length) throw new ToolError("A recipe needs its ingredients.")
   const created: SharedItem[] = []
   const linked: string[] = []
@@ -313,19 +316,6 @@ function buildIngredients(data: PantryData, input: unknown, now: Date): { ingred
     if (str(g.item)) {
       itemId = findItem(all(), g.item).id
       linked.push(`${text} → ${all()[itemId].name}`)
-    } else if (g.new_item && typeof g.new_item === "object") {
-      const n = g.new_item as Json
-      const name = str(n.name)
-      if (!name) throw new ToolError(`The new item for "${text}" needs a name.`)
-      const same = Object.values(all()).find((i) => matchesName(i, name))
-      if (same) {
-        itemId = same.id
-        linked.push(`${text} → ${same.name} (already in the pantry)`)
-      } else {
-        const item = newItem(data, n, all(), now)
-        created.push(item)
-        itemId = item.id
-      }
     } else unlinked.push(text)
     return { text, itemId, need: Math.max(1, num(g.need) ?? 1), buy: Math.max(1, num(g.buy) ?? 1), partial: g.partial === true || undefined }
   })
@@ -528,7 +518,7 @@ export const tools: Tool[] = [
     name: "match_ingredients",
     title: "Match ingredients to the pantry",
     description:
-      "Before saving a recipe: finds the pantry items each ingredient line might mean. A line with one clear match can be linked without asking. A line with several plausible matches (\"onion\" when there are red and brown onions) needs the user to choose. A line with no match becomes a new item.",
+      "Before saving a recipe: finds the pantry items each ingredient line might mean. A line with one clear match can be linked without asking. A line with several plausible matches (\"onion\" when there are red and brown onions) needs the user to choose. A line with no match is left unlinked: it isn't created as a pantry item.",
     inputSchema: { type: "object", properties: { lines: { type: "array", items: { type: "string" } } }, required: ["lines"] },
     annotations: { readOnlyHint: true },
     async run(args, { data }) {
@@ -545,9 +535,9 @@ export const tools: Tool[] = [
         // Nothing by its full name: try what's left once amounts and preparation words are gone ("1 onion, chopped" → "onion").
         const core = l.replace(/[\d½¼¾⅓⅔/.,()-]+/g, " ").replace(/\b(g|kg|ml|l|tbsp|tsp|cups?|tins?|cans?|jars?|cloves?|bunch(es)?|handfuls?|pinch(es)?|of|x|large|small|medium|fresh|chopped|sliced|diced|finely|roughly|a|an|some)\b/g, " ").replace(/\s+/g, " ").trim()
         const near = core ? nearItems(data.items, core, 4) : []
-        if (near.length > 1) return `"${line}": unsure, could be ${idList(near)}. Ask the user, or create a new item if it's none of these.`
-        if (near.length === 1) return `"${line}": possible match → ${idList(near)}. Check with the user, or create a new item.`
-        return `"${line}": nothing similar. Create a new item.`
+        if (near.length > 1) return `"${line}": unsure, could be ${idList(near)}. Ask the user, or leave it unlinked if it's none of these.`
+        if (near.length === 1) return `"${line}": possible match → ${idList(near)}. Check with the user, or leave it unlinked.`
+        return `"${line}": nothing similar. Leave it unlinked (not in the pantry yet).`
       }).join("\n")
     },
   },
@@ -760,7 +750,7 @@ export const tools: Tool[] = [
     name: "save_recipe",
     title: "Save a recipe",
     description:
-      "Saves a new recipe. First run match_ingredients on the ingredient lines. Link clear matches with item; for lines with nothing similar, give new_item (it becomes a pantry item with minimum 0). If a line could mean more than one item, ask the user before saving. Every ingredient should be a pantry item; leave item and new_item out only for things like water. Afterwards, tell the user what was linked, what was created and what you asked about.",
+      "Saves a new recipe. First run match_ingredients on the ingredient lines. Link clear matches with item; for lines with nothing similar, leave item out: the ingredient stays on the recipe as not in the pantry yet, and no pantry item is made. It's added to the pantry when the user puts it on the shopping list. If a line could mean more than one item, ask the user before saving. Afterwards, tell the user what was linked, which ingredients aren't in the pantry yet, and what you asked about.",
     inputSchema: {
       type: "object",
       properties: {
