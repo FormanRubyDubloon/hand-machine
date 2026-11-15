@@ -1,7 +1,7 @@
 import * as React from "react"
 import { toast } from "sonner"
 import {
-  findConflicts, incomingChanges, merge, mergeStores, outgoingChanges, seedState, shopAisles,
+  findConflicts, incomingChanges, merge, mergeStores, syncStartStock, outgoingChanges, seedState, shopAisles,
   type Filter, type Item, type Session, type State, type Store,
 } from "./model"
 import { isNetworkError, loadRemote, pushRemote, pushStores, readRemote, readRemoteCategories, readRemoteStores, readShared, resetRemote, writeSharedStores } from "./remote-pantry"
@@ -279,10 +279,7 @@ function useShoppingState() {
       }
       const session = now.session && {
         ...now.session,
-        startStock: {
-          ...Object.fromEntries(Object.keys(items).map((id) => [id, items[id].inStock])),
-          ...now.session.startStock,
-        },
+        startStock: syncStartStock(now.session.startStock, s.sync.snapshot, merged, items),
       }
       // Items, categories, stores and aisle numbers go through Supabase; recipes still come from the
       // pantry app's localStorage. A store edited on this phone since the last sync keeps the phone's
