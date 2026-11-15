@@ -2,14 +2,15 @@
 // Claude, so this is a first, plain take for him to review: the same side panel, one field per
 // recipe property, one row per ingredient, method as one step per line.
 import * as React from "react"
-import { PlusIcon, XIcon } from "lucide-react"
+import { ChevronDownIcon, PlusIcon, XIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { matchesName, type Ingredient, type Recipe } from "../model"
 import { usePantry } from "../state"
+import { ItemPicker } from "../link-picker"
 import { Eyebrow, Field, Segmented, SidePanel } from "../components"
 
 const meals = ["Breakfast", "Lunch", "Dinner", "Baking"] as const
@@ -116,13 +117,22 @@ export function RecipeEditor({ recipe, onClose, onCancel }: { recipe?: Recipe; o
                   if (hit) setIng(k, { itemId: hit.id })
                 }}
               />
-              <Select value={g.itemId || "none"} onValueChange={(v) => setIng(k, { itemId: v === "none" ? "" : v })}>
-                <SelectTrigger className="w-full" aria-label={`Ingredient ${k + 1} pantry item`}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Not linked</SelectItem>
-                  {pantry.map((i) => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <ItemPicker
+                text={g.text}
+                value={g.itemId && items[g.itemId] ? g.itemId : undefined}
+                onPick={(id) => setIng(k, { itemId: id })}
+                onUnlink={() => setIng(k, { itemId: "" })}
+                trigger={
+                  <button
+                    type="button"
+                    aria-label={`Ingredient ${k + 1} pantry item`}
+                    className="flex h-10 w-full min-w-0 items-center justify-between gap-1.5 border border-transparent border-b-input py-2 text-left text-sm outline-none focus-visible:border-b-ring"
+                  >
+                    <span className={cn("truncate", !(g.itemId && items[g.itemId]) && "text-muted-foreground")}>{(g.itemId && items[g.itemId]?.name) || "Not linked"}</span>
+                    <ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                  </button>
+                }
+              />
               <Input type="number" min={1} value={g.need} aria-label={`Ingredient ${k + 1} count`} onChange={(e) => setIng(k, { need: Math.max(1, parseInt(e.target.value || "1", 10)) })} />
               <span className="flex justify-center"><Checkbox checked={!!g.partial} onCheckedChange={(c) => setIng(k, { partial: !!c })} aria-label={`Ingredient ${k + 1} uses part of a unit`} /></span>
               <Button variant="ghost" size="icon-xs" aria-label={`Remove ingredient ${k + 1}`} onClick={() => set({ ingredients: draft.ingredients.filter((_, j) => j !== k) })}>
