@@ -297,6 +297,8 @@ export async function syncRecipes(local: Recipe[], base: Recipe[] | undefined, i
     const back = await fetchRecipeRows(push.map((r) => r.id))
     for (const [id, row] of Object.entries(back)) merged[id] = toRecipe(row)
   }
+  // Edit dates come from Supabase, so recipes saved here before the column existed pick theirs up now.
+  for (const [id, r] of Object.entries(merged)) if (!r.editedAt && remote[id]?.editedAt) merged[id] = { ...r, editedAt: remote[id].editedAt }
   // This computer's order, then recipes only Supabase has (by name).
   const order = [...local.map((r) => r.id), ...Object.keys(rows).filter((id) => !here[id])].filter((id) => merged[id])
   return { recipes: order.map((id) => merged[id]), pushed: push.length + remove.length, pulled }

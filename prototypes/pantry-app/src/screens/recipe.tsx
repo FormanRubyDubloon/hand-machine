@@ -276,12 +276,18 @@ export function RecipeFull({ id }: { id: string }) {
       </div>
     )
   }
-  const facts = [
+  const facts: [string, React.ReactNode][] = [
     ["Prep", recipe.prep !== undefined ? `${recipe.prep} min` : "–"],
     ["Cook", recipe.cook ? `${recipe.cook} min` : "–"],
     ["Serves", String(recipe.serves)],
     ["Last cooked", recipe.lastCooked ? shortDate(recipe.lastCooked) : "Never"],
-    ["Source", `${recipe.source ?? "–"}${recipe.addedBy ? `, added by ${recipe.addedBy === "claude" ? "Claude" : "you"}${recipe.addedAt ? ` ${shortDate(recipe.addedAt)}` : ""}` : ""}`],
+    [
+      "Source",
+      <>
+        <span className="block truncate" title={recipe.source}>{recipe.source ?? "–"}</span>
+        {recipe.addedBy && <span className="block">Added by {recipe.addedBy === "claude" ? "Claude" : "you"}{recipe.addedAt ? ` ${shortDate(recipe.addedAt)}` : ""}</span>}
+      </>,
+    ],
   ]
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-12 py-8">
@@ -312,7 +318,7 @@ export function RecipeFull({ id }: { id: string }) {
         </div>
         <dl className="grid grid-cols-5 border-y border-border">
           {facts.map(([k, v]) => (
-            <div key={k} className="flex flex-col gap-1 border-r border-border px-4 py-3 last:border-r-0">
+            <div key={k} className="flex min-w-0 flex-col gap-1 border-r border-border px-4 py-3 last:border-r-0">
               <dt><Eyebrow>{k}</Eyebrow></dt>
               <dd className="text-sm font-semibold">{v}</dd>
             </div>

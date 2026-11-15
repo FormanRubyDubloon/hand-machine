@@ -92,6 +92,8 @@ export type SharedRecipe = {
   lastCooked?: string | null
   addedBy?: "claude" | "you"
   addedAt?: string
+  /** When the recipe was last changed (not when it was cooked or marked want-to-cook). */
+  editedAt?: string
 }
 
 export type SharedStore = {

@@ -4,7 +4,6 @@ import * as React from "react"
 import { UploadIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   daysUntil, dateText, haveText, isBulk, isStaple, locationLabel, locations, money, needOf, plural, soonest, stockOf, unitWord,
@@ -12,7 +11,7 @@ import {
 } from "../model"
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
-import { FilterGroup, FilterSidebar, PageTitle, Segmented, Stepper, StockPill } from "../components"
+import { FilterGroup, FilterSidebar, PageTitle, Segmented, SortSelect, Stepper, StockPill } from "../components"
 import { ItemPanel } from "./item-panel"
 
 type Show = "staples" | "not" | "soon"
@@ -102,17 +101,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
           subtitle={`${plural(rows.length, "item")} · ${plural(staples, "Staple")} · ${below} below minimum · sorted by ${sorts[sort].summary}`}
         >
           <div className="flex items-center gap-3">
-            <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
-              <SelectTrigger aria-label="Sort by" className="w-[190px]">
-                <span className="text-muted-foreground">Sort</span>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(sorts) as Sort[]).map((k) => (
-                  <SelectItem key={k} value={k}>{sorts[k].label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SortSelect value={sort} onChange={setSort} options={(Object.keys(sorts) as Sort[]).map((k) => ({ value: k, label: sorts[k].label }))} />
             {/* Matches the LOW and OUT pills in the Status column; works alongside the filters on the left. */}
             <Segmented
               label="Stock"
