@@ -11,7 +11,7 @@
 // Stock, list and recipe rules are the pantry app's own (prototypes/pantry-app/src/model.ts).
 import {
   amountOf, byUseFirst, cap, distance, entryTotal, haveText, isBulk, isStaple, lower, matchesName, namesOf, needOf, normalise, plural,
-  recipeInfo, settle, soldAt, stockOf, aisleOrder, listRows, todayIso, withStock, type Items, type Reason,
+  recipeInfo, settle, soldAt, stockOf, aisleOrder, categoriesAtoZ, listRows, todayIso, withStock, type Items, type Reason,
 } from "../../pantry-app/src/model"
 import { unitPair } from "../../shared/src/rows"
 import type { Category, Location, SharedIngredient, SharedItem, SharedRecipe, SharedStore } from "../../shared/src/pantry"
@@ -226,7 +226,7 @@ function findCategory(data: PantryData, ref: unknown): string {
   const c = data.categories.find((x) => x.id === q || x.name.toLowerCase() === q.toLowerCase())
   if (c) return c.id
   throw new ToolError(
-    `There's no category "${q}". Use one that exists (${data.categories.map((x) => x.name).join(", ")}). Claude can't add categories yet.`,
+    `There's no category "${q}". Use one that exists (${categoriesAtoZ(data.categories).map((x) => x.name).join(", ")}). Claude can't add categories yet.`,
   )
 }
 
@@ -454,7 +454,7 @@ export const tools: Tool[] = [
         const elsewhere = rows.filter((r) => !soldAt(r.item, store))
         if (elsewhere.length) out.push(`Not sold at ${store.name} (or no aisle set):`, ...elsewhere.map(line))
       } else {
-        for (const c of [...data.categories, { id: "", name: "No category" }]) {
+        for (const c of [...categoriesAtoZ(data.categories), { id: "", name: "No category" }]) {
           const here = rows.filter((r) => (r.item.categoryId || "") === c.id || (c.id === "" && !data.categories.some((x) => x.id === r.item.categoryId)))
           if (here.length) out.push(`${c.name}:`, ...here.map(line))
         }
@@ -570,7 +570,7 @@ export const tools: Tool[] = [
         const numbered = aisleOrder(s, data.categories).filter((c) => s.aisles[c.id] != null)
         return `- ${s.name} [id: ${s.id}]${s.kind ? ` · ${s.kind}` : ""}: ${numbered.map((c) => `${s.aisles[c.id]} ${c.name}`).join(", ") || "no aisles set"}`
       })
-      return [`Categories: ${data.categories.map((c) => `${c.name} [id: ${c.id}]`).join(", ")}`, "Stores:", ...stores].join("\n")
+      return [`Categories: ${categoriesAtoZ(data.categories).map((c) => `${c.name} [id: ${c.id}]`).join(", ")}`, "Stores:", ...stores].join("\n")
     },
   },
 
