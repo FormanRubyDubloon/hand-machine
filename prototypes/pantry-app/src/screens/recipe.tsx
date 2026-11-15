@@ -184,8 +184,8 @@ function recipeQty(row: IngredientRow, recipe: Recipe) {
   return (row.item.entries ?? []).filter((e) => e.source.kind === "recipe" && e.source.recipe === recipe.name).reduce((n, e) => n + e.qty, 0)
 }
 function IngredientLine({
-  row, recipe, position, factor, onAdd, onSet, onAddPack,
-}: { row: IngredientRow; recipe: Recipe; position: number; factor: number; onAdd: () => void; onSet: (n: number) => void; onAddPack: () => void }) {
+  row, recipe, position, serves, factor, onAdd, onSet, onAddPack,
+}: { row: IngredientRow; recipe: Recipe; position: number; serves: number; factor: number; onAdd: () => void; onSet: (n: number) => void; onAddPack: () => void }) {
   const qty = recipeQty(row, recipe)
   const onList = qty > 0
   const listedElsewhere = !onList && isListedItem(row, recipe)
@@ -215,7 +215,7 @@ function IngredientLine({
             {row.item && (
               <>
                 {/* Opens the item's side panel over the full-screen recipe; from the side panel this expands the recipe first. */}
-                <a className="underline underline-offset-4" href={href({ name: "recipe-full", id: recipe.id, item: row.item.id })} onClick={(e) => e.stopPropagation()}>{row.item.name}</a>
+                <a className="underline underline-offset-4" href={href({ name: "recipe-full", id: recipe.id, item: row.item.id, serves })} onClick={(e) => e.stopPropagation()}>{row.item.name}</a>
                 {row.item.packSize ? ` (${measureText(row.item.packSize.amount, row.item.packSize.measure)} ${row.item.unit?.[0] ?? "pack"})` : ""} ·{" "}
               </>
             )}
@@ -319,6 +319,7 @@ export function RecipeBody({ recipe, serves, setServes, columns }: { recipe: Rec
             row={row}
             recipe={recipe}
             position={k}
+            serves={serves}
             factor={factor}
             onAdd={() => list.add([k])}
             onSet={(n) => row.item && actions.setIngredientQty(recipe, row.item.id, n)}
@@ -405,7 +406,7 @@ export function RecipePanel({ id, edit, onClose }: { id?: string; edit?: boolean
         description={recipe ? metaLine(recipe) : undefined}
         headerActions={
           recipe && (
-            <Button variant="outline" size="icon-sm" aria-label="Full screen" title="Full screen" onClick={() => navigate({ name: "recipe-full", id: recipe.id })}>
+            <Button variant="outline" size="icon-sm" aria-label="Full screen" title="Full screen" onClick={() => navigate({ name: "recipe-full", id: recipe.id, serves })}>
               <Maximize2Icon />
             </Button>
           )
@@ -435,10 +436,10 @@ export function RecipePanel({ id, edit, onClose }: { id?: string; edit?: boolean
 
 // ---------- REC-10 full screen ----------
 
-export function RecipeFull({ id, item }: { id: string; item?: string }) {
+export function RecipeFull({ id, item, serves: initial }: { id: string; item?: string; serves?: number }) {
   const { db } = usePantry()
   const recipe = db.recipes.find((r) => r.id === id)
-  const [serves, setServes] = React.useState(recipe?.serves ?? 2)
+  const [serves, setServes] = React.useState(initial ?? recipe?.serves ?? 2)
   const [cooked, setCooked] = React.useState(false)
   const [remove, setRemove] = React.useState(false)
   if (!recipe) {
@@ -501,7 +502,7 @@ export function RecipeFull({ id, item }: { id: string; item?: string }) {
       </div>
       <CookedDialog open={cooked} onOpenChange={setCooked} recipe={recipe} serves={serves} />
       <DeleteRecipeDialog open={remove} onOpenChange={setRemove} recipe={recipe} onDone={() => navigate({ name: "recipes", tab: "cook" })} />
-      <ItemPanel id={item} onClose={() => navigate({ name: "recipe-full", id: recipe.id })} />
+      <ItemPanel id={item} onClose={() => navigate({ name: "recipe-full", id: recipe.id, serves })} />
     </div>
   )
 }
