@@ -392,34 +392,50 @@ function usePantryState() {
     },
 
     // ----- recipes -----
-    /** Puts what's short on the list, marked with the recipe. */
-    wantToCook(recipe: Recipe, rows: { itemId: string; qty: number }[]) {
-      const entryId = commit(
+    /** Want to cook only marks the recipe, so the phone saves it for the shop. What to buy is put on the list from the ingredients. */
+    wantToCook(recipe: Recipe) {
+      return commit(
+        (s) => setRecipes(s, (rs) => rs.map((r) => (r.id === recipe.id ? { ...r, wantToCook: true } : r))),
+        { title: `Want to cook ${recipe.name}`, detail: "Saved to the phone", recipeId: recipe.id },
+      )
+    },
+    unwant(recipe: Recipe) {
+      commit(
+        (s) => setRecipes(s, (rs) => rs.map((r) => (r.id === recipe.id ? { ...r, wantToCook: false } : r))),
+        { title: `No longer want to cook ${recipe.name}`, detail: "Items you added from it stay on the list", recipeId: recipe.id },
+      )
+      toast(`${recipe.name} is no longer saved to your phone`)
+    },
+    /** Puts ingredients on the list from a recipe: one pack or unit each, never the recipe's amount. Returns the History entry id. */
+    addIngredients(recipe: Recipe, rows: { itemId: string; qty: number }[]) {
+      if (!rows.length) return undefined
+      const names = rows.map((r) => ref.current.items[r.itemId]?.name).filter(Boolean)
+      return commit(
         (s) => {
-          let next = setRecipes(s, (rs) => rs.map((r) => (r.id === recipe.id ? { ...r, wantToCook: true } : r)))
+          let next = s
           for (const r of rows) {
             next = edit(next, r.itemId, (x) => ({ ...x, entries: [...(x.entries ?? []), { source: { kind: "recipe", recipe: recipe.name }, qty: r.qty, at: new Date().toISOString() }] }))
           }
           return next
         },
-        { title: `Want to cook ${recipe.name}`, detail: rows.length ? `Added ${plural(rows.length, "thing")} to the shopping list` : "Saved to the phone", recipeId: recipe.id, itemIds: rows.map((r) => r.itemId) },
+        { title: `Added ${nameList(names as string[])} to the shopping list`, detail: `For ${recipe.name}`, recipeId: recipe.id, itemIds: rows.map((r) => r.itemId) },
       )
-      return entryId
     },
-    unwant(recipe: Recipe) {
+    /** Sets how many of an ingredient this recipe has put on the list. Below 1 takes it off. */
+    setIngredientQty(recipe: Recipe, itemId: string, qty: number) {
+      const i = ref.current.items[itemId]
+      if (!i) return
+      const mine = (e: { source: { kind: string; recipe?: string } }) => e.source.kind === "recipe" && e.source.recipe === recipe.name
       commit(
-        (s) => {
-          let next = setRecipes(s, (rs) => rs.map((r) => (r.id === recipe.id ? { ...r, wantToCook: false } : r)))
-          for (const i of Object.values(next.items)) {
-            if (i.entries?.some((e) => e.source.kind === "recipe" && e.source.recipe === recipe.name)) {
-              next = edit(next, i.id, (x) => ({ ...x, entries: x.entries!.filter((e) => !(e.source.kind === "recipe" && e.source.recipe === recipe.name)) }))
-            }
-          }
-          return next
-        },
-        { title: `No longer want to cook ${recipe.name}`, detail: "Its items came off the shopping list", recipeId: recipe.id },
+        (s) =>
+          edit(s, itemId, (x) => {
+            const rest = (x.entries ?? []).filter((e) => !mine(e))
+            const was = (x.entries ?? []).filter(mine)
+            if (qty < 1) return { ...x, entries: rest }
+            return { ...x, entries: [...rest, { source: { kind: "recipe", recipe: recipe.name }, qty, at: was[0]?.at ?? new Date().toISOString() }] }
+          }),
+        { title: qty < 1 ? `Took ${i.name} off the shopping list` : `${i.name} on the list: ${qty}`, detail: `For ${recipe.name}`, recipeId: recipe.id, itemIds: [itemId], key: `ingredient:${recipe.id}:${itemId}` },
       )
-      toast(`${recipe.name} is off the list`, { description: "Its items came off the shopping list." })
     },
     cooked(recipe: Recipe, counts: Record<string, number>, finished: string[]) {
       const parts: string[] = []
