@@ -5,6 +5,7 @@ import { CheckIcon, MinusIcon, PlusIcon, Undo2Icon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { stockOf, whenText, type HistoryEntry, type IngredientStatus, type Item, type Who } from "./model"
@@ -367,5 +368,22 @@ export function Empty({ title, children, actions }: { title: string; children: R
       <div className="text-sm text-muted-foreground">{children}</div>
       {actions && <div className="flex gap-2 pt-2">{actions}</div>}
     </div>
+  )
+}
+
+/** "Sort  A–Z ⌄": one dropdown for the pantry and recipe tables. */
+export function SortSelect<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[] }) {
+  return (
+    <Select value={value} onValueChange={(v) => onChange(v as T)}>
+      <SelectTrigger aria-label="Sort by" className="w-[190px]">
+        <span className="text-muted-foreground">Sort</span>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }

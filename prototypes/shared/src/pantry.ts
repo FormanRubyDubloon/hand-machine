@@ -36,6 +36,8 @@ export type SharedItem = {
   where: string[]
   entries?: ListEntry[]
   editedAt?: string
+  /** When the item was first added. Read from Supabase (created_at); never written back. */
+  addedAt?: string
 
   // ----- pantry app only -----
   location?: Location
@@ -90,6 +92,8 @@ export type SharedRecipe = {
   lastCooked?: string | null
   addedBy?: "claude" | "you"
   addedAt?: string
+  /** When the recipe was last changed (not when it was cooked or marked want-to-cook). */
+  editedAt?: string
 }
 
 export type SharedStore = {

@@ -11,7 +11,7 @@ import {
 } from "../model"
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
-import { FilterGroup, FilterSidebar, PageTitle, Segmented, Stepper, StockPill } from "../components"
+import { FilterGroup, FilterSidebar, PageTitle, Segmented, SortSelect, Stepper, StockPill } from "../components"
 import { ItemPanel } from "./item-panel"
 
 type Show = "staples" | "not" | "soon"
@@ -34,14 +34,26 @@ function matches(i: Item, f: Filters, skip?: keyof Filters) {
   return true
 }
 
-/** Soonest use-by first; nothing in stock goes last. */
-const byUseBy = (a: Item, b: Item) => (soonest(a) ?? "9999").localeCompare(soonest(b) ?? "9999") || a.name.localeCompare(b.name)
+type Sort = "useBy" | "name" | "added" | "edited"
+
+const byName = (a: Item, b: Item) => a.name.localeCompare(b.name)
+/** Newest first; an item with no date goes last. */
+const newest = (get: (i: Item) => string | undefined) => (a: Item, b: Item) => (get(b) ?? "").localeCompare(get(a) ?? "") || byName(a, b)
+
+const sorts: Record<Sort, { label: string; summary: string; compare: (a: Item, b: Item) => number }> = {
+  // Soonest use-by first; nothing in stock goes last.
+  useBy: { label: "Use by date", summary: "use-by date", compare: (a, b) => (soonest(a) ?? "9999").localeCompare(soonest(b) ?? "9999") || byName(a, b) },
+  name: { label: "A–Z", summary: "A–Z", compare: byName },
+  added: { label: "Date added", summary: "date added, newest first", compare: newest((i) => i.addedAt) },
+  edited: { label: "Date edited", summary: "date edited, newest first", compare: newest((i) => i.editedAt) },
+}
 
 export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry" }> }) {
   const { items, db, actions } = usePantry()
+  const [sort, setSort] = React.useState<Sort>("name")
   const [f, setF] = React.useState<Filters>({ location: "all", show: null, type: null, aisle: null, stock: "all" })
   const all = Object.values(items).filter((i) => !i.oneOff)
-  const rows = all.filter((i) => matches(i, f)).sort(byUseBy)
+  const rows = all.filter((i) => matches(i, f)).sort(sorts[sort].compare)
   const count = (k: keyof Filters, test: (i: Item) => boolean) => all.filter((i) => matches(i, f, k) && test(i)).length
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) => setF({ ...f, [k]: v })
   const category = (id: string) => db.categories.find((c) => c.id === id)?.name ?? "–"
@@ -86,9 +98,10 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
       <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-8 py-7">
         <PageTitle
           title={title}
-          subtitle={`${plural(rows.length, "item")} · ${plural(staples, "Staple")} · ${below} below minimum · sorted by use-by date`}
+          subtitle={`${plural(rows.length, "item")} · ${plural(staples, "Staple")} · ${below} below minimum · sorted by ${sorts[sort].summary}`}
         >
           <div className="flex items-center gap-3">
+            <SortSelect value={sort} onChange={setSort} options={(Object.keys(sorts) as Sort[]).map((k) => ({ value: k, label: sorts[k].label }))} />
             {/* Matches the LOW and OUT pills in the Status column; works alongside the filters on the left. */}
             <Segmented
               label="Stock"

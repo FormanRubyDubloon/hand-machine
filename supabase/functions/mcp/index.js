@@ -46,7 +46,8 @@ function toItem(r) {
     uses: r.uses || void 0,
     entries: r.list_entries?.length ? [...r.list_entries].sort((a, b) => a.position - b.position).map(toEntry) : void 0,
     openedAt: r.opened_at?.length ? r.opened_at : void 0,
-    editedAt: r.edited_at
+    editedAt: r.edited_at,
+    addedAt: r.created_at
   };
 }
 function toRecipe(r) {
@@ -67,7 +68,8 @@ function toRecipe(r) {
     notes: [r.intro, r.notes].filter(Boolean).join("\n\n") || void 0,
     lastCooked: r.last_cooked,
     addedBy: r.added_by,
-    addedAt: r.added_at
+    addedAt: r.added_at,
+    editedAt: r.edited_at
   };
 }
 var unitText = (u) => u?.[0] ?? null;
@@ -131,7 +133,8 @@ function recipeRows(recipes, before, items) {
     soon: r.soon ?? null,
     last_cooked: r.lastCooked ?? null,
     added_by: r.addedBy ?? "you",
-    added_at: r.addedAt ?? (/* @__PURE__ */ new Date()).toISOString()
+    added_at: r.addedAt ?? (/* @__PURE__ */ new Date()).toISOString(),
+    edited_at: r.editedAt ?? r.addedAt ?? (/* @__PURE__ */ new Date()).toISOString()
   }));
   const lines = recipes.flatMap((r) => {
     const groups = groupsFor(r, before[r.id]);
@@ -1098,7 +1101,8 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
         id: freshId(slug(name), (id) => ctx.data.recipes.some((r) => r.id === id) || !!ctx.data.recipeRows[id]),
         name,
         ingredients: built.ingredients,
-        ...recipeFrom(args, { addedBy: "claude", addedAt: now.toISOString() })
+        ...recipeFrom(args, { addedBy: "claude", addedAt: now.toISOString() }),
+        editedAt: now.toISOString()
       };
       const detail = [
         `Linked ${plural(built.linked.length, "ingredient")}`,
@@ -1413,7 +1417,7 @@ ${recipeLine(recipe, ctx.data.items)}`;
       const clash = ctx.data.recipes.find((x) => x.id !== r.id && x.name.toLowerCase() === name.toLowerCase());
       if (clash) throw new ToolError(`There's already a recipe called ${clash.name}.`);
       const built = c.ingredients !== void 0 ? buildIngredients(ctx.data, c.ingredients, ctx.now()) : null;
-      const next = { ...r, ...recipeFrom(c, r), id: r.id, name, ingredients: built?.ingredients ?? r.ingredients };
+      const next = { ...r, ...recipeFrom(c, r), id: r.id, name, ingredients: built?.ingredients ?? r.ingredients, editedAt: ctx.now().toISOString() };
       const renamed = name !== r.name ? Object.values(ctx.data.items).filter((i) => i.entries?.some((e) => e.source.kind === "recipe" && e.source.recipe === r.name)).map((i) => ({ ...i, entries: i.entries.map((e) => e.source.kind === "recipe" && e.source.recipe === r.name ? { ...e, source: { kind: "recipe", recipe: name } } : e) })) : [];
       await commit(ctx, {
         items: [...built?.created ?? [], ...renamed],

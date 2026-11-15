@@ -29,7 +29,7 @@ export function sortKeys(v: unknown): unknown {
  */
 export function fingerprint(i: SharedItem | undefined): string {
   if (!i) return ""
-  const { editedAt: _e, where: _w, ...rest } = i
+  const { editedAt: _e, addedAt: _a, where: _w, ...rest } = i
   return JSON.stringify(sortKeys(rest))
 }
 

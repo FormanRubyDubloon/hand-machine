@@ -262,7 +262,7 @@ function usePantryState() {
       commit(
         (s) => {
           const bought = before ? draft.inStock - before.inStock : 0
-          const item = normalise({ ...draft, entries: bought > 0 ? settle(draft.entries, bought) : draft.entries, editedAt: new Date().toISOString() })
+          const item = normalise({ ...draft, entries: bought > 0 ? settle(draft.entries, bought) : draft.entries, editedAt: new Date().toISOString(), addedAt: draft.addedAt ?? new Date().toISOString() })
           return setItems(s, { [draft.id]: item })
         },
         {
@@ -442,10 +442,11 @@ function usePantryState() {
       toast(`Cooked ${recipe.name}`, { description: "Stock updated." })
     },
     saveRecipe(recipe: Recipe, isNew: boolean) {
+      const saved: Recipe = { ...recipe, editedAt: new Date().toISOString() }
       const before = ref.current.db.recipes.find((r) => r.id === recipe.id)
       commit(
         (s) => {
-          let next = setRecipes(s, (rs) => (isNew ? [...rs, recipe] : rs.map((r) => (r.id === recipe.id ? recipe : r))))
+          let next = setRecipes(s, (rs) => (isNew ? [...rs, saved] : rs.map((r) => (r.id === recipe.id ? saved : r))))
           // List entries are labelled with the recipe's name, so a rename carries across.
           if (before && before.name !== recipe.name) {
             for (const i of Object.values(next.items)) {

@@ -784,6 +784,7 @@ export const tools: Tool[] = [
         name,
         ingredients: built.ingredients,
         ...recipeFrom(args, { addedBy: "claude", addedAt: now.toISOString() }),
+        editedAt: now.toISOString(),
       }
       const detail = [
         `Linked ${plural(built.linked.length, "ingredient")}`,
@@ -1068,7 +1069,7 @@ export const tools: Tool[] = [
       const clash = ctx.data.recipes.find((x) => x.id !== r.id && x.name.toLowerCase() === name.toLowerCase())
       if (clash) throw new ToolError(`There's already a recipe called ${clash.name}.`)
       const built = c.ingredients !== undefined ? buildIngredients(ctx.data, c.ingredients, ctx.now()) : null
-      const next: SharedRecipe = { ...r, ...recipeFrom(c, r), id: r.id, name, ingredients: built?.ingredients ?? r.ingredients }
+      const next: SharedRecipe = { ...r, ...recipeFrom(c, r), id: r.id, name, ingredients: built?.ingredients ?? r.ingredients, editedAt: ctx.now().toISOString() }
       // A renamed recipe's list entries follow it.
       const renamed = name !== r.name
         ? Object.values(ctx.data.items).filter((i) => i.entries?.some((e) => e.source.kind === "recipe" && e.source.recipe === r.name))

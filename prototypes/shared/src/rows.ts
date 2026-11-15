@@ -45,6 +45,7 @@ export type Row = {
   list_entries: ListEntryRow[] | null
   opened_at: string[]
   edited_at: string
+  created_at?: string
 }
 
 /** Notion's unit is free text ("bag", "350 g", "kg"); the app wants [one, many]. A guess, for display. */
@@ -78,6 +79,7 @@ export function toItem(r: Row): SharedItem {
     entries: r.list_entries?.length ? [...r.list_entries].sort((a, b) => a.position - b.position).map(toEntry) : undefined,
     openedAt: r.opened_at?.length ? r.opened_at : undefined,
     editedAt: r.edited_at,
+    addedAt: r.created_at,
   }
 }
 
@@ -99,6 +101,7 @@ export type RecipeRow = {
   last_cooked: string | null
   added_by: "claude" | "you"
   added_at: string
+  edited_at?: string
   recipe_ingredients: { position: number; text: string; group_name?: string | null; item_id: string | null; need: number; buy: number; partial: boolean; uses: number | null }[]
 }
 
@@ -128,6 +131,7 @@ export function toRecipe(r: RecipeRow): SharedRecipe {
     lastCooked: r.last_cooked,
     addedBy: r.added_by,
     addedAt: r.added_at,
+    editedAt: r.edited_at,
   }
 }
 
@@ -212,6 +216,7 @@ export function recipeRows(recipes: SharedRecipe[], before: Record<string, Recip
     last_cooked: r.lastCooked ?? null,
     added_by: r.addedBy ?? "you",
     added_at: r.addedAt ?? new Date().toISOString(),
+    edited_at: r.editedAt ?? r.addedAt ?? new Date().toISOString(),
   }))
   const lines = recipes.flatMap((r) => {
     const groups = groupsFor(r, before[r.id])

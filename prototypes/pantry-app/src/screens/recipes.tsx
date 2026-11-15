@@ -13,7 +13,7 @@ import {
 import { minutesText } from "../../../shared/src/pantry"
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
-import { Eyebrow, FilterGroup, FilterSidebar, PageTitle } from "../components"
+import { Eyebrow, FilterGroup, FilterSidebar, PageTitle, SortSelect } from "../components"
 import { ClaudeExamples } from "./claude"
 import { CookedDialog, RecipePanel, WantButton } from "./recipe"
 
@@ -135,10 +135,20 @@ function WhatToCook({ ranked }: { ranked: Ranked[] }) {
 }
 
 type Show = "can" | "nearly" | "want"
+type Sort = "name" | "added" | "edited"
+const byName = (a: Ranked, b: Ranked) => a.recipe.name.localeCompare(b.recipe.name)
+/** Newest first; a recipe with no date goes last. */
+const newest = (get: (r: Recipe) => string | undefined) => (a: Ranked, b: Ranked) => (get(b.recipe) ?? "").localeCompare(get(a.recipe) ?? "") || byName(a, b)
+const sorts: Record<Sort, { label: string; compare: (a: Ranked, b: Ranked) => number }> = {
+  name: { label: "A–Z", compare: byName },
+  added: { label: "Date added", compare: newest((r) => r.addedAt) },
+  edited: { label: "Date edited", compare: newest((r) => r.editedAt) },
+}
 function AllRecipes({ ranked }: { ranked: Ranked[] }) {
   const [show, setShow] = React.useState<Show | null>(null)
   const [meal, setMeal] = React.useState<string | null>(null)
   const [time, setTime] = React.useState<string | null>(null)
+  const [sort, setSort] = React.useState<Sort>("name")
   const showTest: Record<Show, (r: Ranked) => boolean> = {
     can: (r) => r.info.canCook,
     nearly: (r) => !r.info.canCook && r.info.short.length <= 2,
@@ -146,7 +156,7 @@ function AllRecipes({ ranked }: { ranked: Ranked[] }) {
   }
   const pass = (r: Ranked, skip?: string) =>
     (skip === "show" || !show || showTest[show](r)) && (skip === "meal" || !meal || r.recipe.meal === meal) && (skip === "time" || !time || minutesBand(r.recipe.minutes) === time)
-  const rows = ranked.filter((r) => pass(r))
+  const rows = ranked.filter((r) => pass(r)).sort(sorts[sort].compare)
   const count = (skip: string, test: (r: Ranked) => boolean) => ranked.filter((r) => pass(r, skip) && test(r)).length
   return (
     <div className="flex min-h-0 flex-1">
@@ -178,7 +188,10 @@ function AllRecipes({ ranked }: { ranked: Ranked[] }) {
           ]}
         />
       </FilterSidebar>
-      <div className="min-w-0 flex-1 overflow-y-auto px-8 py-6">
+      <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-8 py-6">
+        <div className="flex justify-end">
+          <SortSelect value={sort} onChange={setSort} options={(Object.keys(sorts) as Sort[]).map((k) => ({ value: k, label: sorts[k].label }))} />
+        </div>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -239,7 +252,7 @@ export function RecipesScreen({ route }: { route: Extract<Route, { name: "recipe
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-col gap-4 px-8 pt-7">
-        <PageTitle title="Recipes" subtitle={`${plural(ranked.length, "recipe")} · ${canCook} you can cook now · what needs using first is at the top`} />
+        <PageTitle title="Recipes" subtitle={`${plural(ranked.length, "recipe")} · ${canCook} you can cook now${route.tab === "cook" ? " · what needs using first is at the top" : ""}`} />
         <Tabs value={route.tab} onValueChange={(tab) => navigate({ name: "recipes", tab: tab as "cook" | "all" })}>
           <TabsList variant="line" className="h-10 gap-6 p-0">
             <TabsTrigger value="cook" className="px-0 text-xs font-semibold tracking-widest uppercase">What to cook</TabsTrigger>
