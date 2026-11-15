@@ -61,6 +61,12 @@ export type Db = {
   seenItems: Items
   /** The items as they were at the last sync with Supabase. Undefined until the first sync. */
   syncedItems?: Items
+  /** The categories as they were at the last sync with Supabase. */
+  syncedCategories?: Category[]
+  /** The stores, with their aisle numbers, as they were at the last sync with Supabase. */
+  syncedStores?: Store[]
+  /** The recipes as they were at the last sync with Supabase. */
+  syncedRecipes?: Recipe[]
   /** When this computer last synced with Supabase. */
   syncedAt?: string
 }

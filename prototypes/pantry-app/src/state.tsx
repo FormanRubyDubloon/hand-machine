@@ -6,9 +6,13 @@ import { toast } from "sonner"
 import {
   at, DB_KEY, fillAisles, ITEMS_KEY, PHONE_KEY, readJson, seedCategories, seedItems, seedPantryItems, seedRecipes, seedStores, writeJson,
 } from "../../shared/src/pantry"
-import { pendingIds, fingerprint, syncItems } from "./sync"
 import {
-  cap, haveText, isBulk, isToday, lower, needOf, normalise, plural, settle, timeText, todayIso, unitText, withStock,
+  fingerprint, pendingCategoryIds, pendingIds, pendingRecipeIds, pendingStoreIds, recipeFingerprint, storeFingerprint, syncCategories, syncItems,
+  syncRecipes, syncStores,
+} from "./sync"
+import { deleteCategories } from "../../shared/src/pantry-remote"
+import {
+  cap, haveText, nameList, isBulk, isToday, lower, needOf, normalise, plural, settle, timeText, todayIso, unitText, withStock,
   type Conflict, type Db, type HistoryEntry, type Item, type Items, type Recipe, type Snapshot, type Store, type Who,
 } from "./model"
 
@@ -535,13 +539,22 @@ function usePantryState() {
     },
 
     // ----- sync with Supabase -----
-    /** Sends this computer's item changes to Supabase and brings back anything that changed there. */
+    /**
+     * Sends this computer's category, store, item and recipe changes to Supabase and brings back
+     * anything that changed there. Categories go first (so stores can number them and items can
+     * point at them), recipes after the items (so ingredients can link to new ones), and removed
+     * categories are deleted last (once their items have moved). Which store is the default stays here.
+     */
     async syncNow() {
       if (syncing) return
       setSyncing(true)
       const started = ref.current
       try {
+        const cats = await syncCategories(started.db.categories, started.db.syncedCategories)
+        const shops = await syncStores(started.db.stores, started.db.syncedStores, cats.categories)
         const result = await syncItems(started.items, started.db.syncedItems)
+        const cookbook = await syncRecipes(started.db.recipes, started.db.syncedRecipes, new Set(Object.keys(result.items)))
+        const kept = await deleteCategories(cats.remove)
         const now = new Date().toISOString()
         setState((s) => {
           // Anything edited while the sync ran is kept as it is now and goes out next time.
@@ -552,21 +565,48 @@ function usePantryState() {
               else delete items[id]
             }
           }
-          return { items, db: { ...s.db, syncedItems: result.items, syncedAt: now } }
+          // Categories changed while the sync ran stay as they are now and go out next time.
+          const categories = JSON.stringify(s.db.categories) === JSON.stringify(started.db.categories) ? cats.categories : s.db.categories
+          // Recipes changed while the sync ran stay as they are now and go out next time.
+          const recipesUnchanged = s.db.recipes.length === started.db.recipes.length && s.db.recipes.every((r, k) => recipeFingerprint(r) === recipeFingerprint(started.db.recipes[k]))
+          const storesUnchanged = s.db.stores.length === started.db.stores.length && s.db.stores.every((x, k) => storeFingerprint(x) === storeFingerprint(started.db.stores[k]))
+          const storeList = storesUnchanged ? shops.stores : s.db.stores
+          // The default store stays this computer's choice, unless it was deleted elsewhere.
+          const defaultStore = storeList.some((x) => x.id === s.db.defaultStoreId) ? s.db.defaultStoreId : storeList[0]?.id ?? ""
+          return {
+            items,
+            db: {
+              ...s.db,
+              categories,
+              // Stores changed while the sync ran stay as they are now and go out next time.
+              stores: (storesUnchanged ? shops.stores : s.db.stores).map((x) => fillAisles(x, categories)),
+              defaultStoreId: defaultStore,
+              syncedStores: shops.stores,
+              recipes: recipesUnchanged ? cookbook.recipes : s.db.recipes,
+              syncedRecipes: cookbook.recipes,
+              syncedItems: result.items,
+              // A category Supabase wouldn't delete yet stays in the base, so the next sync tries again.
+              syncedCategories: [...cats.categories, ...kept],
+              syncedAt: now,
+            },
+          }
         })
+        const sent = result.pushed + cats.pushed + shops.pushed + cookbook.pushed - kept.length
+        const received = result.pulled + cats.pulled + shops.pulled + cookbook.pulled
         const parts = [
-          result.pushed ? `${plural(result.pushed, "change")} sent` : "",
-          result.pulled ? `${plural(result.pulled, "change")} received` : "",
+          sent ? `${plural(sent, "change")} sent` : "",
+          received ? `${plural(received, "change")} received` : "",
         ].filter(Boolean)
         const notes = [
           result.clashes ? `${plural(result.clashes, "item")} changed in both places: the later edit won.` : "",
-          result.uncategorised ? `${plural(result.uncategorised, "item")} saved without an aisle: new aisles stay on this computer.` : "",
+          result.uncategorised ? `${plural(result.uncategorised, "item")} saved without a category: Supabase doesn't have it.` : "",
+          kept.length ? `${nameList(kept.map((c) => c.name))} stayed in Supabase: items there still use ${kept.length === 1 ? "it" : "them"}. Sync tries again next time.` : "",
         ].filter(Boolean)
         toast(parts.length ? `Synced · ${parts.join(", ")}` : "Already up to date", { description: notes.join(" ") || undefined })
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e)
         toast.error("Couldn't sync", {
-          description: /row-level security/i.test(message) ? "Supabase refused the write. Are you signed in, and has the auth migration been applied?" : message,
+          description: /row-level security/i.test(message) ? "Supabase refused the write. Are you signed in, and have all the migrations in supabase/migrations been applied?" : message,
         })
       } finally {
         setSyncing(false)
@@ -679,7 +719,11 @@ function usePantryState() {
   }
 
   const store = state.db.stores.find((s) => s.id === state.db.defaultStoreId) ?? state.db.stores[0]
-  const pending = pendingIds(state.items, state.db.syncedItems).length
+  const pending =
+    pendingIds(state.items, state.db.syncedItems).length +
+    pendingCategoryIds(state.db.categories, state.db.syncedCategories).length +
+    pendingStoreIds(state.db.stores, state.db.syncedStores).length +
+    pendingRecipeIds(state.db.recipes, state.db.syncedRecipes).length
   return { state, items: state.items, db: state.db, actions, phoneSyncedAt, store, syncing, pending }
 }
 

@@ -11,26 +11,26 @@ import {
 } from "../model"
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
-import { FilterGroup, FilterSidebar, PageTitle, Stepper, StockPill } from "../components"
+import { FilterGroup, FilterSidebar, PageTitle, Segmented, Stepper, StockPill } from "../components"
 import { ItemPanel } from "./item-panel"
 
-type Show = "staples" | "not" | "below" | "out" | "soon"
-type Filters = { location: "all" | Location; show: Show | null; type: "counted" | "bulk" | null; aisle: string | null }
+type Show = "staples" | "not" | "soon"
+type Stock = "all" | "low" | "out"
+type Filters = { location: "all" | Location; show: Show | null; type: "counted" | "bulk" | null; aisle: string | null; stock: Stock }
 
 const showTests: Record<Show, (i: Item) => boolean> = {
   staples: isStaple,
   not: (i) => !isStaple(i),
-  below: (i) => stockOf(i) !== null,
-  out: (i) => stockOf(i) === "out",
   soon: (i) => { const d = soonest(i); return !!d && daysUntil(d) <= 3 },
 }
-const showLabels: Record<Show, string> = { staples: "Staples", not: "Not Staples", below: "Below minimum", out: "Out of stock", soon: "Use within 3 days" }
+const showLabels: Record<Show, string> = { staples: "Staples", not: "Not Staples", soon: "Use within 3 days" }
 
 function matches(i: Item, f: Filters, skip?: keyof Filters) {
   if (skip !== "location" && f.location !== "all" && i.location !== f.location) return false
   if (skip !== "show" && f.show && !showTests[f.show](i)) return false
   if (skip !== "type" && f.type && i.type !== f.type) return false
   if (skip !== "aisle" && f.aisle && i.categoryId !== f.aisle) return false
+  if (skip !== "stock" && f.stock !== "all" && stockOf(i) !== f.stock) return false
   return true
 }
 
@@ -39,7 +39,7 @@ const byUseBy = (a: Item, b: Item) => (soonest(a) ?? "9999").localeCompare(soone
 
 export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry" }> }) {
   const { items, db, actions } = usePantry()
-  const [f, setF] = React.useState<Filters>({ location: "all", show: null, type: null, aisle: null })
+  const [f, setF] = React.useState<Filters>({ location: "all", show: null, type: null, aisle: null, stock: "all" })
   const all = Object.values(items).filter((i) => !i.oneOff)
   const rows = all.filter((i) => matches(i, f)).sort(byUseBy)
   const count = (k: keyof Filters, test: (i: Item) => boolean) => all.filter((i) => matches(i, f, k) && test(i)).length
@@ -88,10 +88,24 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
           title={title}
           subtitle={`${plural(rows.length, "item")} · ${plural(staples, "Staple")} · ${below} below minimum · sorted by use-by date`}
         >
-          <Button variant="outline" onClick={() => navigate({ name: "import" })}>
-            <UploadIcon />
-            Import
-          </Button>
+          <div className="flex items-center gap-3">
+            {/* Matches the LOW and OUT pills in the Status column; works alongside the filters on the left. */}
+            <Segmented
+              label="Stock"
+              className="w-auto"
+              value={f.stock}
+              onChange={(v) => set("stock", v)}
+              options={[
+                { value: "all", label: `All ${count("stock", () => true)}` },
+                { value: "low", label: `Low ${count("stock", (i) => stockOf(i) === "low")}` },
+                { value: "out", label: `Out ${count("stock", (i) => stockOf(i) === "out")}` },
+              ]}
+            />
+            <Button variant="outline" onClick={() => navigate({ name: "import" })}>
+              <UploadIcon />
+              Import
+            </Button>
+          </div>
         </PageTitle>
 
         <Table className="text-sm">
@@ -109,9 +123,19 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
               const selected = route.item === i.id
               const d = soonest(i)
               return (
-                <TableRow key={i.id} data-state={selected ? "selected" : undefined} className={cn("h-12", selected && "shadow-[inset_2px_0_0_var(--primary)]")}>
+                <TableRow
+                  key={i.id}
+                  data-state={selected ? "selected" : undefined}
+                  className={cn("h-12 cursor-pointer", selected && "shadow-[inset_2px_0_0_var(--primary)]")}
+                  onClick={(e) => {
+                    // The stock stepper changes the count; it shouldn't also open the panel.
+                    if ((e.target as HTMLElement).closest("button, input") && !(e.target as HTMLElement).closest("[data-row-open]")) return
+                    navigate({ name: "pantry", item: i.id })
+                  }}
+                >
                   <TableCell className="pl-3">
-                    <button type="button" className="text-left text-[15px] font-semibold hover:underline" onClick={() => navigate({ name: "pantry", item: i.id })}>
+                    {/* Still a button so the row can be opened from the keyboard. */}
+                    <button type="button" data-row-open className="text-left text-[15px] font-semibold focus-visible:underline focus-visible:outline-none">
                       {i.name}
                     </button>
                   </TableCell>

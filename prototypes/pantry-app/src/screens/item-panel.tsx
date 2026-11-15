@@ -233,9 +233,10 @@ export function ItemPanel({ id, prefill, onClose }: { id?: string; prefill?: str
                 onChange={(n) => set({ inStock: n, useBy: n > draft.inStock ? [...(draft.useBy ?? []), null] : (draft.useBy ?? []).slice(0, n) })}
               />
             </div>
-            <Field label="Minimum to keep">
-              <Input type="number" min={0} inputMode="numeric" value={draft.target} onChange={(e) => set({ target: Math.max(0, parseInt(e.target.value || "0", 10)) })} />
-            </Field>
+            <div className="flex flex-col gap-1">
+              <Eyebrow>Minimum to keep</Eyebrow>
+              <Stepper size="md" label="Minimum to keep" value={draft.target} onChange={(n) => set({ target: n })} />
+            </div>
             <Field label="Unit">
               <Input
                 value={draft.unit?.[0] ?? ""}
