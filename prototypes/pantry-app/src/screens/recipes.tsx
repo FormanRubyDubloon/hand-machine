@@ -269,7 +269,7 @@ export function RecipesScreen({ route }: { route: Extract<Route, { name: "recipe
           <AllRecipes ranked={ranked} />
         )}
       </div>
-      <RecipePanel id={route.recipe} edit={route.edit} onClose={() => navigate({ name: "recipes", tab: route.tab })} />
+      <RecipePanel id={route.recipe} edit={route.edit} serves={route.serves} onClose={() => navigate({ name: "recipes", tab: route.tab })} />
     </div>
   )
 }
