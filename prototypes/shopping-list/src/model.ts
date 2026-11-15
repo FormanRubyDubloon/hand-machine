@@ -242,6 +242,21 @@ export type ListItem = {
 }
 
 /** An item as it appears in a shop: measured from the stock when the shop began. */
+/**
+ * A shop's starting stock after a sync. Stock the pantry changed (the difference between what the phone sent
+ * and what came back) moves the starting point too, so Out and Low follow the pantry, and what you've ticked
+ * off on the phone still counts as got. Items new to the phone start at their synced stock.
+ */
+export function syncStartStock(start: Record<string, number>, sent: Items, merged: Items, items: Items) {
+  return Object.fromEntries(
+    Object.keys(items).map((id) => {
+      if (start[id] === undefined) return [id, items[id].inStock]
+      const pantryChange = sent[id] && merged[id] ? merged[id].inStock - sent[id].inStock : 0
+      return [id, Math.max(0, start[id] + pantryChange)]
+    }),
+  )
+}
+
 export function listItem(item: Item, session: Session): ListItem {
   const start = session.startStock[item.id] ?? item.inStock
   const needed = Math.max(shortfall(item, start), entryTotal(item))
