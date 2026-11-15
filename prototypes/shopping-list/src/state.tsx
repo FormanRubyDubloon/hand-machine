@@ -1,10 +1,10 @@
 import * as React from "react"
 import { toast } from "sonner"
 import {
-  findConflicts, incomingChanges, merge, outgoingChanges, seedState, shopAisles,
+  findConflicts, incomingChanges, merge, mergeStores, outgoingChanges, seedState, shopAisles,
   type Filter, type Item, type Session, type State, type Store,
 } from "./model"
-import { isNetworkError, loadRemote, pushRemote, readRemote, readShared, resetRemote, writeSharedStores } from "./remote-pantry"
+import { isNetworkError, loadRemote, pushRemote, pushStores, readRemote, readRemoteCategories, readRemoteStores, readShared, resetRemote, writeSharedStores } from "./remote-pantry"
 import { signOutOfSupabase } from "../../shared/src/auth"
 import { PHONE_KEY } from "../../shared/src/pantry"
 import { navigate } from "./router"
@@ -260,8 +260,10 @@ function useShoppingState() {
         ...incomingChanges(remote, s.baseline),
       ].map((c) => c.item.id))
       const merged = merge(s.sync.snapshot, s.baseline, remote, s.sync.resolutions)
+      const mergedStores = mergeStores(s.stores, s.storesBaseline, readRemoteStores())
       try {
         await pushRemote(merged)
+        await pushStores(mergedStores)
       } catch (e) {
         if (!cancelled) failSync(e)
         return
@@ -282,16 +284,18 @@ function useShoppingState() {
           ...now.session.startStock,
         },
       }
-      // Recipes and aisles come from the pantry app. Stores go whichever way changed: if they were
-      // edited on this phone since the last sync, the phone's win and go to the pantry.
+      // Items, categories, stores and aisle numbers go through Supabase; recipes still come from the
+      // pantry app's localStorage. A store edited on this phone since the last sync keeps the phone's
+      // version, and one edited in the pantry app comes down. A store edited on the phone while the
+      // sync ran is kept, and goes up at the next sync.
       const shared = readShared()
-      const storesChanged = JSON.stringify(now.stores) !== JSON.stringify(now.storesBaseline)
-      if (storesChanged) writeSharedStores(now.stores)
-      const stores = storesChanged ? now.stores : shared.stores
+      const categories = readRemoteCategories()
+      const stores = mergeStores(now.stores, s.stores, mergedStores)
+      writeSharedStores(stores)
       setState({
         ...now, items, baseline: structuredClone(merged), order: [...new Set([...now.order.filter((id) => items[id]), ...Object.keys(items)])], session, sync: null,
         lastSyncedAt: new Date().toISOString(),
-        recipes: shared.recipes, categories: shared.categories, stores, storesBaseline: structuredClone(stores),
+        recipes: shared.recipes, categories, stores, storesBaseline: structuredClone(mergedStores),
         lastStoreId: stores.some((x) => x.id === now.lastStoreId) ? now.lastStoreId : stores[0]?.id ?? null,
       })
       const total = changed.size

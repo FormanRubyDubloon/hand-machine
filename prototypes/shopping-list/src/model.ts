@@ -407,3 +407,32 @@ export function merge(local: Items, baseline: Items, remote: Items, resolutions:
   }
   return out
 }
+
+// ---------- stores and aisle numbers ----------
+
+/** A store as Supabase holds it: only the categories it numbers, in a fixed key order, so two copies compare equal. */
+export function normStore(x: Store): Store {
+  const aisles: Record<string, number | null> = {}
+  for (const id of Object.keys(x.aisles).sort()) if (x.aisles[id] != null) aisles[id] = x.aisles[id]
+  return { id: x.id, name: x.name, aisles }
+}
+
+const sameStore = (a?: Store, b?: Store) => (a && b ? JSON.stringify(normStore(a)) === JSON.stringify(normStore(b)) : !a && !b)
+
+/**
+ * Three-way merge of the stores. For each store: if this phone changed it since the last sync, the
+ * phone's version wins (so does deleting it); otherwise the pantry's version is taken. Order follows
+ * the pantry, with stores new on the phone at the end.
+ */
+export function mergeStores(phone: Store[], baseline: Store[], remote: Store[]): Store[] {
+  const by = (list: Store[]) => new Map(list.map((x) => [x.id, x]))
+  const p = by(phone), b = by(baseline), r = by(remote)
+  const ids = [...new Set([...remote.map((x) => x.id), ...phone.map((x) => x.id)])]
+  const out: Store[] = []
+  for (const id of ids) {
+    const phoneChanged = !sameStore(p.get(id), b.get(id))
+    const pick = phoneChanged ? p.get(id) : r.get(id)
+    if (pick) out.push(normStore(pick))
+  }
+  return out
+}
