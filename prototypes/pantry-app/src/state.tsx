@@ -511,6 +511,24 @@ function usePantryState() {
       )
       toast(isNew ? `Added ${recipe.name}` : `Saved ${recipe.name}`)
     },
+    /** Point one of a recipe's ingredients at a pantry item, keeping the recipe's wording. */
+    linkIngredient(recipe: Recipe, position: number, itemId: string) {
+      const i = ref.current.items[itemId]
+      const g = recipe.ingredients[position]
+      if (!i || !g) return
+      commit(
+        (s) =>
+          setRecipes(s, (rs) =>
+            rs.map((r) =>
+              r.id === recipe.id
+                ? { ...r, editedAt: new Date().toISOString(), ingredients: r.ingredients.map((x, k) => (k === position ? { ...x, itemId } : x)) }
+                : r,
+            ),
+          ),
+        { title: `Linked "${g.text}" to ${i.name}`, detail: `In ${recipe.name}`, recipeId: recipe.id, itemIds: [itemId] },
+      )
+      toast(`Linked to ${i.name}`)
+    },
     deleteRecipe(recipe: Recipe, removeFromList: boolean) {
       commit(
         (s) => {
