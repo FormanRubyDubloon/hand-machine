@@ -2,13 +2,13 @@
 // both turn an item into a row (and back) the same way. Writing needs a Supabase Auth session and
 // the item policies from supabase/migrations/20261114140000_auth_and_item_writes.sql.
 import { supabase } from "@/lib/supabase"
-import { toItem, toRecipe, type RecipeRow, type Row } from "./supabase-seed"
+import { ITEM_SELECT, toEntryRow, toItem, toRecipe, type RecipeRow, type Row } from "./supabase-seed"
 import type { Category, SharedItem, SharedRecipe, SharedStore } from "./pantry"
 
 type Items = Record<string, SharedItem>
 
 /** Keys in order at every level, undefined dropped: Supabase hands JSON back with its keys sorted. */
-function sortKeys(v: unknown): unknown {
+export function sortKeys(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(sortKeys)
   if (v && typeof v === "object") {
     return Object.fromEntries(
@@ -23,8 +23,8 @@ function sortKeys(v: unknown): unknown {
 
 /**
  * What counts as a change: everything that is saved, nothing derived (editedAt, store ids). Keys
- * are sorted all the way down, because the shopping-list entries come back from Supabase's jsonb
- * column as {at, qty, source} however the app wrote them.
+ * are sorted all the way down, because jsonb (the History undo snapshots) comes back with its
+ * keys sorted however the app wrote it.
  */
 export function fingerprint(i: SharedItem | undefined): string {
   if (!i) return ""
@@ -56,14 +56,13 @@ export function toRow(i: SharedItem, knownCategories: Set<string>) {
     opened_at: (i.openedAt ?? []).filter((d): d is string => !!d),
     one_off: !!i.oneOff,
     uses: i.uses ?? 0,
-    entries: i.entries ?? [],
     edited_at: i.editedAt ?? new Date().toISOString(),
   }
 }
 
 /** Every item and category id in Supabase. Throws with Supabase's message if the read fails. */
 export async function fetchRemote(): Promise<{ items: Items; categories: Set<string> }> {
-  const [itemsRes, catsRes] = await Promise.all([supabase.from("items").select("*"), supabase.from("categories").select("id")])
+  const [itemsRes, catsRes] = await Promise.all([supabase.from("items").select(ITEM_SELECT), supabase.from("categories").select("id")])
   if (itemsRes.error) throw new Error(itemsRes.error.message)
   if (catsRes.error) throw new Error(catsRes.error.message)
   return {
@@ -82,7 +81,18 @@ export async function writeRemote(push: SharedItem[], remove: string[], categori
     const rows = push.map((i) => toRow(i, categories))
     const { error } = await supabase.from("items").upsert(rows, { onConflict: "id" })
     if (error) throw new Error(error.message)
-    for (const row of rows) back[row.id] = toItem(row as Row)
+    // The shopping list's entries are their own table: replace each pushed item's.
+    const ids = push.map((i) => i.id)
+    const del = await supabase.from("list_entries").delete().in("item_id", ids)
+    if (del.error) throw new Error(del.error.message)
+    const entries = push.flatMap((i) => (i.entries ?? []).map((e, n) => ({ item_id: i.id, ...toEntryRow(e, n) })))
+    if (entries.length) {
+      const ins = await supabase.from("list_entries").insert(entries)
+      if (ins.error) throw new Error(ins.error.message)
+    }
+    for (const [n, row] of rows.entries()) {
+      back[row.id] = toItem({ ...row, list_entries: (push[n].entries ?? []).map(toEntryRow) } as Row)
+    }
   }
   if (remove.length) {
     const { error } = await supabase.from("items").delete().in("id", remove)
@@ -278,3 +288,32 @@ export async function deleteRecipes(ids: string[]) {
 
 /** True for a failure to reach Supabase at all, as opposed to Supabase saying no. */
 export const isNetworkError = (e: unknown) => !navigator.onLine || (e instanceof Error && /failed to fetch|network|load failed/i.test(e.message))
+
+// ---------- history ----------
+// Table and policies in supabase/migrations/20261115100000_list_entries_and_history.sql. Signed-in users only.
+
+export type HistoryRow = {
+  id: string
+  at: string
+  who: "you" | "claude" | "phone"
+  title: string
+  detail: string | null
+  item_ids: string[]
+  recipe_id: string | null
+  undo: unknown
+  undone: boolean
+  key: string | null
+}
+
+/** The newest history rows, newest first. */
+export async function fetchHistory(limit = 500): Promise<HistoryRow[]> {
+  const { data, error } = await supabase.from("history").select("*").order("at", { ascending: false }).limit(limit)
+  if (error) throw new Error(error.message)
+  return data as HistoryRow[]
+}
+
+export async function writeHistory(rows: HistoryRow[]) {
+  if (!rows.length) return
+  const { error } = await supabase.from("history").upsert(rows, { onConflict: "id" })
+  if (error) throw new Error(error.message)
+}

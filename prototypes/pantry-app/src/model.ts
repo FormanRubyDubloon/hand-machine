@@ -67,6 +67,8 @@ export type Db = {
   syncedStores?: Store[]
   /** The recipes as they were at the last sync with Supabase. */
   syncedRecipes?: Recipe[]
+  /** The History entries as they were at the last sync, by id: a fingerprint of each. */
+  syncedHistory?: Record<string, string>
   /** When this computer last synced with Supabase. */
   syncedAt?: string
 }
