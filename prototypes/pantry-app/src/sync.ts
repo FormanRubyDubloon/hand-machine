@@ -82,6 +82,8 @@ export async function syncItems(local: Items, base: Items | undefined): Promise<
   // Keep what Supabase will hand back next time, so the next sync doesn't see a phantom change.
   const back = await writeRemote(push, remove, known)
   for (const [id, item] of Object.entries(back)) merged[id] = normalise({ ...item, where: merged[id].where })
+  // The added date only ever comes from Supabase (created_at), so items saved here before it existed pick it up now.
+  for (const [id, item] of Object.entries(merged)) if (!item.addedAt && remote[id]?.addedAt) merged[id] = { ...item, addedAt: remote[id].addedAt }
   return { items: merged, pushed: push.length + remove.length, pulled, clashes, uncategorised }
 }
 

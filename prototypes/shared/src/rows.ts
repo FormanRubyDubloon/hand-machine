@@ -45,6 +45,7 @@ export type Row = {
   list_entries: ListEntryRow[] | null
   opened_at: string[]
   edited_at: string
+  created_at?: string
 }
 
 /** Notion's unit is free text ("bag", "350 g", "kg"); the app wants [one, many]. A guess, for display. */
@@ -78,6 +79,7 @@ export function toItem(r: Row): SharedItem {
     entries: r.list_entries?.length ? [...r.list_entries].sort((a, b) => a.position - b.position).map(toEntry) : undefined,
     openedAt: r.opened_at?.length ? r.opened_at : undefined,
     editedAt: r.edited_at,
+    addedAt: r.created_at,
   }
 }
 

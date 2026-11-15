@@ -46,7 +46,8 @@ function toItem(r) {
     uses: r.uses || void 0,
     entries: r.list_entries?.length ? [...r.list_entries].sort((a, b) => a.position - b.position).map(toEntry) : void 0,
     openedAt: r.opened_at?.length ? r.opened_at : void 0,
-    editedAt: r.edited_at
+    editedAt: r.edited_at,
+    addedAt: r.created_at
   };
 }
 function toRecipe(r) {

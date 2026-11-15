@@ -262,7 +262,7 @@ function usePantryState() {
       commit(
         (s) => {
           const bought = before ? draft.inStock - before.inStock : 0
-          const item = normalise({ ...draft, entries: bought > 0 ? settle(draft.entries, bought) : draft.entries, editedAt: new Date().toISOString() })
+          const item = normalise({ ...draft, entries: bought > 0 ? settle(draft.entries, bought) : draft.entries, editedAt: new Date().toISOString(), addedAt: draft.addedAt ?? new Date().toISOString() })
           return setItems(s, { [draft.id]: item })
         },
         {
