@@ -287,7 +287,9 @@ function RemoveCategory({ category, onClose }: { category: Category; onClose: ()
               ? `It comes out of ${nameList(losing.map((s) => `${shortStore(s)} (aisle ${s.aisles[category.id]})`))}. The other aisles keep their numbers.`
               : "No store gives it an aisle number, so no aisle order changes."}
         </p>
-        <p className="text-muted-foreground">Recipes aren't changed. You can undo the move and the removal from History today.</p>
+        <p className="text-muted-foreground">
+          Recipes aren't changed. You can undo {empty ? "the removal" : "the move and the removal"} from History today.
+        </p>
       </div>
       <DialogFooter className="sm:justify-between">
         <Button variant="outline" onClick={onClose}>Cancel</Button>

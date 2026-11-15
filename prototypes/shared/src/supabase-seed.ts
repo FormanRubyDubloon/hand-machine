@@ -62,7 +62,7 @@ export function toItem(r: Row): SharedItem {
   }
 }
 
-type RecipeRow = {
+export type RecipeRow = {
   id: string
   name: string
   intro: string | null
@@ -80,12 +80,13 @@ type RecipeRow = {
   last_cooked: string | null
   added_by: "claude" | "you"
   added_at: string
-  recipe_ingredients: { position: number; text: string; item_id: string | null; need: number; buy: number; partial: boolean; uses: number | null }[]
+  recipe_ingredients: { position: number; text: string; group_name?: string | null; item_id: string | null; need: number; buy: number; partial: boolean; uses: number | null }[]
 }
 
 /**
- * Notion's recipes don't say how much of an item each line uses, so a linked ingredient counts as
- * "partial": having any of the item is enough. Unknown serves falls back to 2 (the app's default).
+ * Unknown serves falls back to 2 (the app's default), unknown time to 0 ("No time"). Linked
+ * ingredients from Notion are stored as partial (any stock will do; migration
+ * 20261114180000_recipe_writes), so `partial` is read as it is.
  */
 export function toRecipe(r: RecipeRow): SharedRecipe {
   return {
@@ -97,7 +98,7 @@ export function toRecipe(r: RecipeRow): SharedRecipe {
     soon: r.soon ?? undefined,
     ingredients: [...r.recipe_ingredients]
       .sort((a, b) => a.position - b.position)
-      .map((i) => ({ text: i.text, itemId: i.item_id ?? "", need: i.need, buy: i.buy, partial: i.partial || !!i.item_id, uses: i.uses ?? undefined })),
+      .map((i) => ({ text: i.text, itemId: i.item_id ?? "", need: i.need, buy: i.buy, partial: i.partial || undefined, uses: i.uses ?? undefined })),
     method: r.method,
     prep: r.prep ?? undefined,
     cook: r.cook ?? undefined,

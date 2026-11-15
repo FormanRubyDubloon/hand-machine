@@ -269,7 +269,7 @@ Added to the design after the first code build.
 3. **Not built:** a kind (aisle or shop) on each category. `Category` in `prototypes/shared/src/pantry.ts` is `{ id, name }` only, and the Supabase `categories` table would need the column too. Isaac decided to leave it out, so the Kind column and the Aisle/Shop choice aren't built.
 4. **Built:** item and Staple counts per category, and which stores give it an aisle number.
 
-New and renamed categories still stay on this computer: Sync sends items only, and the `categories` table is written only by the service role.
+**Built:** Sync sends new, renamed and removed categories to Supabase and pulls changes made there (migration `20261114160000_category_writes`). Stores and their aisle numbers sync too (migration `20261114170000_stores`): a store and its numbers are one unit, and if it changed in both places this computer's version wins. Which store is the default stays on each device. Recipes sync as well (migration `20261114180000_recipe_writes`); a recipe changed in both places keeps this computer's version. A category renamed in both places keeps this computer's name. One that items in Supabase still use isn't deleted there until they move; Sync says so and tries again next time. The phone still gets categories from the pantry app through localStorage.
 
 ## Gaps found
 
