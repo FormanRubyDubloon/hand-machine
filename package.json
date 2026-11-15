@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "build:mcp": "node prototypes/claude-connection/build.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -47,6 +48,7 @@
     "@vitest/coverage-v8": "^4.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "esbuild": "0.28.2",
     "lucide-react": "^1.70.0",
     "oxlint": "^1.90.0",
     "playwright": "latest",

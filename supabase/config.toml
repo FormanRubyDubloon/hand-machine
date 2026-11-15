@@ -156,6 +156,8 @@ additional_redirect_urls = [
   "http://localhost:5173/prototypes/shopping-list/",
   "http://localhost:5176/prototypes/pantry-app/",
   "http://localhost:5176/prototypes/shopping-list/",
+  "https://shopping-list-app-db5118.netlify.app/prototypes/claude-connection/**",
+  "http://localhost:5173/prototypes/claude-connection/**",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -350,13 +352,16 @@ enabled = false
 # Obtain from https://clerk.com/setup/supabase
 # domain = "example.clerk.accounts.dev"
 
-# OAuth server configuration
+# OAuth server configuration. On for the Claude connection (prototypes/claude-connection): Claude is
+# registered by hand as an OAuth app (redirect https://claude.ai/api/mcp/auth_callback), sends you to
+# the consent page below on site_url, and gets a token for your account. Sign-ups stay off, so only
+# an account made in the dashboard can approve.
 [auth.oauth_server]
 # Enable OAuth server functionality
-enabled = false
-# Path for OAuth consent flow UI
-authorization_url_path = "/oauth/consent"
-# Allow dynamic client registration
+enabled = true
+# Path for OAuth consent flow UI, on site_url
+authorization_url_path = "/prototypes/claude-connection/"
+# Off: anyone could register an app with a convincing name. Claude is registered by hand instead.
 allow_dynamic_registration = false
 
 [edge_runtime]
@@ -391,3 +396,9 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
+
+# The Claude connection's MCP server. Built by `pnpm build:mcp` from prototypes/claude-connection.
+# It checks the token itself, so it can answer 401 with the header that starts Claude's sign-in.
+[functions.mcp]
+verify_jwt = false
+entrypoint = "./functions/mcp/index.js"

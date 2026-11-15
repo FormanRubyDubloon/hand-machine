@@ -12,7 +12,7 @@ import {
 } from "./sync"
 import { deleteCategories } from "../../shared/src/pantry-remote"
 import {
-  cap, haveText, nameList, isBulk, isToday, lower, needOf, normalise, plural, settle, timeText, todayIso, unitText, withStock,
+  amountOf, cap, haveText, nameList, isBulk, isToday, lower, needOf, normalise, plural, settle, timeText, todayIso, withStock,
   type Conflict, type Db, type HistoryEntry, type Item, type Items, type Recipe, type Snapshot, type Store, type Who,
 } from "./model"
 
@@ -98,12 +98,7 @@ function mergeHistory(now: HistoryEntry[], synced: HistoryEntry[], started: Hist
   return [...edited, ...synced.filter((h) => !ids.has(h.id))].sort((a, b) => b.at.localeCompare(a.at))
 }
 
-const singular = (name: string) => name.replace(/oes$/i, "o").replace(/([^s])s$/i, "$1")
-/** "1 lemon", "2 eggs", "1 bottle of whole milk". */
-export function amountOf(i: Item, n: number) {
-  if (i.unit) return `${unitText(i, n)} of ${lower(i.name)}`
-  return `${n} ${lower(n === 1 ? singular(i.name) : i.name)}`
-}
+export { amountOf }
 
 function diffSnapshot(prev: S, next: S): Snapshot {
   const items: Record<string, Item | null> = {}

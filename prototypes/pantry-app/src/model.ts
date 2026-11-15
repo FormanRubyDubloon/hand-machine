@@ -105,6 +105,13 @@ export function unitText(i: Item, n: number) {
 }
 export const unitWord = (i: Item, n: number) => (i.unit ? (n === 1 ? i.unit[0] : i.unit[1]) : "")
 
+const singular = (name: string) => name.replace(/oes$/i, "o").replace(/([^s])s$/i, "$1")
+/** "1 lemon", "2 eggs", "1 bottle of whole milk". */
+export function amountOf(i: Item, n: number) {
+  if (i.unit) return `${unitText(i, n)} of ${lower(i.name)}`
+  return `${n} ${lower(n === 1 ? singular(i.name) : i.name)}`
+}
+
 /** What you have, the way you'd say it: "2 bags · 1 open", "1 bag · open". */
 export function haveText(i: Item, sep = " · ") {
   if (i.inStock === 0 && !i.unit) return "0"
