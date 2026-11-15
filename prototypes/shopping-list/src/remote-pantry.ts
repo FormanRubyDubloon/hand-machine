@@ -51,7 +51,8 @@ export function readRemote(): Items {
 export async function pushRemote(merged: Items): Promise<void> {
   const before = remote ?? {}
   const changed = Object.values(merged).filter((i) => fingerprint(i) !== fingerprint(before[i.id]))
-  const back = await writeRemote(changed, [], categories)
+  // Items the pantry already has are sent as stock and entries only; the rest of the row stays the pantry's.
+  const back = await writeRemote(changed, [], categories, new Set(changed.filter((i) => before[i.id]).map((i) => i.id)))
   remote = { ...merged, ...back }
 }
 

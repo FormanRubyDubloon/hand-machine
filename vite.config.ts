@@ -37,6 +37,14 @@ export default defineConfig({
         environment: 'node',
       },
     }, {
+      // The phone's sync logic: plain Node.
+      extends: true,
+      test: {
+        name: 'shopping-list',
+        include: ['prototypes/shopping-list/test/**/*.test.ts'],
+        environment: 'node',
+      },
+    }, {
       extends: true,
       plugins: [
       // The plugin will run tests for the stories defined in your Storybook config

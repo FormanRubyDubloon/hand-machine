@@ -49,13 +49,25 @@ export async function fetchRemote(): Promise<{ items: Items; categories: Set<str
 /**
  * Upserts the given items and deletes the given ids. Returns each pushed item as Supabase will
  * hand it back, so the next sync doesn't see a phantom change. Throws if Supabase refuses.
+ *
+ * Ids in `onlyStock` already exist in Supabase and are written as stock, New flag and list entries
+ * only (what the phone edits), so a pantry-app edit made since they were fetched isn't overwritten.
  */
-export async function writeRemote(push: SharedItem[], remove: string[], categories: Set<string>): Promise<Items> {
+export async function writeRemote(push: SharedItem[], remove: string[], categories: Set<string>, onlyStock: Set<string> = new Set()): Promise<Items> {
   const back: Items = {}
   if (push.length) {
-    const rows = push.map((i) => toRow(i, categories))
-    const { error } = await supabase.from("items").upsert(rows, { onConflict: "id" })
-    if (error) throw new Error(error.message)
+    const full = push.filter((i) => !onlyStock.has(i.id))
+    const rows = full.map((i) => toRow(i, categories))
+    if (rows.length) {
+      const { error } = await supabase.from("items").upsert(rows, { onConflict: "id" })
+      if (error) throw new Error(error.message)
+    }
+    for (const i of push.filter((i) => onlyStock.has(i.id))) {
+      const edited_at = new Date().toISOString()
+      const { error } = await supabase.from("items").update({ in_stock: i.inStock, needs_review: !!i.review, edited_at }).eq("id", i.id)
+      if (error) throw new Error(error.message)
+      back[i.id] = { ...i, editedAt: edited_at }
+    }
     // The shopping list's entries are their own table: replace each pushed item's.
     const ids = push.map((i) => i.id)
     const del = await supabase.from("list_entries").delete().in("item_id", ids)
@@ -66,7 +78,7 @@ export async function writeRemote(push: SharedItem[], remove: string[], categori
       if (ins.error) throw new Error(ins.error.message)
     }
     for (const [n, row] of rows.entries()) {
-      back[row.id] = toItem({ ...row, list_entries: (push[n].entries ?? []).map(toEntryRow) } as Row)
+      back[row.id] = toItem({ ...row, list_entries: (full[n].entries ?? []).map(toEntryRow) } as Row)
     }
   }
   if (remove.length) {
