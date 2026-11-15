@@ -252,6 +252,16 @@ export function ItemPanel({ id, prefill, onClose }: { id?: string; prefill?: str
           {isNew && <p className="-mt-4 text-xs text-muted-foreground">A minimum above 0 makes this a Staple. Leave it at 0 for things you only buy for a recipe.</p>}
 
           {bulk && (
+            <label className="flex items-center justify-between gap-4">
+              <span className="flex flex-col">
+                <span className="text-sm font-semibold">An open pack counts towards the minimum</span>
+                <span className="text-xs text-muted-foreground">Off: only full packs count, so an open one on its own puts this on the list. On: an open pack counts like a full one.</span>
+              </span>
+              <Switch checked={!!draft.openCounts} onCheckedChange={(on) => set({ openCounts: on || undefined })} aria-label="An open pack counts towards the minimum" />
+            </label>
+          )}
+
+          {bulk && (
             <div className="grid grid-cols-3 gap-5">
               <Field label="Pack size">
                 <Input

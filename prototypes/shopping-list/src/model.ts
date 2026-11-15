@@ -1,6 +1,5 @@
 // Data model and the pure functions that derive the shopping list.
 // Shaped like the pantry described in intent.md and HANDOFF.md.
-import { settings } from "../../shared/src/settings"
 import { at, seedCategories, seedItems, seedPantryItems, seedRecipes, seedStores } from "../../shared/src/pantry"
 
 export type Category = { id: string; name: string }
@@ -21,7 +20,7 @@ export type Item = {
   inStock: number
   /** Counted (eggs, tins) or bulk (rice, flour, oil). */
   type: "counted" | "bulk"
-  /** Bulk only: how many of the packs in `inStock` are open. An open pack doesn't count towards the minimum. */
+  /** Bulk only: how many of the packs in `inStock` are open. An open pack counts towards the minimum only if `openCounts` is set. */
   open?: number
   /** Singular and plural unit, e.g. ["loaf", "loaves"]. */
   unit?: [string, string]
@@ -37,6 +36,8 @@ export type Item = {
   oneOff?: boolean
   /** New: made from a recipe ingredient, not bought yet. Cleared at the sync that brings stock above 0. */
   review?: boolean
+  /** Bulk only: an open pack counts towards the minimum like a full one. Set in the pantry app. */
+  openCounts?: boolean
 }
 
 export type RecipeIngredient = {
@@ -147,8 +148,8 @@ export function seedRemote(): Items {
 export const isStaple = (i: Item) => i.target > 0
 const isBulk = (i: Item) => i.type === "bulk"
 
-/** Whole packs that count towards the minimum. An open pack doesn't, unless the setting says it does. */
-export const fullOf = (i: Item, total = i.inStock) => (isBulk(i) && !settings.openCountsTowardsMinimum ? Math.max(0, total - (i.open ?? 0)) : total)
+/** Whole packs that count towards the minimum. An open pack doesn't, unless the item says it does. */
+export const fullOf = (i: Item, total = i.inStock) => (isBulk(i) && !i.openCounts ? Math.max(0, total - (i.open ?? 0)) : total)
 
 /** How many a Staple is short of its minimum. Never counts the open pack. */
 const shortfall = (i: Item, total = i.inStock) => Math.max(0, i.target - fullOf(i, total))

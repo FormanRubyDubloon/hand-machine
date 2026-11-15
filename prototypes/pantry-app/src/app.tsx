@@ -19,7 +19,6 @@ import { PantryScreen } from "./screens/pantry"
 import { RecipeFull } from "./screens/recipe"
 import { RecipesScreen } from "./screens/recipes"
 import { Settings } from "./screens/settings"
-import { settingsVersion, subscribeSettings } from "../../shared/src/settings"
 import { isDark, subscribeTheme } from "./theme"
 import { SignIn } from "./screens/signin"
 
@@ -217,8 +216,6 @@ function Shell() {
 }
 
 export function App() {
-  // The counting settings change what every screen shows, so a change redraws them all.
-  React.useSyncExternalStore(subscribeSettings, settingsVersion)
   const dark = React.useSyncExternalStore(subscribeTheme, isDark)
   return (
     <PantryProvider>

@@ -3,17 +3,6 @@
 // prototypes/claude-connection/edge/index.ts
 import { createClient } from "npm:@supabase/supabase-js@2.119.0";
 
-// prototypes/shared/src/settings.ts
-var settings = { openCountsTowardsMinimum: false };
-var listeners = /* @__PURE__ */ new Set();
-var version = 0;
-function applySettings(next) {
-  Object.assign(settings, next);
-  version++;
-  listeners.forEach((l) => l());
-}
-var fromSettingsRow = (r) => ({ openCountsTowardsMinimum: !!r.open_counts_towards_minimum });
-
 // prototypes/shared/src/rows.ts
 var ITEM_SELECT = "*, list_entries(position, kind, recipe, qty, at)";
 var toEntry = (r) => ({
@@ -54,6 +43,7 @@ function toItem(r) {
     brand: r.brand ?? void 0,
     useBy: r.use_by.length ? r.use_by : void 0,
     noExpiry: r.no_expiry || void 0,
+    openCounts: r.open_counts || void 0,
     oneOff: r.one_off || void 0,
     review: r.needs_review || void 0,
     uses: r.uses || void 0,
@@ -105,6 +95,7 @@ function toRow(i, knownCategories) {
     brand: i.brand ?? null,
     use_by: i.noExpiry ? [] : (i.useBy ?? []).filter((d) => !!d),
     no_expiry: !!i.noExpiry,
+    open_counts: !!i.openCounts,
     opened_at: (i.openedAt ?? []).filter((d) => !!d),
     one_off: !!i.oneOff,
     needs_review: !!i.review,
@@ -177,18 +168,16 @@ function check(res) {
 function supabaseBackend(db) {
   return {
     async load() {
-      const [items, recipes, categories, stores, aisles, saved] = await Promise.all([
+      const [items, recipes, categories, stores, aisles] = await Promise.all([
         db.from("items").select(ITEM_SELECT).order("name"),
         db.from("recipes").select(RECIPE_SELECT).order("name"),
         db.from("categories").select("id, name, sort").order("sort"),
         db.from("stores").select("id, name, kind, place, sort").order("sort"),
-        db.from("store_aisles").select("store_id, category_id, number"),
-        db.from("settings").select("open_counts_towards_minimum").maybeSingle()
+        db.from("store_aisles").select("store_id, category_id, number")
       ]);
       const rows = check(recipes);
       const numbers = check(aisles);
       return {
-        settings: saved.data ? fromSettingsRow(saved.data) : void 0,
         items: Object.fromEntries(check(items).map((r) => [r.id, toItem(r)])),
         recipes: rows.map(toRecipe),
         recipeRows: Object.fromEntries(rows.map((r) => [r.id, r])),
@@ -255,7 +244,7 @@ var locationLabel = (l) => locations.find((x) => x.value === l)?.label ?? "No lo
 var isStaple = (i) => i.target > 0;
 var isBulk = (i) => i.type === "bulk";
 var perUnitDates = (i) => i.target > 1;
-var fullOf = (i, total = i.inStock) => isBulk(i) && !settings.openCountsTowardsMinimum ? Math.max(0, total - (i.open ?? 0)) : total;
+var fullOf = (i, total = i.inStock) => isBulk(i) && !i.openCounts ? Math.max(0, total - (i.open ?? 0)) : total;
 var shortfall = (i) => Math.max(0, i.target - fullOf(i));
 var entryTotal = (i) => (i.entries ?? []).reduce((n, e) => n + e.qty, 0);
 var needOf = (i) => Math.max(shortfall(i), entryTotal(i));
@@ -1232,6 +1221,7 @@ ${recipeLine(recipe, ctx.data.items)}`;
             category: { type: ["string", "null"] },
             location: { type: ["string", "null"], enum: [...LOCATIONS, null] },
             use_by: { type: "array", items: { type: "string" }, description: "Replaces every date, one per unit or pack. YYYY-MM-DD. [] clears them." },
+            open_counts: { type: "boolean", description: "Bulk only: true if an open pack counts towards the minimum like a full one. false (the default) counts only full packs." },
             no_expiry: { type: "boolean", description: "true for things that never go off (salt, tins, cleaning products): clears every date and stops the item asking for one. false to track dates again." },
             use_by_one: {
               type: "object",
@@ -1316,6 +1306,11 @@ ${recipeLine(recipe, ctx.data.items)}`;
       if (Array.isArray(c.use_by)) {
         next.useBy = (strs(c.use_by) ?? []).map(isoDate).sort();
         said.push(next.useBy.length ? "use-by dates" : "use-by dates cleared");
+      }
+      if (typeof c.open_counts === "boolean") {
+        if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs.`);
+        next.openCounts = c.open_counts || void 0;
+        said.push(c.open_counts ? "open pack counts towards the minimum" : "open pack doesn't count towards the minimum");
       }
       if (typeof c.no_expiry === "boolean") {
         next.noExpiry = c.no_expiry || void 0;
@@ -1593,10 +1588,7 @@ function createHandler(opts) {
     if (!client) return unauthorised("The sign-in has expired or was revoked.");
     const backend = (opts.backendFor ?? supabaseBackend)(client);
     let cached = null;
-    const data = () => cached ??= backend.load().then((d) => {
-      applySettings(d.settings ?? { openCountsTowardsMinimum: false });
-      return d;
-    });
+    const data = () => cached ??= backend.load();
     let body;
     try {
       body = await req.json();

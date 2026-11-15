@@ -10,13 +10,11 @@ import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { aisleOrder, isStaple, isToday, nameList, numberedAisles, plural, shortDate, timeText, whenText, type Category, type Store } from "../model"
 import { navigate, type SettingsTab } from "../router"
 import { usePantry } from "../state"
-import { applySettings, settings } from "../../../shared/src/settings"
 import { getTheme, setTheme, type ThemeChoice } from "../theme"
 import { Eyebrow, Field, NavRow, PageTitle, Segmented } from "../components"
 
@@ -531,26 +529,10 @@ function ClaudeConnection() {
 
 function General() {
   const [theme, setThemeState] = React.useState<ThemeChoice>(getTheme)
-  const [saving, setSaving] = React.useState(false)
-  const openCounts = settings.openCountsTowardsMinimum
-
   const chooseTheme = (t: ThemeChoice) => {
     setTheme(t)
     setThemeState(t)
   }
-  // Shared with the phone and Claude, so it's saved in Supabase. It changes on screen at once and
-  // goes back if Supabase says no (not signed in, no signal).
-  const chooseOpenCounts = async (on: boolean) => {
-    setSaving(true)
-    applySettings({ openCountsTowardsMinimum: on })
-    const { error } = await supabase.from("settings").update({ open_counts_towards_minimum: on }).eq("id", true)
-    if (error) {
-      applySettings({ openCountsTowardsMinimum: !on })
-      toast("Couldn't save that setting", { description: error.message })
-    }
-    setSaving(false)
-  }
-
   const row = (title: string, sub: string, action: React.ReactNode) => (
     <div className="flex items-center justify-between gap-6 border-b border-border py-4">
       <span className="flex flex-col">
@@ -574,14 +556,6 @@ function General() {
             onChange={chooseTheme}
             options={[{ value: "auto", label: "Auto" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]}
           />,
-        )}
-      </section>
-      <section className="flex flex-col">
-        <Eyebrow className="pb-1 text-foreground">Counting</Eyebrow>
-        {row(
-          "Open packs count towards the minimum",
-          "Off: an open pack of a bulk item doesn't count, so a Staple with only an open pack left goes on the list. On: it counts like a full one. This applies in the pantry, shopping and Claude apps.",
-          <Switch checked={openCounts} disabled={saving} onCheckedChange={chooseOpenCounts} aria-label="Open packs count towards the minimum" />,
         )}
       </section>
     </div>
@@ -653,7 +627,7 @@ function Account() {
 // ---------- shell ----------
 
 const tabs: { tab: SettingsTab; title: string; sub: string; intro: string }[] = [
-  { tab: "general", title: "General", sub: "Theme and how stock is counted", intro: "Settings for the whole pantry." },
+  { tab: "general", title: "General", sub: "Theme", intro: "Settings for this computer." },
   { tab: "stores", title: "Stores and aisles", sub: "Aisle order for each shop", intro: "The aisle order sets the order of the shopping list in each shop. You can change it here or in the shopping app." },
   { tab: "categories", title: "Categories", sub: "Groups for items and aisles", intro: "Every item has one. Each store gives a category an aisle number, so the shopping list follows your walk round the shop." },
   { tab: "claude", title: "Claude connection", sub: "What Claude can read and change", intro: "Lets Claude use your pantry from the Claude phone app, desktop or web." },
