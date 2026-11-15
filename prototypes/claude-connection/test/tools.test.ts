@@ -215,6 +215,16 @@ describe("edits and deletes need asking", () => {
     expect(mem.history[0]).toMatchObject({ title: "Changed Eggs", detail: "Minimum 6 → 12" })
   })
 
+  it("marks an item as not expiring and drops its dates", async () => {
+    const { call, mem } = setup()
+    await call("update_item", { item: "eggs", changes: { use_by: ["2026-11-20"] }, confirmed: true })
+    await call("update_item", { item: "eggs", changes: { no_expiry: true }, confirmed: true })
+    expect(mem.state.items.eggs.noExpiry).toBe(true)
+    expect(mem.state.items.eggs.useBy ?? []).toEqual([])
+    const listed = await call("search_pantry", { query: "eggs" })
+    expect(listed.text).toContain("doesn't expire")
+  })
+
   it("changes one unit's date and leaves the others", async () => {
     const { call, mem } = setup()
     await call("update_item", { item: "eggs", changes: { use_by: ["2026-11-20", "2026-11-28"] }, confirmed: true })

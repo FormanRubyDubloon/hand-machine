@@ -42,6 +42,7 @@ function toItem(r) {
     price: r.price ?? void 0,
     brand: r.brand ?? void 0,
     useBy: r.use_by.length ? r.use_by : void 0,
+    noExpiry: r.no_expiry || void 0,
     oneOff: r.one_off || void 0,
     review: r.needs_review || void 0,
     uses: r.uses || void 0,
@@ -91,7 +92,8 @@ function toRow(i, knownCategories) {
     pack_size_measure: i.packSize?.measure ?? null,
     price: i.price ?? null,
     brand: i.brand ?? null,
-    use_by: (i.useBy ?? []).filter((d) => !!d),
+    use_by: i.noExpiry ? [] : (i.useBy ?? []).filter((d) => !!d),
+    no_expiry: !!i.noExpiry,
     opened_at: (i.openedAt ?? []).filter((d) => !!d),
     one_off: !!i.oneOff,
     needs_review: !!i.review,
@@ -262,8 +264,8 @@ function haveText(i, sep = " \xB7 ") {
 }
 function normalise(i) {
   const open = isBulk(i) ? Math.min(i.open ?? 0, i.inStock) : void 0;
-  const want = perUnitDates(i) || isBulk(i) ? i.inStock : Math.min(1, i.inStock);
-  const dates = [...i.useBy ?? []].slice(0, want);
+  const want = i.noExpiry ? 0 : perUnitDates(i) || isBulk(i) ? i.inStock : Math.min(1, i.inStock);
+  const dates = i.noExpiry ? [] : [...i.useBy ?? []].slice(0, want);
   while (dates.length < want) dates.push(null);
   const opened = [...i.openedAt ?? []].slice(0, open ?? 0);
   while (opened.length < (open ?? 0)) opened.push(null);
@@ -294,7 +296,7 @@ var DAY = 864e5;
 var startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 var daysUntil = (iso) => Math.round((startOf(new Date(iso)) - startOf(/* @__PURE__ */ new Date())) / DAY);
 var todayIso = () => new Date(Date.now() - (/* @__PURE__ */ new Date()).getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-var soonest = (i) => i.inStock > 0 ? (i.useBy ?? []).find((d) => !!d) ?? null : null;
+var soonest = (i) => i.inStock > 0 && !i.noExpiry ? (i.useBy ?? []).find((d) => !!d) ?? null : null;
 var plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 var lower = (s) => s.charAt(0).toLowerCase() + s.slice(1);
 var cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -404,7 +406,9 @@ function itemLine(i, categories) {
   const need = needOf(i);
   if (need > 0) parts.push(`${need} on the shopping list`);
   const dates = i.inStock > 0 ? normalise(i).useBy ?? [] : [];
-  if (dates.length > 1 && dates.some(Boolean)) {
+  if (i.noExpiry) {
+    parts.push("doesn't expire");
+  } else if (dates.length > 1 && dates.some(Boolean)) {
     parts.push(`use-by dates: ${dates.map((x, n) => `${n + 1}) ${x ? dateWithDays(x) : "undated"}`).join(", ")}`);
   } else {
     const d = soonest(i);
@@ -689,6 +693,7 @@ function newItem(data, n, items, now) {
     otherNames: strs(n.other_names)?.length ? strs(n.other_names) : void 0,
     notes: str(n.notes),
     useBy: useBy.length ? useBy : void 0,
+    noExpiry: n.no_expiry === true || n.no_expiry === void 0 && location(n.location) === "household" || void 0,
     editedAt: now.toISOString()
   });
 }
@@ -913,6 +918,7 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
               minimum: { type: "number", description: "How many to keep. Default 0 (not a Staple)." },
               stock: { type: "number", description: "How many there are now. Bulk: whole packs, including open ones." },
               use_by: { type: "array", items: { type: "string" }, description: "YYYY-MM-DD, one per unit or pack." },
+              no_expiry: { type: "boolean", description: "true for things that never go off. Household items default to true." },
               other_names: { type: "array", items: { type: "string" } },
               notes: { type: "string" }
             },
@@ -1213,6 +1219,7 @@ ${recipeLine(recipe, ctx.data.items)}`;
             category: { type: ["string", "null"] },
             location: { type: ["string", "null"], enum: [...LOCATIONS, null] },
             use_by: { type: "array", items: { type: "string" }, description: "Replaces every date, one per unit or pack. YYYY-MM-DD. [] clears them." },
+            no_expiry: { type: "boolean", description: "true for things that never go off (salt, tins, cleaning products): clears every date and stops the item asking for one. false to track dates again." },
             use_by_one: {
               type: "object",
               properties: { position: { type: "number", description: "1 = the soonest date, as search_pantry numbers them." }, date: { type: ["string", "null"], description: "YYYY-MM-DD, or null to make that unit undated." } },
@@ -1296,6 +1303,11 @@ ${recipeLine(recipe, ctx.data.items)}`;
       if (Array.isArray(c.use_by)) {
         next.useBy = (strs(c.use_by) ?? []).map(isoDate).sort();
         said.push(next.useBy.length ? "use-by dates" : "use-by dates cleared");
+      }
+      if (typeof c.no_expiry === "boolean") {
+        next.noExpiry = c.no_expiry || void 0;
+        if (c.no_expiry) next.useBy = [];
+        said.push(c.no_expiry ? "marked as not expiring" : "use-by dates tracked again");
       }
       if (c.use_by_one && typeof c.use_by_one === "object") {
         const one = c.use_by_one;

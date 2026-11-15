@@ -40,6 +40,7 @@ export type Row = {
   price: number | null
   brand: string | null
   use_by: string[]
+  no_expiry?: boolean
   one_off: boolean
   needs_review?: boolean
   uses: number
@@ -75,6 +76,7 @@ export function toItem(r: Row): SharedItem {
     price: r.price ?? undefined,
     brand: r.brand ?? undefined,
     useBy: r.use_by.length ? r.use_by : undefined,
+    noExpiry: r.no_expiry || undefined,
     oneOff: r.one_off || undefined,
     review: r.needs_review || undefined,
     uses: r.uses || undefined,
@@ -158,7 +160,8 @@ export function toRow(i: SharedItem, knownCategories: Set<string>) {
     pack_size_measure: i.packSize?.measure ?? null,
     price: i.price ?? null,
     brand: i.brand ?? null,
-    use_by: (i.useBy ?? []).filter((d): d is string => !!d),
+    use_by: i.noExpiry ? [] : (i.useBy ?? []).filter((d): d is string => !!d),
+    no_expiry: !!i.noExpiry,
     opened_at: (i.openedAt ?? []).filter((d): d is string => !!d),
     one_off: !!i.oneOff,
     needs_review: !!i.review,

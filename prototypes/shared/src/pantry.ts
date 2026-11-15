@@ -50,6 +50,8 @@ export type SharedItem = {
   brand?: string
   /** One ISO date per unit or pack in stock, soonest first. One date only when the minimum is 1 or less. */
   useBy?: (string | null)[]
+  /** Never goes off (salt, tins, cleaning products): no use-by dates are kept or asked for. */
+  noExpiry?: boolean
   /** Bulk: when each open pack was opened, matching the first `open` entries of useBy. */
   openedAt?: (string | null)[]
   /** A one-off on the list: not a pantry item, stock isn't tracked. */

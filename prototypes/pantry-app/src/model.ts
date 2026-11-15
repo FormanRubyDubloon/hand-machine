@@ -124,8 +124,9 @@ export function haveText(i: Item, sep = " · ") {
 /** Keeps use-by dates and open packs in step with the stock. Dates are soonest first. */
 export function normalise(i: Item): Item {
   const open = isBulk(i) ? Math.min(i.open ?? 0, i.inStock) : undefined
-  const want = perUnitDates(i) || isBulk(i) ? i.inStock : Math.min(1, i.inStock)
-  const dates = [...(i.useBy ?? [])].slice(0, want)
+  // Things that never go off keep no dates at all.
+  const want = i.noExpiry ? 0 : perUnitDates(i) || isBulk(i) ? i.inStock : Math.min(1, i.inStock)
+  const dates = i.noExpiry ? [] : [...(i.useBy ?? [])].slice(0, want)
   while (dates.length < want) dates.push(null)
   const opened = [...(i.openedAt ?? [])].slice(0, open ?? 0)
   while (opened.length < (open ?? 0)) opened.push(null)
@@ -185,7 +186,7 @@ export function inDaysText(iso: string | null | undefined) {
   return n > 30 ? "" : `In ${plural(n, "day")}`
 }
 /** The soonest use-by date for something you have. */
-export const soonest = (i: Item) => (i.inStock > 0 ? (i.useBy ?? []).find((d): d is string => !!d) ?? null : null)
+export const soonest = (i: Item) => (i.inStock > 0 && !i.noExpiry ? (i.useBy ?? []).find((d): d is string => !!d) ?? null : null)
 
 /** "Just now", "12 min ago", "Today, 09:14", "Yesterday, 11:05", "Thu 12 Nov". */
 export function whenText(iso: string) {

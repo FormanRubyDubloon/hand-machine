@@ -165,7 +165,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
                     {isStaple(i) ? <StockPill item={i} /> : <span className="text-xs text-muted-foreground">Not a Staple</span>}
                     {!isStaple(i) && needOf(i) > 0 && <span className="ml-2 text-xs">· on the list</span>}
                   </TableCell>
-                  <TableCell className={cn(d && daysUntil(d) <= 3 && "font-semibold")}>{dateText(d)}</TableCell>
+                  <TableCell className={cn(d && daysUntil(d) <= 3 && "font-semibold", i.noExpiry && "text-xs text-muted-foreground")}>{i.noExpiry ? "No expiry" : dateText(d)}</TableCell>
                   <TableCell>{i.brand || "Any"}</TableCell>
                   <TableCell>{category(i.categoryId)}</TableCell>
                   <TableCell className="pr-3 text-right tabular-nums">{i.price ? money(i.price) : "–"}</TableCell>
