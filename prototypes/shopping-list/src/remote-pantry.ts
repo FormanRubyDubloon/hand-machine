@@ -1,23 +1,45 @@
-// The pantry the shopping app syncs with: the `items` table in Supabase. Stores, aisles and recipes
-// still come from localStorage, shared with the pantry app prototype (prototypes/pantry-app), which
-// only works when both run in the same browser; on its own the phone uses the seed for those.
+// The pantry the shopping app syncs with: items, categories, stores and aisle numbers in Supabase.
+// Recipes still come from localStorage, shared with the pantry app prototype (prototypes/pantry-app),
+// which only works when both run in the same browser; on its own the phone uses the seed for those.
 //
-// `loadRemote` fetches the items once per sync and keeps them here, so the sync code can read them
-// synchronously. `pushRemote` writes the merged result back. Both need signal; a failure to reach
+// `loadRemote` fetches the items, categories and stores once per sync and keeps them here, so the
+// sync code can read them synchronously. `pushRemote` writes the merged items back and
+// `pushStores` the stores. Both need signal; a failure to reach
 // Supabase is treated like having no signal.
 import { DB_KEY, readJson, seedCategories, seedRecipes, seedStores, writeJson, type SharedDb } from "../../shared/src/pantry"
-import { fetchRemote, fingerprint, isNetworkError, writeRemote } from "../../shared/src/pantry-remote"
-import type { Items } from "./model"
+import { deleteStores, fetchCategories, fetchRemote, fetchStores, fingerprint, isNetworkError, writeRemote, writeStores } from "../../shared/src/pantry-remote"
+import { normStore, type Items, type Store } from "./model"
 
 let remote: Items | null = null
 let categories = new Set<string>()
+let remoteCategories: { id: string; name: string }[] = []
+let remoteStores: Store[] = []
 
 /** Fetches the pantry's items. Throws if Supabase can't be reached or refuses the read. */
 export async function loadRemote(): Promise<Items> {
-  const fetched = await fetchRemote()
+  const [fetched, cats, stores] = await Promise.all([fetchRemote(), fetchCategories(), fetchStores()])
   remote = fetched.items
   categories = fetched.categories
+  remoteCategories = cats.map((c) => ({ id: c.id, name: c.name }))
+  remoteStores = stores.map(normStore)
   return remote
+}
+
+/** The categories as last fetched, in the pantry's order. */
+export const readRemoteCategories = () => remoteCategories
+
+/** The stores and their aisle numbers as last fetched. */
+export const readRemoteStores = () => remoteStores
+
+/** Sends changed and new stores, and deletes the ones removed on the phone. Throws if refused. */
+export async function pushStores(merged: Store[]): Promise<void> {
+  const before = new Map(remoteStores.map((x) => [x.id, JSON.stringify(x)]))
+  const changed = merged.filter((x) => before.get(x.id) !== JSON.stringify(normStore(x)))
+  const removed = remoteStores.filter((x) => !merged.some((m) => m.id === x.id)).map((x) => x.id)
+  const order = new Map(merged.map((x, i) => [x.id, i]))
+  await writeStores(changed, (id) => order.get(id) ?? 0, categories)
+  await deleteStores(removed)
+  remoteStores = merged.map(normStore)
 }
 
 /** The items as last fetched. Empty until the first `loadRemote`. */

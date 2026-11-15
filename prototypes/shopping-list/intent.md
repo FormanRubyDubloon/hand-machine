@@ -90,6 +90,7 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - A new category appears in every store's aisle order. It starts with no aisle number until I set one.
 - I can't remove a category that still has items in it. The app tells me how many, and offers to move them to another category first.
 - Categories reach the shopping app when it syncs, like stores and aisles.
+- In a shop I can change a store's aisle numbers, and add or edit a store, on the phone. These changes go to the pantry when I sync, so the admin app and Claude see them. If the same store was changed in both places, the phone's version wins. I can't add, rename or remove categories on the phone; that stays in the admin app.
 
 **Undo**
 - I can undo any change from History on the same day, including a merge, a delete and removing a category. Changes Claude makes can be undone the same way.
@@ -121,7 +122,7 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 ## Constraints
 
 - The shopping app is used one-handed, on an iPhone, in supermarkets, corner shops, greengrocers, butchers and fishmongers. Signal is often poor.
-- All three apps need a login. The pantry is private. I sign in with an email link or a passkey, not a password.
+- All three apps need a login. The pantry is private. I sign in with my email and a password.
 - The admin app is desktop-only. The quick pantry jobs can be done on a phone in the kitchen app.
 - The kitchen app is used while cooking, on a phone, often with wet or messy hands.
 - The Claude connection has to work from the Claude phone app, not just on a desktop.
