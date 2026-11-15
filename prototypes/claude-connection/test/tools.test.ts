@@ -215,6 +215,14 @@ describe("edits and deletes need asking", () => {
     expect(mem.history[0]).toMatchObject({ title: "Changed Eggs", detail: "Minimum 6 → 12" })
   })
 
+  it("lets an open pack count towards one item's minimum", async () => {
+    const { call, mem } = setup()
+    await call("update_item", { item: "rice", changes: { open_counts: true }, confirmed: true })
+    expect(mem.state.items.rice.openCounts).toBe(true)
+    const bad = await call("update_item", { item: "eggs", changes: { open_counts: true }, confirmed: true })
+    expect(bad.isError).toBe(true)
+  })
+
   it("marks an item as not expiring and drops its dates", async () => {
     const { call, mem } = setup()
     await call("update_item", { item: "eggs", changes: { use_by: ["2026-11-20"] }, confirmed: true })

@@ -4,7 +4,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { ITEM_SELECT, recipeRows, toEntryRow, toItem, toRecipe, toRow, type RecipeRow, type Row } from "../../shared/src/rows"
 import type { Category, SharedItem, SharedRecipe, SharedStore } from "../../shared/src/pantry"
-import { fromSettingsRow, type Settings, type SettingsRow } from "../../shared/src/settings"
 import type { HistoryRow } from "../../shared/src/pantry-remote"
 
 export type { HistoryRow }
@@ -16,8 +15,6 @@ export type PantryData = {
   recipeRows: Record<string, RecipeRow>
   categories: Category[]
   stores: SharedStore[]
-  /** Missing means the defaults. */
-  settings?: Settings
 }
 
 export interface Backend {
@@ -45,18 +42,16 @@ function check<T>(res: { data: T | null; error: { message: string } | null }): T
 export function supabaseBackend(db: SupabaseClient): Backend {
   return {
     async load() {
-      const [items, recipes, categories, stores, aisles, saved] = await Promise.all([
+      const [items, recipes, categories, stores, aisles] = await Promise.all([
         db.from("items").select(ITEM_SELECT).order("name"),
         db.from("recipes").select(RECIPE_SELECT).order("name"),
         db.from("categories").select("id, name, sort").order("sort"),
         db.from("stores").select("id, name, kind, place, sort").order("sort"),
         db.from("store_aisles").select("store_id, category_id, number"),
-        db.from("settings").select("open_counts_towards_minimum").maybeSingle(),
       ])
       const rows = check(recipes) as RecipeRow[]
       const numbers = check(aisles) as { store_id: string; category_id: string; number: number }[]
       return {
-        settings: saved.data ? fromSettingsRow(saved.data as SettingsRow) : undefined,
         items: Object.fromEntries((check(items) as Row[]).map((r) => [r.id, toItem(r)])),
         recipes: rows.map(toRecipe),
         recipeRows: Object.fromEntries(rows.map((r) => [r.id, r])),

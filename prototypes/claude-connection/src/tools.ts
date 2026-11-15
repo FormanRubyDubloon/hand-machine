@@ -900,6 +900,7 @@ export const tools: Tool[] = [
             category: { type: ["string", "null"] },
             location: { type: ["string", "null"], enum: [...LOCATIONS, null] },
             use_by: { type: "array", items: { type: "string" }, description: "Replaces every date, one per unit or pack. YYYY-MM-DD. [] clears them." },
+            open_counts: { type: "boolean", description: "Bulk only: true if an open pack counts towards the minimum like a full one. false (the default) counts only full packs." },
             no_expiry: { type: "boolean", description: "true for things that never go off (salt, tins, cleaning products): clears every date and stops the item asking for one. false to track dates again." },
             use_by_one: {
               type: "object",
@@ -964,6 +965,11 @@ export const tools: Tool[] = [
       if (has("category")) { next.categoryId = cleared("category") ? "" : findCategory(ctx.data, c.category); said.push(next.categoryId ? "shop or aisle" : "category cleared") }
       if (has("location")) { next.location = cleared("location") ? undefined : location(c.location); said.push(next.location ? "location" : "location cleared") }
       if (Array.isArray(c.use_by)) { next.useBy = (strs(c.use_by) ?? []).map(isoDate).sort(); said.push(next.useBy.length ? "use-by dates" : "use-by dates cleared") }
+      if (typeof c.open_counts === "boolean") {
+        if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs.`)
+        next.openCounts = c.open_counts || undefined
+        said.push(c.open_counts ? "open pack counts towards the minimum" : "open pack doesn't count towards the minimum")
+      }
       if (typeof c.no_expiry === "boolean") {
         next.noExpiry = c.no_expiry || undefined
         if (c.no_expiry) next.useBy = []
