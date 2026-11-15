@@ -248,7 +248,8 @@ var fullOf = (i, total = i.inStock) => isBulk(i) && !i.openCounts ? Math.max(0, 
 var shortfall = (i) => Math.max(0, i.target - fullOf(i));
 var entryTotal = (i) => (i.entries ?? []).reduce((n, e) => n + e.qty, 0);
 var needOf = (i) => Math.max(shortfall(i), entryTotal(i));
-var stockOf = (i) => !isStaple(i) ? null : i.inStock <= 0 ? "out" : fullOf(i) < i.target ? "low" : null;
+var LOW_AT = 0.5;
+var stockOf = (i) => !isStaple(i) ? null : i.inStock <= 0 ? "out" : fullOf(i) <= i.target * LOW_AT ? "low" : null;
 function unitText2(i, n) {
   if (!i.unit) return String(n);
   return `${n} ${n === 1 ? i.unit[0] : i.unit[1]}`;
@@ -740,7 +741,7 @@ var tools = [
       type: "object",
       properties: {
         query: { type: "string", description: "Part of a name, another name, or a category name." },
-        filter: { type: "string", enum: ["all", "staples", "low_or_out", "out", "use_soon", "not_staples"], description: "use_soon: has a use-by date in the next 7 days." }
+        filter: { type: "string", enum: ["all", "staples", "low_or_out", "out", "use_soon", "not_staples"], description: "low_or_out: Out, or Low (half the minimum or fewer). use_soon: has a use-by date in the next 7 days." }
       }
     },
     annotations: { readOnlyHint: true },

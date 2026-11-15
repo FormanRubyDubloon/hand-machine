@@ -6,12 +6,12 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  daysUntil, dateText, haveText, isBulk, isStaple, locationLabel, locations, money, needOf, plural, soonest, stockOf, unitWord,
+  daysUntil, dateText, haveText, isBulk, isStaple, locationLabel, locations, money, needOf, plural, shortfall, soonest, stockOf, unitWord,
   type Item, type Location,
 } from "../model"
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
-import { FilterGroup, FilterSidebar, NewPill, PageTitle, Segmented, SortSelect, Stepper, StockPill } from "../components"
+import { FilterGroup, FilterSidebar, HeadingTip, NewPill, PageTitle, Segmented, SortSelect, Stepper, StockPill, statusHelp } from "../components"
 import { ItemPanel } from "./item-panel"
 
 type Show = "staples" | "not" | "soon"
@@ -60,7 +60,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
 
   const title = [f.show ? showLabels[f.show] : f.type ? (f.type === "bulk" ? "Bulk items" : "Counted items") : f.aisle ? category(f.aisle) : "All items", f.location !== "all" ? `in the ${locationLabel(f.location).toLowerCase()}` : ""].join(" ")
   const staples = rows.filter(isStaple).length
-  const below = rows.filter((i) => stockOf(i)).length
+  const below = rows.filter((i) => isStaple(i) && shortfall(i) > 0).length
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -127,7 +127,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
             <TableRow className="hover:bg-transparent">
               {["Item", "Location", "In stock", "Minimum", "Status", "Use by", "Preferred brand", "Shop or aisle", "Price"].map((h) => (
                 <TableHead key={h} className={cn("sticky -top-7 z-10 h-10 bg-background text-[10px] font-semibold tracking-widest shadow-[inset_0_-1px_0_var(--border)]", (h === "Minimum" || h === "Price") && "text-right")}>
-                  {h}
+                  {h === "Status" ? <HeadingTip label={h} tip={statusHelp} /> : h}
                 </TableHead>
               ))}
             </TableRow>

@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { stockOf, whenText, type HistoryEntry, type IngredientStatus, type Item, type Who } from "./model"
+import { fullOf, stockOf, whenText, type HistoryEntry, type IngredientStatus, type Item, type Who } from "./model"
 
 // ---------- type ----------
 
@@ -37,11 +37,40 @@ export function SectionTitle({ children, className }: { children: React.ReactNod
 
 // ---------- pills ----------
 
-/** Out (solid) or Low (outlined), from the stock. Nothing when it's fine. */
+/** What the Status column means, for a tooltip. */
+export const statusHelp = "Out: none in stock. Low: half the minimum or fewer. A Staple under its minimum but above half goes on the shopping list without a status."
+
+/** Out (solid) or Low (outlined), from the stock. Nothing when it's fine. The tooltip says why. */
 export function StockPill({ item }: { item: Item }) {
   const s = stockOf(item)
   if (!s) return null
-  return <Badge variant={s === "out" ? "solid" : "outlined"}>{s === "out" ? "Out" : "Low"}</Badge>
+  const tip = s === "out" ? `None in stock. The minimum is ${item.target}.` : `${fullOf(item)} of ${item.target} count towards the minimum. Low is half the minimum or fewer.`
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-flex outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+            <Badge variant={s === "out" ? "solid" : "outlined"}>{s === "out" ? "Out" : "Low"}</Badge>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{tip}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+/** A column heading with a tooltip. The dotted underline shows there's more to read. */
+export function HeadingTip({ label, tip }: { label: string; tip: string }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="cursor-help underline decoration-dotted underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring/50">{label}</span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-64">{tip}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
 }
 
 /** Grey rounded pill: Staple, Recipe, Claude, One-off. */
