@@ -95,7 +95,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
         />
       </FilterSidebar>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-8 py-7">
+      <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-8 py-7 [&_[data-slot=table-container]]:overflow-visible">
         <PageTitle
           title={title}
           subtitle={`${plural(rows.length, "item")} · ${plural(staples, "Staple")} · ${below} below minimum · sorted by ${sorts[sort].summary}`}
@@ -121,11 +121,12 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
           </div>
         </PageTitle>
 
+        {/* The headers stick at -top-7, the page container's py-7, so they sit flush with its top edge and leave no gap. */}
         <Table className="text-sm">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               {["Item", "Location", "In stock", "Minimum", "Status", "Use by", "Preferred brand", "Shop or aisle", "Price"].map((h) => (
-                <TableHead key={h} className={cn("h-10 text-[10px] font-semibold tracking-widest", (h === "Minimum" || h === "Price") && "text-right")}>
+                <TableHead key={h} className={cn("sticky -top-7 z-10 h-10 bg-background text-[10px] font-semibold tracking-widest shadow-[inset_0_-1px_0_var(--border)]", (h === "Minimum" || h === "Price") && "text-right")}>
                   {h}
                 </TableHead>
               ))}
