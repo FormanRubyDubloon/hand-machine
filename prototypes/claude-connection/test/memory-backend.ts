@@ -27,6 +27,17 @@ export function memoryBackend(seed: PantryData) {
     async deleteRecipes(ids) {
       state.recipes = state.recipes.filter((r) => !ids.includes(r.id))
     },
+    async saveStores(stores, sort) {
+      for (const x of stores) {
+        const n = state.stores.findIndex((y) => y.id === x.id)
+        if (n >= 0) state.stores[n] = structuredClone(x)
+        else state.stores.push(structuredClone(x))
+      }
+      state.stores.sort((a, b) => sort(a.id) - sort(b.id))
+    },
+    async deleteStores(ids) {
+      state.stores = state.stores.filter((x) => !ids.includes(x.id))
+    },
     async addHistory(row) {
       history.unshift(row)
     },

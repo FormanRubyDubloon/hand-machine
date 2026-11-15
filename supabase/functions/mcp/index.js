@@ -203,6 +203,18 @@ function supabaseBackend(db) {
     async deleteRecipes(ids) {
       if (ids.length) check(await db.from("recipes").delete().in("id", ids));
     },
+    async saveStores(stores, sort, categories) {
+      if (!stores.length) return;
+      check(await db.from("stores").upsert(stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id) })), { onConflict: "id" }));
+      check(await db.from("store_aisles").delete().in("store_id", stores.map((x) => x.id)));
+      const aisles = stores.flatMap(
+        (x) => Object.entries(x.aisles).filter(([id, n]) => n != null && categories.has(id)).map(([category_id, number]) => ({ store_id: x.id, category_id, number }))
+      );
+      if (aisles.length) check(await db.from("store_aisles").insert(aisles));
+    },
+    async deleteStores(ids) {
+      if (ids.length) check(await db.from("stores").delete().in("id", ids));
+    },
     async addHistory(row) {
       check(await db.from("history").insert(row));
     },
@@ -485,6 +497,51 @@ async function commit(ctx, change) {
   }
   data.recipes = data.recipes.filter((r) => !(change.deleteRecipes ?? []).includes(r.id));
 }
+async function commitStores(ctx, change) {
+  const { data, backend } = ctx;
+  const at = ctx.now().toISOString();
+  const removed = new Set(change.remove ?? []);
+  const next = [...data.stores.filter((x) => !removed.has(x.id))];
+  for (const x of change.save ?? []) {
+    const n = next.findIndex((y) => y.id === x.id);
+    if (n >= 0) next[n] = x;
+    else next.push(x);
+  }
+  const order = new Map(next.map((x, n) => [x.id, n]));
+  await backend.saveStores(change.save ?? [], (id) => order.get(id) ?? 0, new Set(data.categories.map((c) => c.id)));
+  await backend.deleteStores(change.remove ?? []);
+  await backend.addHistory({
+    id: uid("h"),
+    at,
+    who: "claude",
+    title: change.title,
+    detail: change.detail ?? null,
+    item_ids: [],
+    recipe_id: null,
+    undo: null,
+    undone: false,
+    key: null
+  });
+  data.stores = next;
+}
+function aisleChanges(data, v) {
+  if (v === void 0) return {};
+  if (!v || typeof v !== "object" || Array.isArray(v)) throw new ToolError('aisles is an object of category name \u2192 aisle number, for example { "Frozen": 12 }. Use null to clear a number.');
+  const out = {};
+  for (const [ref, n] of Object.entries(v)) {
+    const id = findCategory(data, ref);
+    if (n === null) out[id] = null;
+    else if (typeof n === "number" && Number.isInteger(n) && n > 0) out[id] = n;
+    else throw new ToolError(`The aisle number for ${ref} has to be a whole number above 0, or null to clear it.`);
+  }
+  return out;
+}
+var aislesSchema = {
+  type: "object",
+  description: `Aisle number per category, by category name or id: { "Frozen": 12, "Baking": 7 }. null clears a number (the store doesn't sell it). Categories left out stay as they are. Claude can't add or rename categories.`,
+  additionalProperties: { type: ["number", "null"] }
+};
+var aisleText = (x, cats) => aisleOrder(x, cats).filter((c) => x.aisles[c.id] != null).map((c) => `${x.aisles[c.id]} ${c.name}`).join(", ") || "no aisles set";
 var pantryItems = (items) => Object.values(items).filter((i) => !i.oneOff);
 function nearItems(items, q, max = 5) {
   const ql = q.toLowerCase().trim();
@@ -1382,6 +1439,82 @@ ${recipeLine(next, ctx.data.items)}`;
       const cleared = Object.values(ctx.data.items).map((i) => removeRecipeEntries(i, r.name)).filter((i) => !!i);
       await commit(ctx, { items: cleared, deleteRecipes: [r.id], title: `Deleted ${r.name}`, detail: cleared.length ? `Took ${plural(cleared.length, "thing")} off the shopping list` : void 0, recipeId: r.id, itemIds: cleared.map((i) => i.id) });
       return `Deleted ${r.name}.${cleared.length ? ` Took its ${plural(cleared.length, "item")} off the list.` : ""}`;
+    }
+  },
+  {
+    name: "add_store",
+    title: "Add a store",
+    description: "Adds a store with its aisle numbers, so the shopping list follows its layout. Needs no asking. Categories you don't number aren't sold there. To change a store that already exists, use update_store.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: `"Sainsbury's, Stoke Newington".` },
+        kind: { type: "string", description: 'Optional: "Supermarket", "Butcher".' },
+        place: { type: "string", description: "Optional: the street or area." },
+        aisles: aislesSchema
+      },
+      required: ["name"]
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false },
+    async run(args, ctx) {
+      const name = str(args.name);
+      if (!name) throw new ToolError("Give the store a name.");
+      const clash = ctx.data.stores.find((x) => x.name.toLowerCase() === name.toLowerCase());
+      if (clash) throw new ToolError(`There's already a store called ${clash.name} [id: ${clash.id}]. To change it, use update_store.`);
+      const id = freshId(slug(name), (x) => ctx.data.stores.some((s) => s.id === x));
+      const aisles = Object.fromEntries(Object.entries(aisleChanges(ctx.data, args.aisles)).filter(([, n]) => n !== null));
+      const store = { id, name, kind: str(args.kind) ?? "", place: str(args.place) ?? "", aisles };
+      await commitStores(ctx, { save: [store], title: `Added the store ${name}`, detail: aisleText(store, ctx.data.categories) });
+      return `Added ${name} [id: ${id}]: ${aisleText(store, ctx.data.categories)}.`;
+    }
+  },
+  {
+    name: "update_store",
+    title: "Change a store or its aisle numbers",
+    description: "Renames a store or changes its kind, place or aisle numbers. Only the aisles you give change. An edit: ask the user first, saying the store and the old and new numbers, then call with confirmed: true. This can't be undone from History, so the reply lists the old numbers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        store: { type: "string", description: "The store's id or name (get_categories_and_stores)." },
+        changes: { type: "object", properties: { name: { type: "string" }, kind: { type: "string" }, place: { type: "string" }, aisles: aislesSchema } },
+        confirmed
+      },
+      required: ["store", "changes", "confirmed"]
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+    async run(args, ctx) {
+      const x = findStore(ctx.data, args.store);
+      const c = args.changes ?? {};
+      const aisles = aisleChanges(ctx.data, c.aisles);
+      const name = str(c.name) ?? x.name;
+      const clash = ctx.data.stores.find((y) => y.id !== x.id && y.name.toLowerCase() === name.toLowerCase());
+      if (clash) throw new ToolError(`There's already a store called ${clash.name}.`);
+      needConfirmed(args, `changing ${x.name}`);
+      const next = {
+        ...x,
+        name,
+        kind: c.kind === void 0 ? x.kind : str(c.kind) ?? "",
+        place: c.place === void 0 ? x.place : str(c.place) ?? "",
+        aisles: Object.fromEntries(Object.entries({ ...x.aisles, ...aisles }).filter(([, n]) => n != null))
+      };
+      const moved = Object.entries(aisles).map(([id, n]) => `${categoryName(ctx.data.categories, id)} ${x.aisles[id] ?? "none"} \u2192 ${n ?? "none"}`);
+      const detail = [name !== x.name ? `Renamed from ${x.name}` : "", ...moved].filter(Boolean).join("; ") || void 0;
+      await commitStores(ctx, { save: [next], title: `Changed ${name}`, detail });
+      return `Changed ${name}.${detail ? ` ${detail}.` : ""} It can't be undone from History, so to go back, change it again.
+Now: ${aisleText(next, ctx.data.categories)}.`;
+    }
+  },
+  {
+    name: "delete_store",
+    title: "Delete a store",
+    description: "Deletes a store and its aisle numbers. Items stay. A delete: ask the user first, then call with confirmed: true. It can't be undone from History.",
+    inputSchema: { type: "object", properties: { store: { type: "string", description: "The store's id or name." }, confirmed }, required: ["store", "confirmed"] },
+    annotations: { readOnlyHint: false, destructiveHint: true },
+    async run(args, ctx) {
+      const x = findStore(ctx.data, args.store);
+      needConfirmed(args, `deleting ${x.name}`);
+      await commitStores(ctx, { remove: [x.id], title: `Deleted the store ${x.name}`, detail: aisleText(x, ctx.data.categories) });
+      return `Deleted ${x.name}. It had: ${aisleText(x, ctx.data.categories)}. It can't be undone from History; add_store would recreate it.`;
     }
   }
 ];

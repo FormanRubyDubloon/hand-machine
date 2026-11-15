@@ -24,6 +24,10 @@ export interface Backend {
   deleteItems(ids: string[]): Promise<void>
   saveRecipes(recipes: SharedRecipe[], before: Record<string, RecipeRow>, items: Set<string>): Promise<void>
   deleteRecipes(ids: string[]): Promise<void>
+  /** Upserts stores and replaces their aisle numbers. `sort` gives each store's place in the list. */
+  saveStores(stores: SharedStore[], sort: (id: string) => number, categories: Set<string>): Promise<void>
+  /** Deletes stores; their aisle numbers go with them. */
+  deleteStores(ids: string[]): Promise<void>
   addHistory(row: HistoryRow): Promise<void>
   history(limit: number): Promise<HistoryRow[]>
 }
@@ -85,6 +89,22 @@ export function supabaseBackend(db: SupabaseClient): Backend {
 
     async deleteRecipes(ids) {
       if (ids.length) check(await db.from("recipes").delete().in("id", ids))
+    },
+
+    async saveStores(stores, sort, categories) {
+      if (!stores.length) return
+      check(await db.from("stores").upsert(stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id) })), { onConflict: "id" }))
+      check(await db.from("store_aisles").delete().in("store_id", stores.map((x) => x.id)))
+      const aisles = stores.flatMap((x) =>
+        Object.entries(x.aisles)
+          .filter(([id, n]) => n != null && categories.has(id))
+          .map(([category_id, number]) => ({ store_id: x.id, category_id, number: number! })),
+      )
+      if (aisles.length) check(await db.from("store_aisles").insert(aisles))
+    },
+
+    async deleteStores(ids) {
+      if (ids.length) check(await db.from("stores").delete().in("id", ids))
     },
 
     async addHistory(row) {

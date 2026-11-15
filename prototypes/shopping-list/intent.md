@@ -97,9 +97,10 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 
 **What Claude can do**
 - Claude can read pantry stock, the shopping list and my saved recipes, and search them.
-- Claude can add items, stock, list entries and recipes without asking.
+- Claude can add items, stock, list entries, recipes and stores without asking.
 - When I tell Claude what I've used ("I used the last of the rice"), it takes that off stock without asking. This doesn't count as an edit.
-- Claude must ask me to confirm before it edits or deletes anything else.
+- Claude must ask me to confirm before it edits or deletes anything else, including changing a store or its aisle numbers.
+- Claude can change a store's aisle numbers, but not add, rename or remove categories. Those stay in the admin app.
 
 **Success looks like:**
 - I do four weekly shops in a row with nothing forgotten and nothing bought that I already had enough of.
@@ -134,6 +135,6 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - **Success numbers:** the numbers in the success list are starting guesses. Review them after a month of use, especially the 10 minutes a week.
 - **Use-by warnings:** recipes are ranked by what needs using first. Should anything also warn me before things go off?
 - **Notion import:** which Notion fields map to the new item and recipe fields, and what do I do with items or recipes that don't fit?
-- **Categories and Claude:** can Claude add or rename categories, or only use the ones that exist? Today it would have to ask before editing one.
+- **Categories and Claude:** Claude only uses the categories that exist (decided 15 Nov). Revisit if that gets in the way.
 - **Sharing later:** if others join, do they see the same pantry, and does anyone have different permissions?
 - **Online shopping:** preferred brand exists for online orders. Is ordering online in scope, or is the brand just a note for now?

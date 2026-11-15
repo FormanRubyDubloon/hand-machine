@@ -269,3 +269,43 @@ describe("edits and deletes need asking", () => {
     expect(r.text).toContain("Staple below its minimum")
   })
 })
+
+describe("stores and aisle numbers", () => {
+  it("adds a store without asking, numbering categories by name", async () => {
+    const { call, mem } = setup()
+    const r = await call("add_store", { name: "Lidl", aisles: { "Tins & jars": 3, baking: 5 } })
+    expect(r.isError).toBe(false)
+    expect(mem.state.stores.find((s) => s.id === "lidl")?.aisles).toEqual({ "tins-and-jars": 3, baking: 5 })
+    expect(mem.history[0]).toMatchObject({ who: "claude", undo: null })
+  })
+
+  it("refuses to change a store without confirmed", async () => {
+    const { call, mem } = setup()
+    const r = await call("update_store", { store: "tesco", changes: { aisles: { "Tins & jars": 9 } } })
+    expect(r.isError).toBe(true)
+    expect(mem.state.stores[0].aisles["tins-and-jars"]).toBe(6)
+  })
+
+  it("changes only the aisles it is given, and null clears one", async () => {
+    const { call, mem } = setup()
+    const r = await call("update_store", { store: "Tesco Express", changes: { aisles: { "Tins & jars": 9, "Fruit & veg": null } }, confirmed: true })
+    expect(r.isError).toBe(false)
+    expect(mem.state.stores[0].aisles).toEqual({ "tins-and-jars": 9, "grains-and-pulses": 5 })
+    expect(r.text).toContain("Tins & jars 6 → 9")
+  })
+
+  it("rejects an unknown category and a bad number", async () => {
+    const { call, mem } = setup()
+    expect((await call("update_store", { store: "tesco", changes: { aisles: { Cheese: 2 } }, confirmed: true })).isError).toBe(true)
+    expect((await call("update_store", { store: "tesco", changes: { aisles: { Baking: 0 } }, confirmed: true })).isError).toBe(true)
+    expect(mem.state.stores[0].aisles.baking).toBeUndefined()
+  })
+
+  it("deletes a store only once confirmed", async () => {
+    const { call, mem } = setup()
+    expect((await call("delete_store", { store: "tesco" })).isError).toBe(true)
+    expect(mem.state.stores).toHaveLength(1)
+    await call("delete_store", { store: "tesco", confirmed: true })
+    expect(mem.state.stores).toHaveLength(0)
+  })
+})
