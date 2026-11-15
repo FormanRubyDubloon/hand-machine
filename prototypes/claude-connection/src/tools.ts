@@ -835,7 +835,8 @@ export const tools: Tool[] = [
   {
     name: "update_item",
     title: "Change a pantry item",
-    description: "Changes an item: its name, minimum, stock, unit, category, location, use-by dates and so on. An edit: ask the user first, then call with confirmed: true. To record something used, use record_used instead (no asking needed).",
+    description:
+      "Changes any property of an item: name, type, minimum, stock, open packs, unit, pack size, category, location, use-by (best before) dates, when packs were opened, other names, brand, price and notes. Set a property to null to clear it. Use-by dates are numbered soonest first, undated last, as search_pantry lists them; change one with use_by_one, or replace them all with use_by. An edit: ask the user first, then call with confirmed: true. To record something used, use record_used instead (no asking needed).",
     inputSchema: {
       type: "object",
       properties: {
@@ -848,14 +849,25 @@ export const tools: Tool[] = [
             minimum: { type: "number" },
             stock: { type: "number", description: "Bulk: whole packs, including open ones." },
             open: { type: "number", description: "Bulk: how many packs are open." },
-            unit: { type: "string" },
-            category: { type: "string" },
-            location: { type: "string", enum: LOCATIONS },
-            use_by: { type: "array", items: { type: "string" }, description: "Replaces the dates. YYYY-MM-DD." },
-            other_names: { type: "array", items: { type: "string" }, description: "Replaces the other names." },
-            brand: { type: "string" },
-            price_pence: { type: "number" },
-            notes: { type: "string" },
+            unit: { type: ["string", "null"], description: "Singular: \"tin\", \"bag\". null for plain counts." },
+            pack_size: {
+              anyOf: [{ type: "object", properties: { amount: { type: "number" }, measure: { type: "string", enum: ["g", "ml"] } }, required: ["amount", "measure"] }, { type: "null" }],
+              description: "Bulk only: what one pack holds, e.g. { amount: 1000, measure: \"g\" }. Used to check a recipe has enough.",
+            },
+            category: { type: ["string", "null"] },
+            location: { type: ["string", "null"], enum: [...LOCATIONS, null] },
+            use_by: { type: "array", items: { type: "string" }, description: "Replaces every date, one per unit or pack. YYYY-MM-DD. [] clears them." },
+            use_by_one: {
+              type: "object",
+              properties: { position: { type: "number", description: "1 = the soonest date, as search_pantry numbers them." }, date: { type: ["string", "null"], description: "YYYY-MM-DD, or null to make that unit undated." } },
+              required: ["position", "date"],
+              description: "Changes one unit's date and leaves the others.",
+            },
+            opened_at: { type: "array", items: { type: ["string", "null"] }, description: "Bulk: when each open pack was opened, YYYY-MM-DD, one per open pack. null for unknown." },
+            other_names: { type: ["array", "null"], items: { type: "string" }, description: "Replaces the other names." },
+            brand: { type: ["string", "null"] },
+            price_pence: { type: ["number", "null"] },
+            notes: { type: ["string", "null"] },
           },
         },
         confirmed,
@@ -883,15 +895,53 @@ export const tools: Tool[] = [
         next = { ...withStock(next, n), entries: n > i.inStock ? settle(next.entries, n - i.inStock) : next.entries }
         said.push(`stock ${i.inStock} → ${n}`)
       }
-      if (num(c.open) !== undefined) { next.open = Math.max(0, Math.round(num(c.open)!)); said.push("open packs") }
-      if (str(c.unit)) { next.unit = unitPair(str(c.unit)!); said.push("unit") }
-      if (str(c.category)) { next.categoryId = findCategory(ctx.data, c.category); said.push("shop or aisle") }
-      if (str(c.location)) { next.location = location(c.location); said.push("location") }
-      if (Array.isArray(c.use_by)) { next.useBy = (strs(c.use_by) ?? []).map(isoDate).sort(); said.push("use-by dates") }
-      if (Array.isArray(c.other_names)) { next.otherNames = strs(c.other_names); said.push("other names") }
-      if (typeof c.brand === "string") { next.brand = str(c.brand); said.push("brand") }
-      if (num(c.price_pence) !== undefined) { next.price = Math.round(num(c.price_pence)!); said.push("price") }
-      if (typeof c.notes === "string") { next.notes = str(c.notes); said.push("notes") }
+      // A key that's there with null (or "") clears the property; a key that's left out leaves it alone.
+      const has = (k: string) => k in c
+      const cleared = (k: string) => c[k] === null || c[k] === ""
+      if (num(c.open) !== undefined) {
+        const open = Math.max(0, Math.round(num(c.open)!))
+        if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs. Change type to bulk first if it should.`)
+        if (open > next.inStock) throw new ToolError(`Only ${next.inStock} in stock, so at most ${next.inStock} can be open.`)
+        next.open = open
+        said.push(`open packs ${i.open ?? 0} → ${open}`)
+      }
+      if (has("unit")) { next.unit = cleared("unit") ? undefined : unitPair(str(c.unit) ?? null); said.push(next.unit ? "unit" : "unit cleared") }
+      if (has("pack_size")) {
+        if (cleared("pack_size")) { next.packSize = undefined; said.push("pack size cleared") }
+        else {
+          const p = c.pack_size as Json
+          const amount = num(p?.amount)
+          if (!amount || amount <= 0 || (p.measure !== "g" && p.measure !== "ml")) throw new ToolError("pack_size is { amount, measure }, with measure g or ml.")
+          if (next.type !== "bulk") throw new ToolError(`Pack size is for bulk items, and ${i.name} is counted. Change type to bulk too if it should be.`)
+          next.packSize = { amount, measure: p.measure }
+          said.push(`pack size ${amount} ${p.measure}`)
+        }
+      }
+      if (has("category")) { next.categoryId = cleared("category") ? "" : findCategory(ctx.data, c.category); said.push(next.categoryId ? "shop or aisle" : "category cleared") }
+      if (has("location")) { next.location = cleared("location") ? undefined : location(c.location); said.push(next.location ? "location" : "location cleared") }
+      if (Array.isArray(c.use_by)) { next.useBy = (strs(c.use_by) ?? []).map(isoDate).sort(); said.push(next.useBy.length ? "use-by dates" : "use-by dates cleared") }
+      if (c.use_by_one && typeof c.use_by_one === "object") {
+        const one = c.use_by_one as Json
+        const dates = normalise(next).useBy ?? []
+        const n = Math.round(num(one.position) ?? 0)
+        if (n < 1 || n > dates.length) throw new ToolError(dates.length ? `position is 1 to ${dates.length}: ${next.name} has ${plural(dates.length, "dated unit")} in stock.` : `${next.name} has nothing in stock to date.`)
+        const was = dates[n - 1]
+        dates[n - 1] = one.date === null ? null : isoDate(one.date)
+        next.useBy = dates.sort(byDate)
+        said.push(`use-by ${was ?? "undated"} → ${one.date ?? "undated"}`)
+      }
+      if (Array.isArray(c.opened_at)) {
+        if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs.`)
+        const open = next.open ?? 0
+        if (c.opened_at.length > open) throw new ToolError(`${next.name} has ${plural(open, "open pack")}, so give at most ${open} opened dates (or change open too).`)
+        next.openedAt = (c.opened_at as unknown[]).map((d) => (d === null ? null : isoDate(d)))
+        said.push("opened dates")
+      }
+      if (has("other_names")) { next.otherNames = cleared("other_names") ? undefined : strs(c.other_names); said.push("other names") }
+      if (has("brand")) { next.brand = str(c.brand); said.push(next.brand ? "brand" : "brand cleared") }
+      if (has("price_pence")) { next.price = cleared("price_pence") ? undefined : Math.round(num(c.price_pence) ?? 0); said.push(next.price !== undefined ? "price" : "price cleared") }
+      if (has("notes")) { next.notes = str(c.notes); said.push(next.notes ? "notes" : "notes cleared") }
+      if (next.type !== "bulk") { next.open = undefined; next.packSize = undefined; next.openedAt = undefined }
       if (!said.length) return "Nothing to change."
       await commit(ctx, { items: [next], title: `Changed ${next.name}`, detail: cap(said.join(", ")), itemIds: [i.id] })
       return `Changed. ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`

@@ -1,7 +1,7 @@
 // How the pantry reads to Claude: one line per item, recipe or list row, in plain words. Claude
 // rephrases for the chat, so these favour being unambiguous (ids, ISO dates) over being pretty.
 import {
-  daysUntil, haveText, isBulk, isStaple, locationLabel, needOf, recipeInfo, shortNames, soonest, stockOf, type IngredientRow, type Items,
+  daysUntil, haveText, isBulk, isStaple, locationLabel, needOf, normalise, recipeInfo, shortNames, soonest, stockOf, type IngredientRow, type Items,
 } from "../../pantry-app/src/model"
 import { minutesText, type Category, type SharedItem, type SharedRecipe } from "../../shared/src/pantry"
 
@@ -22,8 +22,17 @@ export function itemLine(i: SharedItem, categories: Category[]) {
   if (stock) parts.push(stock === "out" ? "OUT" : "LOW")
   const need = needOf(i)
   if (need > 0) parts.push(`${need} on the shopping list`)
-  const d = soonest(i)
-  if (d) parts.push(`use by ${dateWithDays(d)}`)
+  // Every unit's date, numbered as update_item's use_by_one counts them, when there's more than one.
+  const dates = i.inStock > 0 ? (normalise(i).useBy ?? []) : []
+  if (dates.length > 1 && dates.some(Boolean)) {
+    parts.push(`use-by dates: ${dates.map((x, n) => `${n + 1}) ${x ? dateWithDays(x) : "undated"}`).join(", ")}`)
+  } else {
+    const d = soonest(i)
+    if (d) parts.push(`use by ${dateWithDays(d)}`)
+  }
+  if (i.packSize) parts.push(`pack size ${i.packSize.amount} ${i.packSize.measure}`)
+  const opened = (i.openedAt ?? []).filter((x): x is string => !!x)
+  if (opened.length) parts.push(`opened ${opened.join(", ")}`)
   if (i.location) parts.push(locationLabel(i.location).toLowerCase())
   parts.push(categoryName(categories, i.categoryId))
   if (i.otherNames?.length) parts.push(`also called ${i.otherNames.join(", ")}`)
