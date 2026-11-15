@@ -494,7 +494,7 @@ export function DeleteDialog({ open, onOpenChange, item, onMerge, onDone }: { op
         <DialogFooter className="sm:justify-between">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
-            className="bg-destructive text-white hover:bg-destructive/80"
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/80"
             onClick={() => {
               actions.deleteItem(item.id)
               onOpenChange(false)

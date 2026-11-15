@@ -22,7 +22,7 @@ export function PageTitle({ title, subtitle, children }: { title: React.ReactNod
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="flex min-w-0 flex-col gap-1.5">
-        <h1 className="text-3xl leading-none font-semibold tracking-[0.04em] uppercase">{title}</h1>
+        <h1 className="type-title text-3xl leading-none font-semibold tracking-[0.04em] uppercase">{title}</h1>
         {subtitle && <p className="text-[13px] text-muted-foreground">{subtitle}</p>}
       </div>
       {children}

@@ -44,7 +44,7 @@ export function Screen({
             {leading}
             <div className="flex min-w-0 flex-col gap-2">
               {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-              <h1 className="text-3xl leading-none font-semibold tracking-[0.04em] break-words uppercase">
+              <h1 className="type-title text-3xl leading-none font-semibold tracking-[0.04em] break-words uppercase">
                 {title}
               </h1>
               {subtitle && <span className="text-sm text-muted-foreground">{subtitle}</span>}

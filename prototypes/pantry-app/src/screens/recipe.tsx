@@ -165,7 +165,7 @@ export function RecipeBody({ recipe, serves, setServes, columns }: { recipe: Rec
         {recipe.method.map((step, k) => (
           <li key={k} className="flex gap-4">
             <span className="flex size-7 shrink-0 items-center justify-center border border-primary text-xs font-semibold">{k + 1}</span>
-            <span className="text-[15px] leading-relaxed">{step}</span>
+            <span className="type-lead text-[15px] leading-relaxed">{step}</span>
           </li>
         ))}
       </ol>
@@ -299,7 +299,7 @@ export function RecipeFull({ id }: { id: string }) {
         <div className="flex items-start justify-between gap-6">
           <div className="flex flex-col gap-2">
             <Eyebrow>{recipeTags(recipe).join(" · ")}</Eyebrow>
-            <h1 className="text-[40px] leading-none font-semibold tracking-[0.02em] uppercase">{recipe.name}</h1>
+            <h1 className="type-display text-[40px] leading-none font-semibold tracking-[0.02em] uppercase">{recipe.name}</h1>
           </div>
           <div className="flex shrink-0 gap-2">
             <WantButton recipe={recipe} factor={serves / recipe.serves} />
@@ -468,7 +468,7 @@ export function DeleteRecipeDialog({ open, onOpenChange, recipe, onDone }: { ope
         <p className="text-[13px] text-muted-foreground">You can undo this from History today.</p>
         <DialogFooter className="sm:justify-between">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button className="bg-destructive text-white hover:bg-destructive/80" onClick={() => { actions.deleteRecipe(recipe, listed.length > 0 && offList); onOpenChange(false); onDone() }}>
+          <Button className="bg-destructive text-destructive-foreground hover:bg-destructive/80" onClick={() => { actions.deleteRecipe(recipe, listed.length > 0 && offList); onOpenChange(false); onDone() }}>
             Delete recipe
           </Button>
         </DialogFooter>
