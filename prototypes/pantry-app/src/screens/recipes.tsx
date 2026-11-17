@@ -12,6 +12,7 @@ import {
 } from "../model"
 import { minutesText } from "../../../shared/src/pantry"
 import { href, navigate, type RecipesTab, type Route } from "../router"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { usePantry } from "../state"
 import { Eyebrow, FilterGroup, FilterSidebar, PageTitle, SortSelect } from "../components"
 import { ClaudeExamples } from "./claude"
@@ -43,9 +44,16 @@ const panelKey = (e: React.KeyboardEvent, open: () => void) => {
 /** The recipe's name: a link to the full recipe page. */
 function RecipeName({ recipe, tab }: { recipe: Recipe; tab: RecipesTab }) {
   return (
-    <a className="text-left text-[15px] leading-tight font-semibold underline-offset-4 hover:underline" href={href({ name: "recipe-full", id: recipe.id, tab })}>
-      {recipe.name}
-    </a>
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <a className="text-left text-[15px] leading-tight font-semibold underline-offset-4 hover:underline" href={href({ name: "recipe-full", id: recipe.id, tab })}>
+            {recipe.name}
+          </a>
+        </TooltipTrigger>
+        <TooltipContent side="top" align="start">Open the full recipe</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 
