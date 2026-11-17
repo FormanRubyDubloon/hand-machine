@@ -316,7 +316,11 @@ export function SidePanel({
 
 export const whoLabel: Record<Who, string> = { you: "You", claude: "Claude", phone: "Shopping app" }
 
-export function HistoryRow({ entry, onUndo, compact }: { entry: HistoryEntry; onUndo?: () => void; compact?: boolean }) {
+/** Where a History entry points: its title's link, and links to each item when there are several. */
+export type HistoryLinks = { href?: string; items?: { href: string; label: string }[]; more?: number }
+
+export function HistoryRow({ entry, onUndo, compact, links }: { entry: HistoryEntry; onUndo?: () => void; compact?: boolean; links?: HistoryLinks }) {
+  const titleClass = cn("leading-snug font-semibold", compact ? "text-[13px]" : "text-sm", entry.undone && "line-through")
   return (
     <div className={cn("flex items-start gap-3 border-b border-border", compact ? "py-2.5" : "py-3", entry.undone && "opacity-50")}>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -324,8 +328,23 @@ export function HistoryRow({ entry, onUndo, compact }: { entry: HistoryEntry; on
           <Eyebrow className="text-foreground">{whoLabel[entry.who]}</Eyebrow>
           <span className="shrink-0 text-xs text-muted-foreground">{entry.undone ? "Undone" : whenText(entry.at)}</span>
         </div>
-        <span className={cn("leading-snug font-semibold", compact ? "text-[13px]" : "text-sm", entry.undone && "line-through")}>{entry.title}</span>
+        {links?.href ? (
+          <a href={links.href} className={cn(titleClass, "self-start underline-offset-2 hover:underline")}>{entry.title}</a>
+        ) : (
+          <span className={titleClass}>{entry.title}</span>
+        )}
         {entry.detail && <span className="text-xs text-muted-foreground">{entry.detail}</span>}
+        {links?.items?.length ? (
+          <span className="text-xs text-muted-foreground">
+            {links.items.map((l, n) => (
+              <React.Fragment key={l.href}>
+                {n > 0 && ", "}
+                <a href={l.href} className="text-foreground underline underline-offset-2">{l.label}</a>
+              </React.Fragment>
+            ))}
+            {links.more ? ` and ${links.more} more` : null}
+          </span>
+        ) : null}
       </div>
       {onUndo && (
         <Button variant="outline" size="icon-xs" className="mt-4 shrink-0" aria-label={`Undo: ${entry.title}`} title="Undo" onClick={onUndo}>
