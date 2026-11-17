@@ -1,7 +1,7 @@
 // Pieces the pantry app needs that the design system doesn't have. HANDOFF.md marks them "new":
 // built here, not in src/components/ui. Ask Isaac before promoting any of them.
 import * as React from "react"
-import { CheckIcon, MinusIcon, PlusIcon, TriangleAlertIcon, Undo2Icon } from "lucide-react"
+import { CheckIcon, EqualApproximatelyIcon, MinusIcon, PlusIcon, TriangleAlertIcon, Undo2Icon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -54,6 +54,33 @@ export function ExpiryAlert({ item, date, className }: { item?: Item; date?: str
         <TooltipTrigger asChild>
           <span role="img" aria-label={tip} className={cn("inline-flex shrink-0 text-destructive", className)}>
             <TriangleAlertIcon className="size-3.5" strokeWidth={2.25} />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{tip}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+/**
+ * A small boxed ≈ after a price or total that isn't exact: an estimated price, or a total that leaves
+ * out items with no price. The tooltip says which.
+ */
+export function EstimateMark({ tip, size = "sm", className }: { tip: string; size?: "sm" | "lg"; className?: string }) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            role="img"
+            aria-label={tip}
+            className={cn(
+              "inline-flex shrink-0 items-center justify-center border border-border text-muted-foreground align-middle",
+              size === "sm" ? "ml-1.5 size-4 [&_svg]:size-3" : "ml-2 size-6 [&_svg]:size-4",
+              className,
+            )}
+          >
+            <EqualApproximatelyIcon strokeWidth={2.25} />
           </span>
         </TooltipTrigger>
         <TooltipContent>{tip}</TooltipContent>

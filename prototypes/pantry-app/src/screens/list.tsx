@@ -14,7 +14,8 @@ import {
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
 import { CategoryLabel, CategoryMark } from "../category-look"
-import { Eyebrow, PageTitle, Segmented, SidePanel, Stepper, StockPill, TagPill } from "../components"
+import { EstimateMark, Eyebrow, PageTitle, Segmented, SidePanel, Stepper, StockPill, TagPill } from "../components"
+import { ItemPanel } from "./item-panel"
 
 type Group = "all" | ListRow["group"]
 
@@ -177,12 +178,12 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
                     </TableCell>
                   </TableRow>
                   {g.rows.map((r) => (
-                    <TableRow key={r.item.id} className="h-14">
+                    <TableRow key={r.item.id} data-state={route.item === r.item.id ? "selected" : undefined} className={cn("h-14", route.item === r.item.id && "shadow-[inset_2px_0_0_var(--primary)]")}>
                       <TableCell className="pl-3">
                         {r.item.oneOff ? (
                           <span className="text-[15px] font-semibold">{r.item.name}</span>
                         ) : (
-                          <button type="button" className="text-left text-[15px] font-semibold hover:underline" onClick={() => navigate({ name: "pantry", item: r.item.id })}>
+                          <button type="button" className="text-left text-[15px] font-semibold hover:underline" onClick={() => navigate({ name: "list", item: r.item.id })}>
                             {r.item.name}
                           </button>
                         )}
@@ -194,7 +195,7 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
                         </div>
                       </TableCell>
                       <TableCell><Why row={r} /></TableCell>
-                      <TableCell className="text-right tabular-nums" title={r.item.price ? (r.item.priceEstimate ? "Estimated price" : undefined) : "No price"}>{r.item.price ? `${r.item.priceEstimate ? "≈" : ""}${money(r.item.price * r.qty)}` : "–"}</TableCell>
+                      <TableCell className="text-right tabular-nums whitespace-nowrap">{r.item.price ? <>{money(r.item.price * r.qty)}{r.item.priceEstimate && <EstimateMark tip="Estimated price" />}</> : "–"}</TableCell>
                       <TableCell className="w-12 pr-3 text-right">
                         {r.group !== "staples" && (
                           <Button variant="ghost" size="icon-xs" aria-label={`Take ${r.item.name} off the list`} title="Take off the list" onClick={() => actions.removeFromList(r.item.id)}>
@@ -216,11 +217,13 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
 
       <aside className="flex w-[340px] shrink-0 flex-col gap-7 overflow-y-auto border-l border-border bg-muted/50 px-6 py-7">
         <div className="flex flex-col gap-1">
-          <Eyebrow>Estimated total</Eyebrow>
-          <span className="text-[44px] leading-none font-semibold tabular-nums">
-            {total.approximate && <span aria-label="about">≈</span>}
-            {money(total.pence)}
+          <span className="flex items-center gap-1.5">
+            {total.approximate && (
+              <EstimateMark className="ml-0" tip={`Approximate: ${[total.estimated ? "includes estimated prices" : "", total.unpriced ? "items without a price aren't counted" : ""].filter(Boolean).join(", and ")}`} />
+            )}
+            <Eyebrow>Estimated total</Eyebrow>
           </span>
+          <span className="text-[44px] leading-none font-semibold tabular-nums">{money(total.pence)}</span>
           <span className="text-xs text-muted-foreground">
             {[
               plural(rows.length, "item"),
@@ -275,6 +278,7 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
       </aside>
 
       <AddToList open={!!route.add} onClose={() => navigate({ name: "list" })} />
+      <ItemPanel id={route.item} onClose={() => navigate({ name: "list" })} />
     </div>
   )
 }
