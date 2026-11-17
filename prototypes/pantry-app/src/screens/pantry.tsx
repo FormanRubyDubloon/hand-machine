@@ -12,7 +12,7 @@ import {
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
 import { CategoryLabel, CategoryMark } from "../category-look"
-import { FilterGroup, FilterSidebar, HeadingTip, NewPill, PageTitle, Segmented, SortSelect, Stepper, StockPill, statusHelp } from "../components"
+import { ExpiryAlert, FilterGroup, FilterSidebar, HeadingTip, NewPill, PageTitle, Segmented, SortSelect, Stepper, StockPill, statusHelp } from "../components"
 import { ItemPanel } from "./item-panel"
 
 type Show = "staples" | "not" | "soon"
@@ -153,6 +153,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
                     <button type="button" data-row-open className="text-left text-[15px] font-semibold focus-visible:underline focus-visible:outline-none">
                       {i.name}
                     </button>
+                    <ExpiryAlert item={i} className="ml-2 align-middle" />
                     {i.review && <span className="ml-2 align-middle"><NewPill tip="Added from a recipe and not bought yet." /></span>}
                   </TableCell>
                   <TableCell>{locationLabel(i.location)}</TableCell>

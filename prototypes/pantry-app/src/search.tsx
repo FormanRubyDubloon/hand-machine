@@ -13,7 +13,7 @@ import {
 import { minutesText } from "../../shared/src/pantry"
 import { navigate } from "./router"
 import { usePantry } from "./state"
-import { Eyebrow, StockPill, TagPill } from "./components"
+import { Eyebrow, ExpiryAlert, StockPill, TagPill } from "./components"
 import { QuickUseActions } from "./quick-use"
 
 /** The name with the matching part in bold. */
@@ -113,6 +113,7 @@ export function Search() {
                         <div className="flex min-w-0 flex-1 flex-col">
                           <span className="flex items-center gap-2 text-sm font-medium">
                             <span className="truncate"><Highlight text={i.name} query={q} /></span>
+                            <ExpiryAlert item={i} />
                             <StockPill item={i} />
                           </span>
                           <span className="text-xs text-muted-foreground">

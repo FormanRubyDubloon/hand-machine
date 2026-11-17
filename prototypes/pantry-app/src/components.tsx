@@ -1,7 +1,7 @@
 // Pieces the pantry app needs that the design system doesn't have. HANDOFF.md marks them "new":
 // built here, not in src/components/ui. Ask Isaac before promoting any of them.
 import * as React from "react"
-import { CheckIcon, MinusIcon, PlusIcon, Undo2Icon } from "lucide-react"
+import { CheckIcon, MinusIcon, PlusIcon, TriangleAlertIcon, Undo2Icon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { fullOf, stockOf, whenText, type HistoryEntry, type IngredientStatus, type Item, type Who } from "./model"
+import { daysUntil, fullOf, soonest, stockOf, whenText, type HistoryEntry, type IngredientStatus, type Item, type Who } from "./model"
 
 // ---------- type ----------
 
@@ -36,6 +36,31 @@ export function SectionTitle({ children, className }: { children: React.ReactNod
 }
 
 // ---------- pills ----------
+
+/**
+ * A red warning triangle for something due today or already past its use-by date. Give it the item (its soonest
+ * date in stock) or a date. Nothing shows otherwise. Not focusable, so it can sit inside a link or button; screen
+ * readers get its label as part of the name around it.
+ */
+export function ExpiryAlert({ item, date, className }: { item?: Item; date?: string | null; className?: string }) {
+  const d = date !== undefined ? date : item ? soonest(item) : null
+  if (!d) return null
+  const n = daysUntil(d)
+  if (n > 0) return null
+  const tip = n === 0 ? "Use by today" : "Past its use-by date"
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span role="img" aria-label={tip} className={cn("inline-flex shrink-0 text-destructive", className)}>
+            <TriangleAlertIcon className="size-3.5" strokeWidth={2.25} />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{tip}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
 
 /** What the Status column means, for a tooltip. */
 export const statusHelp = "Out: none in stock. Low: half the minimum or fewer. A Staple under its minimum but above half goes on the shopping list without a status."

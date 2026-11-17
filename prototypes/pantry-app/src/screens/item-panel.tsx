@@ -16,7 +16,7 @@ import {
 import { navigate } from "../router"
 import { usePantry } from "../state"
 import { CategoryLabel } from "../category-look"
-import { Eyebrow, Field, HistoryRow, NewPill, Segmented, SidePanel, Stepper, StockPill, TagPill, UnitRow } from "../components"
+import { Eyebrow, ExpiryAlert, Field, HistoryRow, NewPill, Segmented, SidePanel, Stepper, StockPill, TagPill, UnitRow } from "../components"
 
 /** "bag" → "bags", "loaf" → "loaves", "box" → "boxes". */
 export function pluralise(word: string) {
@@ -192,7 +192,7 @@ export function ItemPanel({ id, prefill, seed, onSaved, onClose }: { id?: string
         onClose={onClose}
         width={560}
         eyebrow={isNew ? "New item" : [locationLabel(draft.location), category].filter(Boolean).join(" · ")}
-        title={isNew ? "Add item" : saved?.name}
+        title={isNew ? "Add item" : saved && <span className="inline-flex items-center gap-2">{saved.name}<ExpiryAlert item={saved} className="[&_svg]:size-4" /></span>}
         badges={!isNew && saved && <>{<StockPill item={saved} />}{isStaple(saved) && <TagPill>Staple</TagPill>}{saved.review && <NewPill tip="Added from a recipe and not bought yet." />}</>}
         description={!isNew && saved ? stockSentence(draft) : undefined}
         footer={

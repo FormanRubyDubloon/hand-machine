@@ -9,7 +9,7 @@ import {
 } from "../model"
 import { href, navigate } from "../router"
 import { canUndo, usePantry } from "../state"
-import { Eyebrow, HistoryRow, StockPill, type HistoryLinks } from "../components"
+import { Eyebrow, ExpiryAlert, HistoryRow, StockPill, type HistoryLinks } from "../components"
 import { CategoryMark } from "../category-look"
 import { QuickUseActions } from "../quick-use"
 import { ItemPanel } from "./item-panel"
@@ -29,9 +29,12 @@ function QuickUseTile({ item }: { item: Item }) {
         <div className="flex min-w-0 items-start gap-3">
           <CategoryMark category={category} size="lg" />
           <div className="flex min-w-0 flex-col gap-0.5">
-            <button type="button" className="text-left text-[15px] leading-tight font-semibold hover:underline" onClick={() => navigate({ name: "home", item: item.id })}>
-              {item.name}
-            </button>
+            <span className="flex items-center gap-1.5">
+              <button type="button" className="text-left text-[15px] leading-tight font-semibold hover:underline" onClick={() => navigate({ name: "home", item: item.id })}>
+                {item.name}
+              </button>
+              <ExpiryAlert item={item} />
+            </span>
             <span className="text-xs text-muted-foreground">{where}</span>
           </div>
         </div>
@@ -136,7 +139,7 @@ function CookFirst() {
           className="flex flex-col gap-0.5 border border-border bg-background p-3 text-left transition-colors hover:bg-muted"
         >
           <span className="text-sm font-semibold">{recipe.name}</span>
-          <span className="text-xs text-muted-foreground">{usesUpText(info.usesUp)}</span>
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">{usesUpText(info.usesUp)}<ExpiryAlert date={info.usesUp?.date ?? null} /></span>
         </button>
       ))}
     </section>
