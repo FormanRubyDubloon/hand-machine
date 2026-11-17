@@ -11,7 +11,7 @@ export type Route =
   | { name: "import" }
   | { name: "recipes"; tab: RecipesTab; recipe?: string; edit?: boolean; serves?: number }
   | { name: "recipe-full"; id: string; tab?: RecipesTab; item?: string; serves?: number }
-  | { name: "list"; add?: boolean }
+  | { name: "list"; add?: boolean; item?: string }
   | { name: "settings"; tab: SettingsTab; store?: string }
 
 export function parse(hash: string): Route {
@@ -40,6 +40,8 @@ export function parse(hash: string): Route {
       return { name: "recipes", tab, recipe, edit: parts.includes("edit") || undefined, serves: recipe ? serves : undefined }
     }
     case "list":
+      // An item open in the side panel over the list.
+      if (parts[1] === "item" && parts[2]) return { name: "list", item: parts[2] }
       return { name: "list", add: parts[1] === "add" || undefined }
     case "settings": {
       const tab: SettingsTab = parts[1] === "claude" || parts[1] === "account" || parts[1] === "categories" || parts[1] === "stores" ? parts[1] : "general"
@@ -62,7 +64,7 @@ export function href(route: Route): string {
     case "recipes":
       return `#/recipes/${route.tab}${route.recipe ? `/${enc(route.recipe)}${route.edit ? "/edit" : ""}${route.serves ? `?serves=${route.serves}` : ""}` : ""}`
     case "recipe-full": return `#/recipes/${route.tab ?? "cook"}/${enc(route.id)}/full${route.item ? `/${enc(route.item)}` : ""}${route.serves ? `?serves=${route.serves}` : ""}`
-    case "list": return route.add ? "#/list/add" : "#/list"
+    case "list": return route.item ? `#/list/item/${enc(route.item)}` : route.add ? "#/list/add" : "#/list"
     case "settings": return `#/settings/${route.tab}${route.tab === "stores" && route.store ? `/${enc(route.store)}` : ""}`
   }
 }
