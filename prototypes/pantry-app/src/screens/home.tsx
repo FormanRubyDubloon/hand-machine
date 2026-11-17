@@ -263,7 +263,7 @@ export function Home({ item, recipe }: { item?: string; recipe?: string }) {
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-8 py-8">
-        <label className="flex h-16 items-center gap-4 border border-primary px-5 focus-within:ring-2 focus-within:ring-ring/30">
+        <label className="flex h-16 items-center gap-4 border border-primary px-5 focus-within:ring-1 focus-within:ring-inset focus-within:ring-primary">
           <SearchIcon className="size-5 shrink-0" aria-hidden="true" />
           <input
             ref={inputRef}
@@ -274,7 +274,7 @@ export function Home({ item, recipe }: { item?: string; recipe?: string }) {
             onKeyDown={(e) => e.key === "Escape" && setQuery("")}
             placeholder="What did you use?"
             aria-label="What did you use?"
-            className="min-w-0 flex-1 bg-transparent text-2xl outline-none placeholder:text-muted-foreground"
+            className="min-w-0 flex-1 bg-transparent text-2xl outline-none! placeholder:text-muted-foreground"
           />
           <Eyebrow>Press / to search</Eyebrow>
         </label>

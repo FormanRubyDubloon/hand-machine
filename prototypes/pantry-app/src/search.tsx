@@ -78,8 +78,8 @@ export function Search() {
   }
 
   return (
-    <Command shouldFilter={false} loop className="relative w-72 overflow-visible bg-transparent" label="Search">
-      <label className="flex h-10 items-center gap-2 border-b border-ring text-muted-foreground focus-within:border-foreground">
+    <Command shouldFilter={false} loop className="relative h-auto w-72 self-center overflow-visible bg-transparent" label="Search">
+      <label className="flex h-9 items-center gap-2 rounded-full bg-muted px-4 text-muted-foreground transition-shadow focus-within:ring-2 focus-within:ring-ring/50">
         <SearchIcon className="size-4 shrink-0" aria-hidden="true" />
         <CommandPrimitive.Input
           ref={inputRef}
@@ -98,7 +98,7 @@ export function Search() {
           }}
           placeholder="Search pantry, recipes, list"
           aria-label="Search pantry, recipes and shopping list"
-          className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none! placeholder:text-muted-foreground"
         />
       </label>
       {open && q && (
