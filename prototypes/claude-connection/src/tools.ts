@@ -621,7 +621,7 @@ export const tools: Tool[] = [
         await commit(ctx, {
           items: added,
           title: one ? `Added ${one.name} to the pantry` : `Added ${plural(added.length, "item")} to the pantry`,
-          detail: one ? (one.target > 0 ? `A Staple · keep ${one.target}` : "Not a Staple") : added.map((i) => i.name).join(", "),
+          detail: one ? (one.target > 0 ? `A Staple · ${one.target} min` : "Not a Staple") : added.map((i) => i.name).join(", "),
         })
       }
       const out = added.map((i) => `Added: ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`)

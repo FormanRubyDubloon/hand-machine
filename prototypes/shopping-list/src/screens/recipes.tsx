@@ -92,11 +92,11 @@ export function Recipes() {
 function stockLine(recipe: Recipe, item: Item | undefined, status: IngredientStatus) {
   if (!item) return "not in your pantry"
   if (status === "listed") {
-    if (item.target > 0) return item.inStock === 0 ? "out of stock" : `have ${haveText(item)}, on your list`
+    if (item.target > 0) return item.inStock === 0 ? "out of stock" : `${haveText(item)} in stock, on your list`
     return recipeFor(item) === recipe.name ? "added for this recipe" : "on your list"
   }
-  if (status === "short") return item.inStock === 0 ? "none in stock" : `have ${haveText(item)}`
-  return item.type === "bulk" ? haveText(item) : `have ${item.inStock}`
+  if (status === "short") return item.inStock === 0 ? "none in stock" : `${haveText(item)} in stock`
+  return item.type === "bulk" ? haveText(item) : `${item.inStock} in stock`
 }
 
 /** RECIPE-02: ingredients against stock and the list, with Add for anything missing. */

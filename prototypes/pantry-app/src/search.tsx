@@ -7,13 +7,14 @@ import { Command as CommandPrimitive } from "cmdk"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import {
-  containsText, distance, haveText, isStaple, listRows, locationLabel, namesOf, needOf, recipeInfo, shortNames, soonest, dateText,
-  usesUpText, unitText, type Item,
+  containsText, distance, inStockText, isStaple, listRows, locationLabel, namesOf, needOf, recipeInfo, shortNames, soonest, dateText,
+  usesUpText, unitText, lower, type Item,
 } from "./model"
 import { minutesText } from "../../shared/src/pantry"
 import { navigate } from "./router"
 import { usePantry } from "./state"
 import { Eyebrow, StockPill, TagPill } from "./components"
+import { QuickUseActions } from "./quick-use"
 
 /** The name with the matching part in bold. */
 function Highlight({ text, query }: { text: string; query: string }) {
@@ -30,7 +31,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
 }
 
 const itemLine = (i: Item) =>
-  [locationLabel(i.location), i.inStock ? haveText(i) : "none in stock", isStaple(i) ? `keep ${i.target}` : "not a Staple"].join(" · ")
+  [locationLabel(i.location), inStockText(i), isStaple(i) ? `${i.target} min` : "not a Staple"].join(" · ")
 
 export function Search() {
   const { items, db, actions } = usePantry()
@@ -108,13 +109,18 @@ export function Search() {
                 {pantry.length > 0 && (
                   <CommandGroup heading={`Pantry · ${pantry.length}`}>
                     {pantry.slice(0, 6).map((i) => (
-                      <CommandItem key={i.id} value={`item-${i.id}`} onSelect={() => go(() => navigate({ name: "pantry", item: i.id }))} className="items-start py-2.5">
+                      <CommandItem key={i.id} value={`item-${i.id}`} onSelect={() => go(() => navigate({ name: "pantry", item: i.id }))} className="items-center py-2.5">
                         <div className="flex min-w-0 flex-1 flex-col">
-                          <span className="text-sm font-medium"><Highlight text={i.name} query={q} /></span>
-                          <span className="text-xs text-muted-foreground">{itemLine(i)}</span>
+                          <span className="flex items-center gap-2 text-sm font-medium">
+                            <span className="truncate"><Highlight text={i.name} query={q} /></span>
+                            <StockPill item={i} />
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {itemLine(i)}
+                            {!isStaple(i) && soonest(i) && ` · use by ${lower(dateText(soonest(i)))}`}
+                          </span>
                         </div>
-                        <StockPill item={i} />
-                        {!isStaple(i) && soonest(i) && <span className="text-xs text-muted-foreground">Use by {dateText(soonest(i))}</span>}
+                        <QuickUseActions item={i} compact className="shrink-0 self-center" />
                       </CommandItem>
                     ))}
                   </CommandGroup>

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-  dateText, guessPlace, haveText, ingredientName, isBulk, locations, lower, measureText, nameList, plural, shortfall, recipeInfo, recipesUsing, recipeTags, shortDate, unitText, unitWord,
+  dateText, guessPlace, haveText, inStockText, ingredientName, isBulk, locations, lower, measureText, nameList, plural, shortfall, recipeInfo, recipesUsing, recipeTags, shortDate, unitText, unitWord,
   withStock, isListedItem, recipeQty, toSortOut, type IngredientRow, type Item, type Recipe, categoriesAtoZ,
 } from "../model"
 import { href, navigate } from "../router"
@@ -173,7 +173,7 @@ function LinkPicker({ recipe, position, text }: { recipe: Recipe; position: numb
 
 function stockLine(r: IngredientRow) {
   if (!r.item) return r.status === "have" ? "Always to hand" : "Not in your pantry"
-  return r.item.inStock ? `have ${haveText(r.item, ", ")}` : "none in stock"
+  return inStockText(r.item, ", ")
 }
 
 /** What this recipe has put on the list for the ingredient. */

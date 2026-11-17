@@ -123,6 +123,14 @@ export function haveText(i: Item, sep = " · ") {
   return i.inStock === 1 ? `${base}${sep}open` : `${base}${sep}${i.open} open`
 }
 
+/** "5 units in stock", "2 bags in stock · 1 open", "none in stock". For labels; sentences use haveText. */
+export function inStockText(i: Item, sep = " · ") {
+  if (i.inStock === 0) return "none in stock"
+  const base = `${unitText(i, i.inStock)} in stock`
+  if (!isBulk(i) || !i.open) return base
+  return i.inStock === 1 ? `${base}${sep}open` : `${base}${sep}${i.open} open`
+}
+
 /** Keeps use-by dates and open packs in step with the stock. Dates are soonest first. */
 export function normalise(i: Item): Item {
   const open = isBulk(i) ? Math.min(i.open ?? 0, i.inStock) : undefined
