@@ -15,6 +15,7 @@ import {
 } from "../model"
 import { navigate } from "../router"
 import { usePantry } from "../state"
+import { CategoryLabel } from "../category-look"
 import { Eyebrow, Field, HistoryRow, NewPill, Segmented, SidePanel, Stepper, StockPill, TagPill, UnitRow } from "../components"
 
 /** "bag" → "bags", "loaf" → "loaves", "box" → "boxes". */
@@ -288,7 +289,7 @@ export function ItemPanel({ id, prefill, onClose }: { id?: string; prefill?: str
                 </SelectTrigger>
                 <SelectContent>
                   {categoriesAtoZ(db.categories).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}><CategoryLabel category={c} /></SelectItem>
                   ))}
                 </SelectContent>
               </Select>

@@ -1,0 +1,28 @@
+/*
+  Category colours. Twelve hues round the wheel at one lightness and chroma, so none shouts louder
+  than another. They're never used solid: the apps lay them over the background at
+  --category-tint opacity (see categoryTint in pantry-app/src/category-look.tsx). The background
+  shows through, so the tints pick up its warmth and stay muted pastels if the background changes.
+  Names and order match prototypes/shared/src/category-look.ts.
+*/
+:root {
+  --category-tint: 34%;
+
+  --category-rose: oklch(0.7 0.13 15);
+  --category-coral: oklch(0.7 0.13 40);
+  --category-apricot: oklch(0.7 0.13 65);
+  --category-butter: oklch(0.7 0.13 95);
+  --category-lime: oklch(0.7 0.13 125);
+  --category-sage: oklch(0.7 0.13 150);
+  --category-mint: oklch(0.7 0.13 175);
+  --category-teal: oklch(0.7 0.13 200);
+  --category-sky: oklch(0.7 0.13 235);
+  --category-periwinkle: oklch(0.7 0.13 270);
+  --category-lavender: oklch(0.7 0.13 300);
+  --category-mauve: oklch(0.7 0.13 340);
+}
+
+/* On a dark background the same hues need less opacity to stay muted. */
+.dark {
+  --category-tint: 26%;
+}

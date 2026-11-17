@@ -11,6 +11,7 @@ import {
 } from "../model"
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
+import { CategoryLabel, CategoryMark } from "../category-look"
 import { FilterGroup, FilterSidebar, HeadingTip, NewPill, PageTitle, Segmented, SortSelect, Stepper, StockPill, statusHelp } from "../components"
 import { ItemPanel } from "./item-panel"
 
@@ -91,7 +92,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
           label="Shop or aisle"
           value={f.aisle}
           onChange={(v) => set("aisle", v)}
-          options={categoriesAtoZ(db.categories).map((c) => ({ value: c.id, label: c.name, count: count("aisle", (i) => i.categoryId === c.id) })).filter((o) => o.count > 0)}
+          options={categoriesAtoZ(db.categories).map((c) => ({ value: c.id, label: c.name, icon: <CategoryMark category={c} size="sm" />, count: count("aisle", (i) => i.categoryId === c.id) })).filter((o) => o.count > 0)}
         />
       </FilterSidebar>
 
@@ -168,7 +169,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
                   </TableCell>
                   <TableCell className={cn(d && daysUntil(d) <= 3 && "font-semibold", i.noExpiry && "text-xs text-muted-foreground")}>{i.noExpiry ? "No expiry" : dateText(d)}</TableCell>
                   <TableCell>{i.brand || "Any"}</TableCell>
-                  <TableCell>{category(i.categoryId)}</TableCell>
+                  <TableCell><CategoryLabel category={db.categories.find((c) => c.id === i.categoryId)} /></TableCell>
                   <TableCell className="pr-3 text-right tabular-nums">{i.price ? money(i.price) : "–"}</TableCell>
                 </TableRow>
               )

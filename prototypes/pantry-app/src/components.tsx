@@ -207,7 +207,7 @@ export function Field({ label, children, className, hint }: { label: string; chi
 
 // ---------- filter sidebar ----------
 
-export type FilterOption<T extends string> = { value: T; label: string; count: number }
+export type FilterOption<T extends string> = { value: T; label: string; count: number; icon?: React.ReactNode }
 
 /** One group in the filter sidebar. Click again to clear unless `required`. */
 export function FilterGroup<T extends string>({
@@ -239,7 +239,7 @@ export function FilterGroup<T extends string>({
               on && "bg-muted font-semibold",
             )}
           >
-            <span className="truncate">{o.label}</span>
+            <span className="flex min-w-0 items-center gap-2">{o.icon}<span className="truncate">{o.label}</span></span>
             <span className="font-normal text-muted-foreground tabular-nums">{o.count}</span>
           </button>
         )
