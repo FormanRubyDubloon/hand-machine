@@ -168,13 +168,13 @@ function ConflictBanner({ onReview }: { onReview: () => void }) {
 
 function Screen({ route }: { route: Route }) {
   switch (route.name) {
-    case "home": return <Home />
+    case "home": return <Home item={route.item} recipe={route.recipe} />
     case "pantry": return <PantryScreen route={route} />
     case "import": return <ImportScreen />
     case "recipes": return <RecipesScreen route={route} />
     case "recipe-full": return <RecipeFull id={route.id} item={route.item} serves={route.serves} />
     case "list": return <ListScreen route={route} />
-    case "settings": return <Settings tab={route.tab} />
+    case "settings": return <Settings tab={route.tab} store={route.store} />
   }
 }
 

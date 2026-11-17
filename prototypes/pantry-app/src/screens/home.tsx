@@ -5,11 +5,13 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { FilterChips } from "@/components/ui/filter-chips"
 import {
-  byUseFirst, containsText, haveText, isBulk, locationLabel, namesOf, recipeInfo, unitWord, usesUpText, type Item, type Location, type Who,
+  byUseFirst, containsText, haveText, isBulk, locationLabel, namesOf, recipeInfo, unitWord, usesUpText, type Db, type HistoryEntry, type Item, type Items, type Location, type Who,
 } from "../model"
-import { navigate } from "../router"
+import { href, navigate } from "../router"
 import { canUndo, usePantry } from "../state"
-import { Eyebrow, HistoryRow, StockPill } from "../components"
+import { Eyebrow, HistoryRow, StockPill, type HistoryLinks } from "../components"
+import { ItemPanel } from "./item-panel"
+import { RecipePanel } from "./recipe"
 
 type Group = "often" | Location
 
@@ -23,7 +25,7 @@ function QuickUseTile({ item }: { item: Item }) {
     <div className={cn("flex flex-col justify-between gap-4 border border-border p-4", item.inStock === 0 && "bg-muted")}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <button type="button" className="text-left text-[15px] leading-tight font-semibold hover:underline" onClick={() => navigate({ name: "pantry", item: item.id })}>
+          <button type="button" className="text-left text-[15px] leading-tight font-semibold hover:underline" onClick={() => navigate({ name: "home", item: item.id })}>
             {item.name}
           </button>
           <span className="text-xs text-muted-foreground">{where}</span>
@@ -62,8 +64,33 @@ function QuickUseTile({ item }: { item: Item }) {
   )
 }
 
+const MAX_ITEM_LINKS = 4
+
+/**
+ * What a History entry links to. A recipe or a single item opens in the side panel here; an entry
+ * about several items links each one. Store and category changes go to their settings. Things that
+ * have since been deleted don't link.
+ */
+function linksFor(entry: HistoryEntry, db: Db, items: Items): HistoryLinks | undefined {
+  const recipe = entry.recipeId ? db.recipes.find((r) => r.id === entry.recipeId) : undefined
+  const live = [...new Set(entry.itemIds ?? [])].filter((id) => items[id])
+  const itemLinks = live.length > 1
+    ? { items: live.slice(0, MAX_ITEM_LINKS).map((id) => ({ href: href({ name: "home", item: id }), label: items[id].name })), more: Math.max(0, live.length - MAX_ITEM_LINKS) }
+    : {}
+  if (recipe) return { href: href({ name: "home", recipe: recipe.id }), ...itemLinks }
+  if (live.length === 1) return { href: href({ name: "home", item: live[0] }) }
+  if (entry.itemIds?.length) return itemLinks
+  // No item or recipe: a category or store change. Claude's store entries carry no store id, so
+  // the store is found by its name in the title (the longest name wins, so "Co-op" loses to "Co-op Express").
+  if (/\bcategory\b/i.test(entry.title)) return { href: href({ name: "settings", tab: "categories" }) }
+  const store = [...db.stores].sort((a, b) => b.name.length - a.name.length).find((x) => x.name && entry.title.includes(x.name))
+  if (store) return { href: href({ name: "settings", tab: "stores", store: store.id }) }
+  if (/\bstore\b/i.test(entry.title)) return { href: href({ name: "settings", tab: "stores" }) }
+  return undefined
+}
+
 function History() {
-  const { db, actions } = usePantry()
+  const { db, items, actions } = usePantry()
   const [who, setWho] = React.useState<"all" | Who>("all")
   const [shown, setShown] = React.useState(6)
   const entries = db.history.filter((h) => who === "all" || h.who === who)
@@ -90,7 +117,7 @@ function History() {
       />
       <div className="flex flex-col">
         {entries.slice(0, shown).map((h) => (
-          <HistoryRow key={h.id} entry={h} compact onUndo={canUndo(h) ? () => actions.undo(h.id) : undefined} />
+          <HistoryRow key={h.id} entry={h} compact links={linksFor(h, db, items)} onUndo={canUndo(h) ? () => actions.undo(h.id) : undefined} />
         ))}
         {entries.length === 0 && <p className="py-4 text-sm text-muted-foreground">Nothing yet.</p>}
       </div>
@@ -118,7 +145,7 @@ function CookFirst() {
         <button
           key={recipe.id}
           type="button"
-          onClick={() => navigate({ name: "recipes", tab: "cook", recipe: recipe.id })}
+          onClick={() => navigate({ name: "home", recipe: recipe.id })}
           className="flex flex-col gap-0.5 border border-border bg-background p-3 text-left transition-colors hover:bg-muted"
         >
           <span className="text-sm font-semibold">{recipe.name}</span>
@@ -129,7 +156,7 @@ function CookFirst() {
   )
 }
 
-export function Home() {
+export function Home({ item, recipe }: { item?: string; recipe?: string }) {
   const { items } = usePantry()
   const [query, setQuery] = React.useState("")
   const [group, setGroup] = React.useState<Group>("often")
@@ -218,6 +245,8 @@ export function Home() {
         <CookFirst />
         <p className="mt-auto text-xs text-muted-foreground">A Staple that drops below its minimum goes on the shopping list by itself.</p>
       </aside>
+      <ItemPanel id={item} onClose={() => navigate({ name: "home" })} />
+      <RecipePanel id={recipe} onClose={() => navigate({ name: "home" })} />
     </div>
   )
 }

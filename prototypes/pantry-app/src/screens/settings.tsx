@@ -70,9 +70,9 @@ function AisleRow({ category, store, count, onNumber, onRename }: { category: Ca
   )
 }
 
-function StoresAndAisles() {
+function StoresAndAisles({ initialStore }: { initialStore?: string }) {
   const { db, items, actions } = usePantry()
-  const [selectedId, setSelectedId] = React.useState(db.defaultStoreId)
+  const [selectedId, setSelectedId] = React.useState(initialStore ?? db.defaultStoreId)
   const [confirm, setConfirm] = React.useState(false)
   const [newAisle, setNewAisle] = React.useState<string | null>(null)
   const store = db.stores.find((s) => s.id === selectedId) ?? db.stores[0]
@@ -634,7 +634,7 @@ const tabs: { tab: SettingsTab; title: string; sub: string; intro: string }[] = 
   { tab: "account", title: "Account", sub: "Sign-in, devices and your data", intro: "One account for the pantry, kitchen and shopping apps." },
 ]
 
-export function Settings({ tab }: { tab: SettingsTab }) {
+export function Settings({ tab, store }: { tab: SettingsTab; store?: string }) {
   const current = tabs.find((t) => t.tab === tab)!
   return (
     <div className="flex min-h-0 flex-1">
@@ -650,7 +650,7 @@ export function Settings({ tab }: { tab: SettingsTab }) {
         ) : (
           <>
             <PageTitle title={current.title} subtitle={current.intro} />
-            {tab === "general" ? <General /> : tab === "stores" ? <StoresAndAisles /> : tab === "claude" ? <ClaudeConnection /> : <Account />}
+            {tab === "general" ? <General /> : tab === "stores" ? <StoresAndAisles key={store} initialStore={store} /> : tab === "claude" ? <ClaudeConnection /> : <Account />}
           </>
         )}
       </div>
