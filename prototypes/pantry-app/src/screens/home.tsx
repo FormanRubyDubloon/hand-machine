@@ -10,6 +10,7 @@ import {
 import { href, navigate } from "../router"
 import { canUndo, usePantry } from "../state"
 import { Eyebrow, HistoryRow, StockPill, type HistoryLinks } from "../components"
+import { CategoryMark } from "../category-look"
 import { ItemPanel } from "./item-panel"
 import { RecipePanel } from "./recipe"
 
@@ -17,18 +18,22 @@ type Group = "often" | Location
 
 /** PAN-09 tile: name, where, a big number, Out or Low, and the actions that fit the type. */
 function QuickUseTile({ item }: { item: Item }) {
-  const { actions } = usePantry()
+  const { db, actions } = usePantry()
+  const category = db.categories.find((c) => c.id === item.categoryId)
   const bulk = isBulk(item)
   const where = [locationLabel(item.location), bulk && item.inStock ? haveText(item).replace(/^\d+ /, "") : null].filter(Boolean).join(" · ")
   const canOpen = bulk && (item.open ?? 0) < item.inStock
   return (
     <div className={cn("flex flex-col justify-between gap-4 border border-border p-4", item.inStock === 0 && "bg-muted")}>
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <button type="button" className="text-left text-[15px] leading-tight font-semibold hover:underline" onClick={() => navigate({ name: "home", item: item.id })}>
-            {item.name}
-          </button>
-          <span className="text-xs text-muted-foreground">{where}</span>
+        <div className="flex min-w-0 items-start gap-3">
+          <CategoryMark category={category} size="lg" />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <button type="button" className="text-left text-[15px] leading-tight font-semibold hover:underline" onClick={() => navigate({ name: "home", item: item.id })}>
+              {item.name}
+            </button>
+            <span className="text-xs text-muted-foreground">{where}</span>
+          </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className="text-[28px] leading-none font-semibold tabular-nums" aria-label={`${haveText(item)} in stock`}>
@@ -42,11 +47,11 @@ function QuickUseTile({ item }: { item: Item }) {
       ) : bulk ? (
         <div className="flex gap-2">
           <Button size="xs" className="h-9 min-w-0 flex-1 px-2" onClick={() => actions.finishPack(item.id)}>
-            Finished it
+            Finished
           </Button>
           {canOpen && (
             <Button size="xs" variant="outline" className="h-9 min-w-0 flex-1 border-primary px-2" onClick={() => actions.openPack(item.id)}>
-              {item.open ? "Open another" : "Open one"}
+              {item.open ? "Open" : "Open one"}
             </Button>
           )}
         </div>
