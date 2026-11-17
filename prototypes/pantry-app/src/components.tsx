@@ -63,7 +63,7 @@ export function ExpiryAlert({ item, date, className }: { item?: Item; date?: str
 }
 
 /**
- * A small boxed ≈ after a price or total that isn't exact: an estimated price, or a total that leaves
+ * A small boxed ≈ before a price, or before the total's heading, that isn't exact: an estimated price, or a total that leaves
  * out items with no price. The tooltip says which.
  */
 export function EstimateMark({ tip, size = "sm", className }: { tip: string; size?: "sm" | "lg"; className?: string }) {
@@ -76,7 +76,7 @@ export function EstimateMark({ tip, size = "sm", className }: { tip: string; siz
             aria-label={tip}
             className={cn(
               "inline-flex shrink-0 items-center justify-center border border-border text-muted-foreground align-middle",
-              size === "sm" ? "ml-1.5 size-4 [&_svg]:size-3" : "ml-2 size-6 [&_svg]:size-4",
+              size === "sm" ? "mr-1.5 size-4 [&_svg]:size-3" : "mr-2 size-6 [&_svg]:size-4",
               className,
             )}
           >

@@ -18,6 +18,7 @@ import { EstimateMark, Eyebrow, PageTitle, Segmented, SidePanel, Stepper, StockP
 import { ItemPanel } from "./item-panel"
 
 type Group = "all" | ListRow["group"]
+const groupNames: Record<ListRow["group"], string> = { staples: "Staples", recipes: "For recipes", added: "Added" }
 
 function Why({ row }: { row: ListRow }) {
   const { actions, db } = usePantry()
@@ -111,7 +112,9 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
   const rows = listRows(items)
   const inGroup = rows.filter((r) => group === "all" || r.group === group)
   const shown = inGroup.filter((r) => stock === "all" || stockOf(r.item) === stock)
-  const total = listTotal(rows)
+  // The total follows the Show and Stock filters, and its heading says which are on.
+  const total = listTotal(shown)
+  const filterNames = [group !== "all" && groupNames[group], stock !== "all" && cap(stock)].filter(Boolean)
   const counts = { staples: rows.filter((r) => r.group === "staples").length, recipes: rows.filter((r) => r.group === "recipes").length, added: rows.filter((r) => r.group === "added").length }
 
   // Group by aisle in this store's walking order. Things it doesn't sell go at the end.
@@ -195,7 +198,7 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
                         </div>
                       </TableCell>
                       <TableCell><Why row={r} /></TableCell>
-                      <TableCell className="text-right tabular-nums whitespace-nowrap">{r.item.price ? <>{money(r.item.price * r.qty)}{r.item.priceEstimate && <EstimateMark tip="Estimated price" />}</> : "–"}</TableCell>
+                      <TableCell className="text-right tabular-nums whitespace-nowrap">{r.item.price ? <>{r.item.priceEstimate && <EstimateMark tip="Estimated price" />}{money(r.item.price * r.qty)}</> : "–"}</TableCell>
                       <TableCell className="w-12 pr-3 text-right">
                         {r.group !== "staples" && (
                           <Button variant="ghost" size="icon-xs" aria-label={`Take ${r.item.name} off the list`} title="Take off the list" onClick={() => actions.removeFromList(r.item.id)}>
@@ -219,14 +222,14 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
         <div className="flex flex-col gap-1">
           <span className="flex items-center gap-1.5">
             {total.approximate && (
-              <EstimateMark className="ml-0" tip={`Approximate: ${[total.estimated ? "includes estimated prices" : "", total.unpriced ? "items without a price aren't counted" : ""].filter(Boolean).join(", and ")}`} />
+              <EstimateMark className="mr-0" tip={`Approximate: ${[total.estimated ? "includes estimated prices" : "", total.unpriced ? "items without a price aren't counted" : ""].filter(Boolean).join(", and ")}`} />
             )}
-            <Eyebrow>Estimated total</Eyebrow>
+            <Eyebrow>{["Estimated total", ...filterNames].join(" · ")}</Eyebrow>
           </span>
           <span className="text-[44px] leading-none font-semibold tabular-nums">{money(total.pence)}</span>
           <span className="text-xs text-muted-foreground">
             {[
-              plural(rows.length, "item"),
+              plural(shown.length, "item"),
               total.unpriced ? `${total.unpriced} without a price, not counted` : "",
               total.estimated ? plural(total.estimated, "estimated price") : "",
               !total.approximate ? "prices from your pantry" : "",
