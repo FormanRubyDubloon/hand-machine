@@ -296,7 +296,7 @@ export function ItemPanel({ id, prefill, seed, onSaved, onClose }: { id?: string
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Price each">
+            <Field label="Price each" hint={draft.priceEstimate && draft.price ? "An estimate. Change it to set your own." : undefined}>
               <Input
                 inputMode="decimal"
                 placeholder="£0.00"
@@ -304,7 +304,9 @@ export function ItemPanel({ id, prefill, seed, onSaved, onClose }: { id?: string
                 key={`${draft.id}-price`}
                 onBlur={(e) => {
                   const v = parseFloat(e.target.value.replace(/[£,]/g, ""))
-                  set({ price: Number.isFinite(v) ? Math.round(v * 100) : undefined })
+                  const price = Number.isFinite(v) ? Math.round(v * 100) : undefined
+                  // A price you set yourself isn't an estimate. Tabbing past without a change keeps the mark.
+                  if (price !== draft.price) set({ price, priceEstimate: undefined })
                 }}
               />
             </Field>

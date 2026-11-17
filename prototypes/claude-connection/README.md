@@ -7,7 +7,7 @@ The fourth part of the pantry system (see `../shopping-list/intent.md` and `../p
 | Path | What it is |
 | --- | --- |
 | `src/server.ts` | The MCP endpoint: Streamable HTTP, stateless, JSON only. Checks the token, answers `initialize`, `tools/list`, `tools/call`. Serves the OAuth protected-resource metadata. |
-| `src/tools.ts` | The 22 tools and the rules from the intent. Reads and adds run straight away; edits and deletes refuse without `confirmed: true`. Every change goes to History as `claude`, with an undo snapshot the pantry app can use (store changes are the exception: the pantry app has no undo for stores, so their History entries are a record only). |
+| `src/tools.ts` | The 23 tools and the rules from the intent. Reads and adds run straight away; edits and deletes refuse without `confirmed: true`. Every change goes to History as `claude`, with an undo snapshot the pantry app can use (store changes are the exception: the pantry app has no undo for stores, so their History entries are a record only). |
 | `src/backend.ts` | Reads and writes Supabase as the signed-in user, so row-level security applies to Claude too. |
 | `src/text.ts` | How items, recipes and list rows read to Claude. |
 | `src/consent.tsx` | The page Supabase Auth sends you to when Claude connects: sign in, see what Claude can do, Allow or Cancel. Served at `/prototypes/claude-connection/`. |

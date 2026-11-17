@@ -49,6 +49,8 @@ export type SharedItem = {
   packSize?: { amount: number; measure: "g" | "ml" }
   /** Pence. */
   price?: number
+  /** The price is an estimate (Claude's guess), not one you gave. Setting the price yourself clears it. */
+  priceEstimate?: boolean
   /** Blank means any brand. */
   brand?: string
   /** One ISO date per unit or pack in stock, soonest first. One date only when the minimum is 1 or less. */

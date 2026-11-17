@@ -11,7 +11,7 @@
 // Stock, list and recipe rules are the pantry app's own (prototypes/pantry-app/src/model.ts).
 import {
   amountOf, byUseFirst, cap, distance, entryTotal, haveText, isBulk, isStaple, lower, matchesName, namesOf, needOf, normalise, plural,
-  recipeInfo, settle, soldAt, stockOf, aisleOrder, categoriesAtoZ, listRows, todayIso, withStock, type Items, type Reason,
+  recipeInfo, settle, soldAt, stockOf, aisleOrder, categoriesAtoZ, listRows, listTotal, money, todayIso, withStock, type Items, type Reason,
 } from "../../pantry-app/src/model"
 import { unitPair } from "../../shared/src/rows"
 import type { Category, Location, SharedIngredient, SharedItem, SharedRecipe, SharedStore } from "../../shared/src/pantry"
@@ -390,6 +390,20 @@ const reasonText = (r: Reason, i: SharedItem) =>
       : r.kind === "claude" ? "added by Claude"
         : "added by you"
 
+/** "Estimated total £39.90." or "Estimated total about £31.20, not counting 3 things with no price; 2 prices are estimates." */
+function totalText(t: ReturnType<typeof listTotal>) {
+  if (t.pence === 0 && t.unpriced) return `No estimated total: nothing on the list has a price yet (${plural(t.unpriced, "thing")}).`
+  const notes = [
+    t.unpriced ? `not counting ${plural(t.unpriced, "thing")} with no price` : "",
+    t.estimated ? `${t.estimated === 1 ? "1 price is an estimate" : `${t.estimated} prices are estimates`}` : "",
+  ].filter(Boolean)
+  return `Estimated total ${t.approximate ? "about " : ""}${money(t.pence)}${notes.length ? `, ${notes.join("; ")}` : ""}.`
+}
+
+/** "£1.65 → £1.80 (estimate)", "none → £1.80". */
+const priceChange = (before: SharedItem, after: SharedItem) =>
+  `${before.price ? money(before.price) : "none"} → ${after.price ? money(after.price) : "none"}${after.priceEstimate ? " (estimate)" : ""}`
+
 // ---------- the tools ----------
 
 export const tools: Tool[] = [
@@ -398,12 +412,12 @@ export const tools: Tool[] = [
     name: "search_pantry",
     title: "Search the pantry",
     description:
-      "Look up pantry items and their stock. Each line gives the id, what's in stock, whether it's a Staple (an item with a minimum to keep), whether it's low or out, how many are on the shopping list, the soonest use-by date, location and category. With no query and no filter it lists everything.",
+      "Look up pantry items and their stock. Each line gives the id, what's in stock, whether it's a Staple (an item with a minimum to keep), whether it's low or out, how many are on the shopping list, the soonest use-by date, location, category and price each (marked \"(estimate)\" when it's a guess rather than one the user gave). With no query and no filter it lists everything.",
     inputSchema: {
       type: "object",
       properties: {
         query: { type: "string", description: "Part of a name, another name, or a category name." },
-        filter: { type: "string", enum: ["all", "staples", "low_or_out", "out", "use_soon", "not_staples"], description: "low_or_out: Out, or Low (half the minimum or fewer). use_soon: has a use-by date in the next 7 days." },
+        filter: { type: "string", enum: ["all", "staples", "low_or_out", "out", "use_soon", "not_staples", "no_price", "estimated_price"], description: "low_or_out: Out, or Low (half the minimum or fewer). use_soon: has a use-by date in the next 7 days. no_price: no price set. estimated_price: the price is an estimate." },
       },
     },
     annotations: { readOnlyHint: true },
@@ -419,6 +433,8 @@ export const tools: Tool[] = [
         if (filter === "not_staples") return !isStaple(i)
         if (filter === "out") return isStaple(i) && i.inStock <= 0
         if (filter === "low_or_out") return stockOf(i) !== null
+        if (filter === "no_price") return !i.price
+        if (filter === "estimated_price") return !!i.price && !!i.priceEstimate
         if (filter === "use_soon") {
           const d = (i.useBy ?? []).find((x): x is string => !!x)
           return i.inStock > 0 && !!d && (new Date(d).getTime() - Date.now()) / 86_400_000 <= 7
@@ -437,13 +453,14 @@ export const tools: Tool[] = [
     name: "get_shopping_list",
     title: "Get the shopping list",
     description:
-      "What's on the shopping list and why: Staples below their minimum, things for recipes the user wants to cook, and things added by hand or by Claude. Give a store to get it in that store's aisle order, with anything the store doesn't sell listed apart.",
+      "What's on the shopping list and why: Staples below their minimum, things for recipes the user wants to cook, and things added by hand or by Claude. Give a store to get it in that store's aisle order, with anything the store doesn't sell listed apart. Each line has its cost (price each times how many), and the list starts with an estimated total: it leaves out lines with no price and says how many there are, and it's approximate when any line is unpriced or uses an estimated price.",
     inputSchema: { type: "object", properties: { store: { type: "string", description: "A store's name or id (get_categories_and_stores)." } } },
     annotations: { readOnlyHint: true },
     async run(args, { data }) {
       const rows = listRows(data.items)
       if (!rows.length) return "The shopping list is empty."
-      const line = (r: (typeof rows)[number]) => `- ${r.item.oneOff ? r.item.name : amountOf(r.item, r.qty)} [id: ${r.item.id}] · ${r.reasons.map((x) => reasonText(x, r.item)).join("; ")}`
+      const cost = (r: (typeof rows)[number]) => (r.item.price ? `${money(r.item.price * r.qty)}${r.item.priceEstimate ? " (estimate)" : ""}` : "no price")
+      const line = (r: (typeof rows)[number]) => `- ${r.item.oneOff ? r.item.name : amountOf(r.item, r.qty)} [id: ${r.item.id}] · ${r.reasons.map((x) => reasonText(x, r.item)).join("; ")} · ${cost(r)}`
       const store = findStore(data, args.store)
       const out: string[] = []
       if (store) {
@@ -460,7 +477,7 @@ export const tools: Tool[] = [
           if (here.length) out.push(`${c.name}:`, ...here.map(line))
         }
       }
-      return `${plural(rows.length, "thing")} on the list.\n${out.join("\n")}`
+      return `${plural(rows.length, "thing")} on the list.\n${totalText(listTotal(rows))}\n${out.join("\n")}`
     },
   },
   {
@@ -912,7 +929,8 @@ export const tools: Tool[] = [
             opened_at: { type: "array", items: { type: ["string", "null"] }, description: "Bulk: when each open pack was opened, YYYY-MM-DD, one per open pack. null for unknown." },
             other_names: { type: ["array", "null"], items: { type: "string" }, description: "Replaces the other names." },
             brand: { type: ["string", "null"] },
-            price_pence: { type: ["number", "null"] },
+            price_pence: { type: ["number", "null"], description: "Price each, in pence. Setting it clears the estimate mark unless price_is_estimate is true." },
+            price_is_estimate: { type: "boolean", description: "true when the price is your guess, not one the user gave (from a receipt or the shelf, say)." },
             notes: { type: ["string", "null"] },
           },
         },
@@ -995,12 +1013,62 @@ export const tools: Tool[] = [
       }
       if (has("other_names")) { next.otherNames = cleared("other_names") ? undefined : strs(c.other_names); said.push("other names") }
       if (has("brand")) { next.brand = str(c.brand); said.push(next.brand ? "brand" : "brand cleared") }
-      if (has("price_pence")) { next.price = cleared("price_pence") ? undefined : Math.round(num(c.price_pence) ?? 0); said.push(next.price !== undefined ? "price" : "price cleared") }
+      if (has("price_pence")) {
+        next.price = cleared("price_pence") ? undefined : Math.round(num(c.price_pence) ?? 0)
+        next.priceEstimate = (next.price !== undefined && c.price_is_estimate === true) || undefined
+        said.push(next.price !== undefined ? `price ${priceChange(i, next)}` : "price cleared")
+      } else if (typeof c.price_is_estimate === "boolean" && next.price !== undefined && !!i.priceEstimate !== c.price_is_estimate) {
+        next.priceEstimate = c.price_is_estimate || undefined
+        said.push(c.price_is_estimate ? "price marked as an estimate" : "price no longer an estimate")
+      }
       if (has("notes")) { next.notes = str(c.notes); said.push(next.notes ? "notes" : "notes cleared") }
       if (next.type !== "bulk") { next.open = undefined; next.packSize = undefined; next.openedAt = undefined }
       if (!said.length) return "Nothing to change."
       await commit(ctx, { items: [next], title: `Changed ${next.name}`, detail: cap(said.join(", ")), itemIds: [i.id] })
       return `Changed. ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`
+    },
+  },
+  {
+    name: "set_prices",
+    title: "Set prices for several items",
+    description:
+      "Sets the price each of several pantry items at once, for example from a receipt, or your own estimates for items with no price (search_pantry with filter no_price finds them). Say whether these are estimates: estimated prices are marked, and totals that use them show as approximate. An edit: list every item with its old and new price, ask the user once, then call with confirmed: true. One History entry covers the lot, so the pantry app can undo it in one go the same day.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        prices: {
+          type: "array",
+          items: { type: "object", properties: { item: itemRef, price_pence: { type: "number", description: "Price each, in pence: 165 for £1.65." } }, required: ["item", "price_pence"] },
+        },
+        estimate: { type: "boolean", description: "true when these are your guesses; false when the user gave them (a receipt, the shelf, a website)." },
+        confirmed,
+      },
+      required: ["prices", "estimate", "confirmed"],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+    async run(args, ctx) {
+      const list = Array.isArray(args.prices) ? (args.prices as Json[]) : []
+      if (!list.length) throw new ToolError("Give prices: a list of { item, price_pence }.")
+      if (typeof args.estimate !== "boolean") throw new ToolError("Say whether these prices are estimates: estimate true (your guesses) or false (the user gave them).")
+      const byId = new Map<string, SharedItem>()
+      for (const p of list) {
+        const i = findItem(ctx.data.items, p.item)
+        const pence = num(p.price_pence)
+        if (pence === undefined || pence <= 0) throw new ToolError(`${i.name}: price_pence has to be a number above 0, in pence (165 for £1.65). Nothing was changed.`)
+        byId.set(i.id, { ...(byId.get(i.id) ?? i), price: Math.round(pence), priceEstimate: args.estimate || undefined })
+      }
+      needConfirmed(args, `setting ${plural(byId.size, "price")}`)
+      const changed = [...byId.values()].filter((n) => { const i = ctx.data.items[n.id]; return i.price !== n.price || !!i.priceEstimate !== !!n.priceEstimate })
+      if (!changed.length) return "Nothing to change: those prices are already set."
+      const lines = changed.map((n) => `${n.name} ${priceChange(ctx.data.items[n.id], n)}`)
+      await commit(ctx, {
+        items: changed,
+        title: `Set ${args.estimate ? "estimated " : ""}prices for ${plural(changed.length, "item")}`,
+        detail: lines.join(", "),
+        itemIds: changed.map((n) => n.id),
+      })
+      const total = listTotal(listRows(ctx.data.items))
+      return `Set ${plural(changed.length, "price")}:\n${lines.map((l) => `- ${l}`).join("\n")}\nShopping list: ${lower(totalText(total))}`
     },
   },
   {

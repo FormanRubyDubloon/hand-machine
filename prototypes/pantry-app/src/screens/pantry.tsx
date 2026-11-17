@@ -193,7 +193,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
                   <TableCell className={cn(d && daysUntil(d) <= 3 && "font-semibold", i.noExpiry && "text-xs text-muted-foreground")}>{i.noExpiry ? "No expiry" : dateText(d)}</TableCell>
                   <TableCell>{i.brand || "Any"}</TableCell>
                   <TableCell><CategoryLabel category={db.categories.find((c) => c.id === i.categoryId)} /></TableCell>
-                  <TableCell className="pr-3 text-right tabular-nums">{i.price ? money(i.price) : "–"}</TableCell>
+                  <TableCell className="pr-3 text-right tabular-nums" title={i.price && i.priceEstimate ? "Estimated price" : undefined}>{i.price ? `${i.priceEstimate ? "≈" : ""}${money(i.price)}` : "–"}</TableCell>
                 </TableRow>
               )
             })}
