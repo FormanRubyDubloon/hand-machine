@@ -7,7 +7,7 @@ import { FilterChips } from "@/components/ui/filter-chips"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  byUseFirst, dateText, daysUntil, lower, minutesBand, plural, recipeInfo, recipesUsing, recipeTags, shortNames, soonest, usesUpText,
+  byUseFirst, dateText, daysUntil, lower, minutesBand, plural, recipeInfo, recipesUsing, recipeTags, shortNames, soonest, toSortOut, usesUpText,
   type Item, type Recipe, type RecipeInfo,
 } from "../model"
 import { minutesText } from "../../../shared/src/pantry"
@@ -26,6 +26,25 @@ const quickTest: Record<Quick, (r: Recipe) => boolean> = {
 }
 
 type Ranked = { recipe: Recipe; info: RecipeInfo }
+
+/**
+ * Flags a recipe with ingredients to sort out: not linked to a pantry item, or short and not on the shopping list.
+ * Nothing shows when everything is in stock, on the list or linked.
+ */
+function SortOutFlag({ recipe, info, className }: Ranked & { className?: string }) {
+  const open = toSortOut(info, recipe).map((k) => info.rows[k])
+  if (!open.length) return null
+  const unlinked = open.filter((r) => !r.item).length
+  const unlisted = open.length - unlinked
+  const parts = [unlinked && `${unlinked} not linked`, unlisted && `${unlisted} not on list`].filter(Boolean) as string[]
+  const names = open.map((r) => r.item?.name ?? r.text).join(", ")
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-widest whitespace-nowrap uppercase", className)} title={names}>
+      <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-primary" />
+      {parts.join(" · ")}
+    </span>
+  )
+}
 
 function RecipeCard({ recipe, info, onCooked }: Ranked & { onCooked: () => void }) {
   const uses = usesUpText(info.usesUp)
@@ -47,6 +66,7 @@ function RecipeCard({ recipe, info, onCooked }: Ranked & { onCooked: () => void 
       <span className={cn("text-xs", info.canCook && uses ? "font-semibold" : "text-muted-foreground")}>
         {info.canCook ? uses ?? "Everything in stock" : `Short of ${shortNames(info).toLowerCase()}`}
       </span>
+      <SortOutFlag recipe={recipe} info={info} />
     </div>
   )
 }
@@ -208,7 +228,12 @@ function AllRecipes({ ranked }: { ranked: Ranked[] }) {
                     {recipe.name}
                   </button>
                 </TableCell>
-                <TableCell><Badge variant={info.canCook ? "solid" : "outlined"}>{info.canCook ? "Can cook" : `Short ${info.short.length}`}</Badge></TableCell>
+                <TableCell>
+                  <span className="flex items-center gap-3">
+                    <Badge variant={info.canCook ? "solid" : "outlined"}>{info.canCook ? "Can cook" : `Short ${info.short.length}`}</Badge>
+                    <SortOutFlag recipe={recipe} info={info} />
+                  </span>
+                </TableCell>
                 <TableCell className="max-w-48 truncate">{info.canCook ? "–" : shortNames(info, 2)}</TableCell>
                 <TableCell>{info.usesUp ? `${info.usesUp.item.name}, use by ${lower(dateText(info.usesUp.date))}` : "–"}</TableCell>
                 <TableCell className="tabular-nums">{minutesText(recipe.minutes)}</TableCell>
