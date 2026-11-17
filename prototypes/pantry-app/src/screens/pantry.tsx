@@ -1,7 +1,9 @@
 // PAN-10: every item in one table, filters down the left, steppers change stock in place.
 // Clicking a name opens the item panel (PAN-11, PAN-16), "Add item" opens it empty (PAN-12).
 import * as React from "react"
-import { UploadIcon } from "lucide-react"
+import { ShoppingBasketIcon, UploadIcon } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -12,11 +14,32 @@ import {
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
 import { CategoryLabel, CategoryMark } from "../category-look"
-import { ExpiryAlert, FilterGroup, FilterSidebar, HeadingTip, NewPill, PageTitle, Segmented, SortSelect, Stepper, StockPill, statusHelp } from "../components"
+import { ExpiryAlert, FilterGroup, FilterSidebar, HeadingTip, PageTitle, Segmented, SortSelect, Stepper, StockPill, statusHelp } from "../components"
+
+/** "To buy": not a Staple, and on the shopping list (from a recipe or added by hand). Outlined, with a basket. */
+function ToBuyPill() {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-flex outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+            <Badge variant="outlined" className="gap-1">
+              <ShoppingBasketIcon className="size-3" aria-hidden="true" />
+              To buy
+            </Badge>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>Not a staple but on your shopping list</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
 import { ItemPanel } from "./item-panel"
 
 type Show = "staples" | "not" | "soon"
 type Stock = "all" | "low" | "out"
+/** Which stock filter an item falls under. To buy (not a Staple, on the list) counts as Out, as you have none to rely on. */
+const stockFilterOf = (i: Item) => stockOf(i) ?? (!isStaple(i) && needOf(i) > 0 ? "out" : null)
 type Filters = { location: "all" | Location; show: Show | null; type: "counted" | "bulk" | null; aisle: string | null; stock: Stock }
 
 const showTests: Record<Show, (i: Item) => boolean> = {
@@ -31,7 +54,7 @@ function matches(i: Item, f: Filters, skip?: keyof Filters) {
   if (skip !== "show" && f.show && !showTests[f.show](i)) return false
   if (skip !== "type" && f.type && i.type !== f.type) return false
   if (skip !== "aisle" && f.aisle && i.categoryId !== f.aisle) return false
-  if (skip !== "stock" && f.stock !== "all" && stockOf(i) !== f.stock) return false
+  if (skip !== "stock" && f.stock !== "all" && stockFilterOf(i) !== f.stock) return false
   return true
 }
 
@@ -112,7 +135,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
               options={[
                 { value: "all", label: `All ${count("stock", () => true)}` },
                 { value: "low", label: `Low ${count("stock", (i) => stockOf(i) === "low")}` },
-                { value: "out", label: `Out ${count("stock", (i) => stockOf(i) === "out")}` },
+                { value: "out", label: `Out ${count("stock", (i) => stockFilterOf(i) === "out")}` },
               ]}
             />
             <Button variant="outline" onClick={() => navigate({ name: "import" })}>
@@ -154,7 +177,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
                       {i.name}
                     </button>
                     <ExpiryAlert item={i} className="ml-2 align-middle" />
-                    {i.review && <span className="ml-2 align-middle"><NewPill tip="Added from a recipe and not bought yet." /></span>}
+                    
                   </TableCell>
                   <TableCell>{locationLabel(i.location)}</TableCell>
                   <TableCell>
@@ -165,8 +188,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{i.target}</TableCell>
                   <TableCell>
-                    {isStaple(i) ? <StockPill item={i} /> : <span className="text-xs text-muted-foreground">Not a Staple</span>}
-                    {!isStaple(i) && needOf(i) > 0 && <span className="ml-2 text-xs">· on the list</span>}
+                    {isStaple(i) ? <StockPill item={i} /> : needOf(i) > 0 ? <ToBuyPill /> : <span className="text-xs text-muted-foreground">Not a Staple</span>}
                   </TableCell>
                   <TableCell className={cn(d && daysUntil(d) <= 3 && "font-semibold", i.noExpiry && "text-xs text-muted-foreground")}>{i.noExpiry ? "No expiry" : dateText(d)}</TableCell>
                   <TableCell>{i.brand || "Any"}</TableCell>

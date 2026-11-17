@@ -63,7 +63,7 @@ export function ExpiryAlert({ item, date, className }: { item?: Item; date?: str
 }
 
 /** What the Status column means, for a tooltip. */
-export const statusHelp = "Out: none in stock. Low: half the minimum or fewer. A Staple under its minimum but above half goes on the shopping list without a status."
+export const statusHelp = "Out: none in stock. Low: half the minimum or fewer. A Staple under its minimum but above half goes on the shopping list without a status. To buy: not a Staple, and on the shopping list."
 
 /** Out (solid) or Low (outlined), from the stock. Nothing when it's fine. The tooltip says why. */
 export function StockPill({ item }: { item: Item }) {

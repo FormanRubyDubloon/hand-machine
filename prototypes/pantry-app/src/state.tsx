@@ -431,7 +431,7 @@ function usePantryState() {
      * the user filled in (minimum 0, none in stock), linked to the recipe ingredient and on the list, 1 of it.
      * It's marked New until some is bought.
      */
-    addNewIngredients(recipe: Recipe, news: { position: number; name: string; type: Item["type"]; categoryId: string; location: NonNullable<Item["location"]> }[]) {
+    addNewIngredients(recipe: Recipe, news: { position: number; name: string; qty?: number; unit?: Item["unit"]; type?: Item["type"]; categoryId: string; location: NonNullable<Item["location"]> }[]) {
       if (!news.length) return undefined
       const now = new Date().toISOString()
       const made: Item[] = []
@@ -441,9 +441,10 @@ function usePantryState() {
         let id = uid("item")
         while (taken(id)) id = uid("item")
         made.push(normalise({
-          id, name, type: n.type, target: 0, inStock: 0, open: n.type === "bulk" ? 0 : undefined, unit: n.type === "bulk" ? ["bag", "bags"] : undefined,
+          id, name, type: n.type ?? "counted", target: 0, inStock: 0, open: n.type === "bulk" ? 0 : undefined,
+          unit: n.unit ?? (n.type === "bulk" ? ["bag", "bags"] : undefined),
           categoryId: n.categoryId, location: n.location, where: [], review: true, editedAt: now,
-          entries: [{ source: { kind: "recipe", recipe: recipe.name }, qty: 1, at: now }],
+          entries: [{ source: { kind: "recipe", recipe: recipe.name }, qty: Math.max(1, n.qty ?? 1), at: now }],
         }))
       }
       return commit(
