@@ -47,6 +47,6 @@ A design system foundation: a Vite + React 19 + TypeScript app styled with Tailw
 
 - `README.md` is the unmodified Vite template and doesn't describe this project.
 - The parent directory's git repo also tracks the sibling `../fluido` project; work here is scoped to `hand-machine`.
-- Netlify (`shopping-list-app-db5118`, settings in `netlify.toml`) isn't connected to GitHub: merging to `main` doesn't deploy. Deploys are started by hand (the Netlify connector or dashboard).
+- Netlify (`shopping-list-app-db5118`, settings in `netlify.toml`) builds a deploy preview for each pull request (seen on PR 41, 17 November 2026: `deploy-preview-<n>--shopping-list-app-db5118.netlify.app`), but merging to `main` doesn't deploy the live site. Live deploys are started by hand (the Netlify connector or dashboard). Netlify's "skipping" checks make GitHub mark a PR "unstable"; that isn't a failure.
 - Supabase CLI 2.75 doesn't push the `[auth.oauth_server]` settings in `config.toml`; they were set in the dashboard. CLI 3 refuses this `config.toml` until it's migrated (`[inbucket]` became `[local_smtp]`).
 - Register Claude as a public OAuth app. A confidential one fails after Allow: Claude sends its secret with `client_secret_post`, and Supabase only accepts `client_secret_basic` for it.
