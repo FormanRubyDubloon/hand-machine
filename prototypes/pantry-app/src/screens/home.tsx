@@ -1,11 +1,13 @@
 // PAN-09: quick use. Record what you used in a couple of clicks, see History, and what to cook first.
 import * as React from "react"
-import { SearchIcon } from "lucide-react"
+import { CopyIcon, SearchIcon } from "lucide-react"
+import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { FilterChips } from "@/components/ui/filter-chips"
 import {
-  byUseFirst, containsText, haveText, isBulk, locationLabel, namesOf, recipeInfo, usesUpText, type Db, type HistoryEntry, type Item, type Items, type Location, type Who,
+  byUseFirst, containsText, dateText, daysUntil, haveText, inStockText, lower, recipesUsing, soonest, isBulk, locationLabel, namesOf, recipeInfo, usesUpText, type Db, type HistoryEntry, type Item, type Items, type Location, type Who,
 } from "../model"
 import { href, navigate } from "../router"
 import { canUndo, usePantry } from "../state"
@@ -146,6 +148,94 @@ function CookFirst() {
   )
 }
 
+// ---------- Use today ----------
+
+/** Recipes for an item that's due: ones you can cook now first, then the fewest short, then A to Z. Up to three. */
+function suggestions(itemId: string, db: Db, items: Items) {
+  return recipesUsing(db.recipes, itemId)
+    .map((recipe) => ({ recipe, info: recipeInfo(recipe, items) }))
+    .sort((a, b) => Number(b.info.canCook) - Number(a.info.canCook) || a.info.short.length - b.info.short.length || a.recipe.name.localeCompare(b.recipe.name))
+    .slice(0, 3)
+}
+
+function UseTodayCard({ item }: { item: Item }) {
+  const { db, items } = usePantry()
+  const date = soonest(item)!
+  const n = daysUntil(date)
+  const recipes = suggestions(item.id, db, items)
+  const ask = `Find me a recipe that uses ${lower(item.name)} and save it to my pantry`
+  return (
+    <div className="flex flex-col gap-3 border border-border p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="flex items-center gap-1.5">
+            <button type="button" className="text-left text-[15px] leading-tight font-semibold hover:underline" onClick={() => navigate({ name: "home", item: item.id })}>
+              {item.name}
+            </button>
+            <ExpiryAlert item={item} />
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {n === 0 ? "Use by today" : `Was due ${n === -1 ? "yesterday" : dateText(date)}`} · {inStockText(item, ", ")}
+          </span>
+        </div>
+        <QuickUseActions item={item} compact className="shrink-0" />
+      </div>
+      {recipes.length ? (
+        <ul className="flex flex-col border-t border-border" aria-label={`Recipes that use ${lower(item.name)}`}>
+          {recipes.map(({ recipe, info }) => (
+            <li key={recipe.id} className="border-b border-border last:border-b-0">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+                onClick={() => navigate({ name: "home", recipe: recipe.id })}
+              >
+                <span className="min-w-0 truncate">{recipe.name}</span>
+                <Badge variant={info.canCook ? "solid" : "outlined"} className="shrink-0">{info.canCook ? "Can cook" : `Short ${info.short.length}`}</Badge>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+          <span className="text-xs text-muted-foreground">No recipes use it yet.</span>
+          <Button
+            size="xs"
+            variant="outline"
+            className="h-8 shrink-0 border-primary"
+            onClick={() => {
+              navigator.clipboard?.writeText(ask).catch(() => {})
+              toast("Copied a message for Claude", { description: `"${ask}". Paste it into Claude, on your phone or here.` })
+            }}
+          >
+            <CopyIcon />
+            Ask Claude for one
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Items in stock at or past their use-by date, with recipes that use each. Nothing shows when nothing is due. */
+function UseToday({ all }: { all: Item[] }) {
+  const due = all
+    .map((item) => ({ item, date: soonest(item) }))
+    .filter((d): d is { item: Item; date: string } => !!d.date && daysUntil(d.date) <= 0)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.item.name.localeCompare(b.item.name))
+  if (!due.length) return null
+  return (
+    <section aria-labelledby="use-today" className="flex flex-col gap-3">
+      <div className="flex items-baseline gap-4">
+        <h2 id="use-today"><Eyebrow className="text-foreground">Use today · {due.length}</Eyebrow></h2>
+        <span className="text-[13px] text-muted-foreground">At or past the use-by date, with recipes that use them</span>
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
+        {due.map(({ item }) => <UseTodayCard key={item.id} item={item} />)}
+      </div>
+    </section>
+  )
+}
+
 export function Home({ item, recipe }: { item?: string; recipe?: string }) {
   const { items } = usePantry()
   const [query, setQuery] = React.useState("")
@@ -188,6 +278,8 @@ export function Home({ item, recipe }: { item?: string; recipe?: string }) {
           />
           <Eyebrow>Press / to search</Eyebrow>
         </label>
+
+        {!q && <UseToday all={all} />}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-baseline gap-4">
