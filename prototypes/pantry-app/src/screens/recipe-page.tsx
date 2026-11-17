@@ -15,7 +15,7 @@ import {
 } from "../model"
 import { href, navigate, type RecipesTab } from "../router"
 import { usePantry } from "../state"
-import { Eyebrow, Field, Stepper } from "../components"
+import { Eyebrow, ExpiryAlert, Field, Stepper } from "../components"
 import { RecipeEditor } from "./recipe-edit"
 import { ItemPanel, pluralise } from "./item-panel"
 import { CookedDialog, DeleteRecipeDialog, WantButton, useRecipeList } from "./recipe"
@@ -328,6 +328,7 @@ function Row({
           {row.item && (
             <>
               <a className="underline underline-offset-4 hover:text-foreground" href={href({ name: "recipe-full", id: recipe.id, tab, item: row.item.id, serves })}>{row.item.name}</a>
+              <ExpiryAlert item={row.item} className="ml-1 align-[-2px]" />
               {" · "}
             </>
           )}

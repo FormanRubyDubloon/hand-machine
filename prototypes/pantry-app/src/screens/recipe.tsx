@@ -16,7 +16,7 @@ import {
 } from "../model"
 import { href, navigate, type RecipesTab } from "../router"
 import { usePantry } from "../state"
-import { Eyebrow, NewPill, Segmented, SidePanel, Stepper } from "../components"
+import { Eyebrow, ExpiryAlert, NewPill, Segmented, SidePanel, Stepper } from "../components"
 import { RecipeEditor } from "./recipe-edit"
 import { ItemPicker } from "../link-picker"
 
@@ -206,6 +206,7 @@ function IngredientLine({ row, recipe, tab, position, serves }: { row: Ingredien
               <>
                 {/* Opens the item's side panel over the full-screen recipe; from the side panel this expands the recipe first. */}
                 <a className="underline underline-offset-4" href={href({ name: "recipe-full", id: recipe.id, tab, item: row.item.id, serves })}>{row.item.name}</a>
+                <ExpiryAlert item={row.item} className="ml-1 align-[-2px]" />
                 {row.item.packSize ? ` (${measureText(row.item.packSize.amount, row.item.packSize.measure)} ${row.item.unit?.[0] ?? "pack"})` : ""} ·{" "}
               </>
             )}

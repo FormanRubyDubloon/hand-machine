@@ -14,7 +14,7 @@ import { minutesText } from "../../../shared/src/pantry"
 import { href, navigate, type RecipesTab, type Route } from "../router"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { usePantry } from "../state"
-import { Eyebrow, FilterGroup, FilterSidebar, PageTitle, SortSelect } from "../components"
+import { Eyebrow, ExpiryAlert, FilterGroup, FilterSidebar, PageTitle, SortSelect } from "../components"
 import { ClaudeExamples } from "./claude"
 import { CookedDialog, RecipePanel, WantButton } from "./recipe"
 
@@ -103,6 +103,7 @@ function RecipeCard({ recipe, info, onCooked }: Ranked & { onCooked: () => void 
       </div>
       <span className={cn("text-xs", info.canCook && uses ? "font-semibold" : "text-muted-foreground")}>
         {info.canCook ? uses ?? "Everything in stock" : `Short of ${shortNames(info).toLowerCase()}`}
+        {info.canCook && uses && <ExpiryAlert date={info.usesUp?.date ?? null} className="ml-1.5 align-[-2px]" />}
       </span>
       <SortOutFlag recipe={recipe} info={info} />
     </div>
@@ -150,7 +151,7 @@ function UseFirst({ value, onChange }: { value: string | null; onChange: (id: st
               className={cn("flex flex-col gap-1 border px-4 py-3 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50", on ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted", daysUntil(date) <= 3 && !on && "border-primary")}
             >
               <span className={cn("text-[10px] font-semibold tracking-widest uppercase", on ? "text-primary-foreground/70" : "text-muted-foreground")}>Use by {lower(dateText(date))}</span>
-              <span className="text-sm"><strong className="font-semibold">{item.name}</strong> · {plural(count, "recipe")}</span>
+              <span className="text-sm"><strong className="font-semibold">{item.name}</strong>{!on && <ExpiryAlert date={date} className="ml-1 align-[-2px]" />} · {plural(count, "recipe")}</span>
             </button>
           )
         })}
@@ -279,7 +280,9 @@ function AllRecipes({ ranked, selected }: { ranked: Ranked[]; selected?: string 
                   </span>
                 </TableCell>
                 <TableCell className="max-w-48 truncate">{info.canCook ? "–" : shortNames(info, 2)}</TableCell>
-                <TableCell>{info.usesUp ? `${info.usesUp.item.name}, use by ${lower(dateText(info.usesUp.date))}` : "–"}</TableCell>
+                <TableCell>
+                  {info.usesUp ? <span className="inline-flex items-center gap-1.5">{`${info.usesUp.item.name}, use by ${lower(dateText(info.usesUp.date))}`}<ExpiryAlert date={info.usesUp.date} /></span> : "–"}
+                </TableCell>
                 <TableCell className="tabular-nums">{minutesText(recipe.minutes)}</TableCell>
                 <TableCell className="tabular-nums">{recipe.serves}</TableCell>
                 <TableCell className="text-muted-foreground">{recipeTags(recipe).join(" · ")}</TableCell>
