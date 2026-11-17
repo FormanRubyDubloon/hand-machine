@@ -11,8 +11,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-  dateText, guessPlace, haveText, ingredientName, isBulk, locations, lower, measureText, nameList, needOf, plural, shortfall, recipeInfo, recipesUsing, recipeTags, shortDate, unitText, unitWord,
-  withStock, type IngredientRow, type Item, type Recipe, categoriesAtoZ,
+  dateText, guessPlace, haveText, ingredientName, isBulk, locations, lower, measureText, nameList, plural, shortfall, recipeInfo, recipesUsing, recipeTags, shortDate, unitText, unitWord,
+  withStock, isListedItem, recipeQty, toSortOut, type IngredientRow, type Item, type Recipe, categoriesAtoZ,
 } from "../model"
 import { href, navigate } from "../router"
 import { usePantry } from "../state"
@@ -89,9 +89,6 @@ function NewItemsDialog({ recipe, positions, onClose }: { recipe: Recipe; positi
   )
 }
 
-/** On the list: this recipe's entry for the item, or anything else that has it listed. */
-const isListedItem = (row: IngredientRow, recipe: Recipe) => !!row.item && (recipeQty(row, recipe) > 0 || needOf(row.item) > 0)
-
 /**
  * Adding ingredients to the list from a recipe. One at a time, or everything missing. Pantry items go straight on;
  * ones the pantry doesn't have open the dialog first. Render `dialog` somewhere in the screen.
@@ -99,8 +96,9 @@ const isListedItem = (row: IngredientRow, recipe: Recipe) => !!row.item && (reci
 export function useRecipeList(recipe: Recipe) {
   const { items, actions } = usePantry()
   const [pending, setPending] = React.useState<number[] | null>(null)
-  const rows = recipeInfo(recipe, items).rows
-  const missing = rows.flatMap((r, k) => (r.item ? ((r.status === "short" || r.status === "little") && !isListedItem(r, recipe) ? [k] : []) : [k]))
+  const info = recipeInfo(recipe, items)
+  const rows = info.rows
+  const missing = toSortOut(info, recipe)
   const add = (positions: number[]) => {
     const linked = positions.filter((k) => rows[k].item).map((k) => ({ itemId: rows[k].item!.id, qty: 1 }))
     const fresh = positions.filter((k) => !rows[k].item)
@@ -174,15 +172,11 @@ function LinkPicker({ recipe, position, text }: { recipe: Recipe; position: numb
 }
 
 function stockLine(r: IngredientRow) {
-  if (!r.item) return "Not in your pantry"
+  if (!r.item) return r.status === "have" ? "Always to hand" : "Not in your pantry"
   return r.item.inStock ? `have ${haveText(r.item, ", ")}` : "none in stock"
 }
 
 /** What this recipe has put on the list for the ingredient. */
-function recipeQty(row: IngredientRow, recipe: Recipe) {
-  if (!row.item) return 0
-  return (row.item.entries ?? []).filter((e) => e.source.kind === "recipe" && e.source.recipe === recipe.name).reduce((n, e) => n + e.qty, 0)
-}
 function IngredientLine({
   row, recipe, position, serves, factor, onAdd, onSet, onAddPack,
 }: { row: IngredientRow; recipe: Recipe; position: number; serves: number; factor: number; onAdd: () => void; onSet: (n: number) => void; onAddPack: () => void }) {
@@ -190,7 +184,8 @@ function IngredientLine({
   const onList = qty > 0
   const listedElsewhere = !onList && isListedItem(row, recipe)
   const short = row.status === "short" || row.status === "little" || row.status === "unlinked"
-  const canAdd = true
+  // Water is always to hand, so there's nothing to add.
+  const canAdd = !!row.item || row.status === "unlinked"
   const unit = row.item ? (qty === 1 ? row.item.unit?.[0] : row.item.unit?.[1]) ?? (qty === 1 ? "unit" : "units") : qty === 1 ? "unit" : "units"
   const label = row.item?.name ?? row.text
   const status =
@@ -220,7 +215,7 @@ function IngredientLine({
               </>
             )}
             {stockLine(row)}
-            {!row.item && <> · <LinkPicker recipe={recipe} position={position} text={row.ing.text} /></>}
+            {row.status === "unlinked" && <> · <LinkPicker recipe={recipe} position={position} text={row.ing.text} /></>}
           </span>
         </div>
         {onList ? (
@@ -232,17 +227,15 @@ function IngredientLine({
         ) : (
           <div className="relative flex h-7 min-w-16 items-center justify-end">
             <span className={cn("flex items-center transition-opacity", canAdd && "group-hover:opacity-0 group-focus-within:opacity-0")}>{status}</span>
-            <Button
+            {canAdd && <Button
               size="xs"
               variant={row.status === "short" || row.status === "little" ? "default" : "outline"}
               className={cn("absolute right-0 h-7 opacity-0 transition-opacity", canAdd && "group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100")}
-              disabled={!canAdd}
-              tabIndex={canAdd ? 0 : -1}
               aria-label={`Add ${label} to your shopping list`}
               onClick={(e) => { e.stopPropagation(); onAdd() }}
             >
               + List
-            </Button>
+            </Button>}
           </div>
         )}
       </div>

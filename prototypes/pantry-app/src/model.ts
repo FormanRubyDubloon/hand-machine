@@ -339,11 +339,20 @@ export function measureText(n: number, measure: "g" | "ml") {
   return `${n} ${measure}`
 }
 
+/**
+ * Plain water: "250ml water", "boiling water", "a splash of water", "water, to cover". Always to hand, so it never
+ * needs a pantry item and never goes on the list. Kelp, coconut, rose and sparkling water are real ingredients.
+ */
+export function isWater(text: string) {
+  const name = text.toLowerCase().split(/[,(]| to | for | as | or /)[0].trim()
+  return /^(?:about |approx\.? |around |roughly )?(?:(?:a |an )?(?:splash|little|dash|drop|drizzle|glass|cup|jug|bit)(?:s)? of |some |extra )?(?:[\d½¼¾⅓⅔.\/\s-]+\s*(?:ml|l|litres?|liters?|cups?|tbsp|tsp|tablespoons?|teaspoons?|pints?|fl ?oz|g)?\.?\s+(?:of\s+)?)?(?:(?:cold|warm|hot|boiling|just-boiled|freshly boiled|boiled|tap|lukewarm|tepid|ice|iced|ice-cold|filtered|fresh)\s+)*water$/.test(name)
+}
+
 export function ingredientRow(ing: Ingredient, items: Items, factor = 1): IngredientRow {
   const item = ing.itemId ? items[ing.itemId] : undefined
   const text = scaleText(ing.text, factor)
   const need = ing.partial ? 1 : Math.max(1, Math.ceil(ing.need * factor))
-  if (!item) return { ing, item, status: "unlinked", need, missing: 0, text }
+  if (!item) return { ing, item, status: isWater(ing.text) ? "have" : "unlinked", need, missing: 0, text }
   if (isBulk(item) && item.packSize && ing.uses) {
     const required = Math.round(ing.uses * factor)
     const capacity = item.inStock * item.packSize.amount
@@ -379,6 +388,22 @@ export function recipeInfo(recipe: Recipe, items: Items, factor = 1): RecipeInfo
   const have = rows.filter((r) => r.status === "have" || r.status === "some").length
   return { rows, short, canCook: short.length === 0, usesUp, have }
 }
+
+/** How many of this item the list holds for this recipe. */
+export function recipeQty(row: IngredientRow, recipe: Recipe) {
+  if (!row.item) return 0
+  return (row.item.entries ?? []).filter((e) => e.source.kind === "recipe" && e.source.recipe === recipe.name).reduce((n, e) => n + e.qty, 0)
+}
+
+/** On the list: this recipe's entry for the item, or anything else that has it listed. */
+export const isListedItem = (row: IngredientRow, recipe: Recipe) => !!row.item && (recipeQty(row, recipe) > 0 || needOf(row.item) > 0)
+
+/**
+ * Positions of the ingredients still to sort out: not linked to a pantry item, or short and not on the shopping list.
+ * The same ones "Add missing to list" adds.
+ */
+export const toSortOut = (info: RecipeInfo, recipe: Recipe) =>
+  info.rows.flatMap((r, k) => (r.status === "unlinked" || ((r.status === "short" || r.status === "little") && !isListedItem(r, recipe)) ? [k] : []))
 
 export const shortNames = (info: RecipeInfo, max = 3) => {
   const names = info.short.map((r) => (r.item ? r.item.name : r.text))

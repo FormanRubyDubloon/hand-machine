@@ -352,11 +352,15 @@ function scaleText(text, factor) {
     return m.endsWith(" ") ? `${out} ` : out;
   }).replace(/^(\d+(?:\.\d+)?) (g|ml)\b/, (m, n, unit) => parseFloat(n) >= 1e3 ? `${parseFloat(n) / 1e3} ${unit === "g" ? "kg" : "l"}` : m).replace(/^(\d+(?:\.\d+)?|[½¼¾⅓⅔]) (jar|tin|clove|bulb|bunch|pack|bag|slice|fillet|lemon|chilli|pepper|aubergine|box|bottle|spring onion|egg)\b(?!s)/, (m, n, word) => parseFloat(n) > 1 ? `${n} ${/(ch|x)$/.test(word) ? `${word}es` : `${word}s`}` : m);
 }
+function isWater(text) {
+  const name = text.toLowerCase().split(/[,(]| to | for | as | or /)[0].trim();
+  return /^(?:about |approx\.? |around |roughly )?(?:(?:a |an )?(?:splash|little|dash|drop|drizzle|glass|cup|jug|bit)(?:s)? of |some |extra )?(?:[\d½¼¾⅓⅔.\/\s-]+\s*(?:ml|l|litres?|liters?|cups?|tbsp|tsp|tablespoons?|teaspoons?|pints?|fl ?oz|g)?\.?\s+(?:of\s+)?)?(?:(?:cold|warm|hot|boiling|just-boiled|freshly boiled|boiled|tap|lukewarm|tepid|ice|iced|ice-cold|filtered|fresh)\s+)*water$/.test(name);
+}
 function ingredientRow(ing, items, factor = 1) {
   const item = ing.itemId ? items[ing.itemId] : void 0;
   const text = scaleText(ing.text, factor);
   const need = ing.partial ? 1 : Math.max(1, Math.ceil(ing.need * factor));
-  if (!item) return { ing, item, status: "unlinked", need, missing: 0, text };
+  if (!item) return { ing, item, status: isWater(ing.text) ? "have" : "unlinked", need, missing: 0, text };
   if (isBulk(item) && item.packSize && ing.uses) {
     const required = Math.round(ing.uses * factor);
     const capacity = item.inStock * item.packSize.amount;
