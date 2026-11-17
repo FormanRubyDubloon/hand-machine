@@ -32,7 +32,7 @@ export interface Backend {
   history(limit: number): Promise<HistoryRow[]>
 }
 
-const RECIPE_SELECT = "*, recipe_ingredients(position, text, group_name, item_id, need, buy, partial, uses)"
+const RECIPE_SELECT = "*, recipe_ingredients(position, text, group_name, item_id, need, buy, partial, optional, uses)"
 
 function check<T>(res: { data: T | null; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message)

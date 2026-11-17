@@ -185,7 +185,7 @@ export async function deleteStores(ids: string[]) {
 // ---------- recipes ----------
 // Writing needs the policies in supabase/migrations/20261114180000_recipe_writes.sql.
 
-const RECIPE_SELECT = "*, recipe_ingredients(position, text, group_name, item_id, need, buy, partial, uses)"
+const RECIPE_SELECT = "*, recipe_ingredients(position, text, group_name, item_id, need, buy, partial, optional, uses)"
 
 /** Recipe rows as Supabase has them, by id; `ids` limits it to those recipes. */
 export async function fetchRecipeRows(ids?: string[]): Promise<Record<string, RecipeRow>> {

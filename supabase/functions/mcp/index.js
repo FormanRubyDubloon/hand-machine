@@ -61,7 +61,7 @@ function toRecipe(r) {
     serves: r.serves ?? 2,
     wantToCook: r.want_to_cook,
     soon: r.soon ?? void 0,
-    ingredients: [...r.recipe_ingredients].sort((a, b) => a.position - b.position).map((i) => ({ text: i.text, itemId: i.item_id ?? "", need: i.need, buy: i.buy, partial: i.partial || void 0, uses: i.uses ?? void 0 })),
+    ingredients: [...r.recipe_ingredients].sort((a, b) => a.position - b.position).map((i) => ({ text: i.text, itemId: i.item_id ?? "", need: i.need, buy: i.buy, partial: i.partial || void 0, optional: i.optional || void 0, uses: i.uses ?? void 0 })),
     method: r.method,
     prep: r.prep ?? void 0,
     cook: r.cook ?? void 0,
@@ -153,6 +153,7 @@ function recipeRows(recipes, before, items) {
       need: g.need,
       buy: g.buy,
       partial: !!g.partial,
+      optional: !!g.optional,
       uses: g.uses ?? null
     }));
   });
@@ -160,7 +161,7 @@ function recipeRows(recipes, before, items) {
 }
 
 // prototypes/claude-connection/src/backend.ts
-var RECIPE_SELECT = "*, recipe_ingredients(position, text, group_name, item_id, need, buy, partial, uses)";
+var RECIPE_SELECT = "*, recipe_ingredients(position, text, group_name, item_id, need, buy, partial, optional, uses)";
 function check(res) {
   if (res.error) throw new Error(res.error.message);
   return res.data;
@@ -374,15 +375,16 @@ function ingredientRow(ing, items, factor = 1) {
 }
 function recipeInfo(recipe, items, factor = 1) {
   const rows = recipe.ingredients.map((ing) => ingredientRow(ing, items, factor));
-  const short = rows.filter((r) => r.status === "short" || r.status === "listed" || r.status === "little" || r.status === "unlinked");
+  const short = rows.filter((r) => !r.ing.optional && (r.status === "short" || r.status === "listed" || r.status === "little" || r.status === "unlinked"));
   let usesUp = null;
   for (const r of rows) {
     if (!r.item || r.status === "short" || r.status === "listed") continue;
     const d = soonest(r.item);
     if (d && daysUntil(d) <= 14 && (!usesUp || d < usesUp.date)) usesUp = { item: r.item, date: d };
   }
-  const have = rows.filter((r) => r.status === "have" || r.status === "some").length;
-  return { rows, short, canCook: short.length === 0, usesUp, have };
+  const have = rows.filter((r) => !r.ing.optional && (r.status === "have" || r.status === "some")).length;
+  const needed = rows.filter((r) => !r.ing.optional).length;
+  return { rows, short, canCook: short.length === 0, usesUp, have, needed };
 }
 var shortNames = (info, max = 3) => {
   const names = info.short.map((r) => r.item ? r.item.name : r.text);
@@ -647,7 +649,8 @@ var ingredientSchema = {
     item: { type: "string", description: "The pantry item's id, when it's a clear match." },
     need: { type: "number", description: "Counted items: how many the recipe uses at its servings. Default 1." },
     buy: { type: "number", description: "How many to put on the list when short. Default 1." },
-    partial: { type: "boolean", description: "Uses part of a unit (a clove of garlic, some milk): any stock will do." }
+    partial: { type: "boolean", description: "Uses part of a unit (a clove of garlic, some milk): any stock will do." },
+    optional: { type: "boolean", description: 'The recipe works without it. Set it when the wording says so ("1 tomato, optional", "(optional)").' }
   },
   required: ["text"]
 };
@@ -677,7 +680,7 @@ function buildIngredients(data, input, _now) {
       itemId = findItem(all(), g.item).id;
       linked.push(`${text} \u2192 ${all()[itemId].name}`);
     } else unlinked.push(text);
-    return { text, itemId, need: Math.max(1, num(g.need) ?? 1), buy: Math.max(1, num(g.buy) ?? 1), partial: g.partial === true || void 0 };
+    return { text, itemId, need: Math.max(1, num(g.need) ?? 1), buy: Math.max(1, num(g.buy) ?? 1), partial: g.partial === true || void 0, optional: g.optional === true || void 0 };
   });
   return { ingredients, created, linked, unlinked };
 }
@@ -1130,12 +1133,12 @@ ${recipeLine(recipe, ctx.data.items)}`;
       const at = ctx.now().toISOString();
       const changed = [];
       for (const row of info.rows) {
-        if (!row.item || row.status !== "short" && row.status !== "little") continue;
+        if (!row.item || row.ing.optional || row.status !== "short" && row.status !== "little") continue;
         const qty = isBulk(row.item) || row.ing.partial ? Math.max(1, row.ing.buy) : Math.max(row.ing.buy, row.missing);
         changed.push({ ...row.item, entries: [...row.item.entries ?? [], { source: { kind: "recipe", recipe: r.name }, qty, at }] });
       }
       const listed = info.rows.filter((x) => x.status === "listed").map((x) => x.item.name);
-      const unlinked = info.rows.filter((x) => x.status === "unlinked").map((x) => x.text);
+      const unlinked = info.rows.filter((x) => x.status === "unlinked" && !x.ing.optional).map((x) => x.text);
       await commit(ctx, {
         items: changed,
         recipes: [{ ...r, wantToCook: true }],

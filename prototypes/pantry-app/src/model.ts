@@ -380,21 +380,26 @@ export type RecipeInfo = {
   canCook: boolean
   /** The ingredient in stock that goes off first, if within two weeks. */
   usesUp: { item: Item; date: string } | null
+  /** Needed ingredients you have. */
   have: number
+  /** Ingredients that aren't optional. */
+  needed: number
 }
 
 export function recipeInfo(recipe: Recipe, items: Items, factor = 1): RecipeInfo {
   const rows = recipe.ingredients.map((ing) => ingredientRow(ing, items, factor))
   // An ingredient with no pantry item is short too: you don't have it, and the app can't add it to the list.
-  const short = rows.filter((r) => r.status === "short" || r.status === "listed" || r.status === "little" || r.status === "unlinked")
+  // Optional ones never count as missing.
+  const short = rows.filter((r) => !r.ing.optional && (r.status === "short" || r.status === "listed" || r.status === "little" || r.status === "unlinked"))
   let usesUp: RecipeInfo["usesUp"] = null
   for (const r of rows) {
     if (!r.item || r.status === "short" || r.status === "listed") continue
     const d = soonest(r.item)
     if (d && daysUntil(d) <= 14 && (!usesUp || d < usesUp.date)) usesUp = { item: r.item, date: d }
   }
-  const have = rows.filter((r) => r.status === "have" || r.status === "some").length
-  return { rows, short, canCook: short.length === 0, usesUp, have }
+  const have = rows.filter((r) => !r.ing.optional && (r.status === "have" || r.status === "some")).length
+  const needed = rows.filter((r) => !r.ing.optional).length
+  return { rows, short, canCook: short.length === 0, usesUp, have, needed }
 }
 
 /** How many of this item the list holds for this recipe. */
@@ -408,10 +413,10 @@ export const isListedItem = (row: IngredientRow, recipe: Recipe) => !!row.item &
 
 /**
  * Positions of the ingredients still to sort out: not linked to a pantry item, or short and not on the shopping list.
- * The same ones "Add missing to list" adds.
+ * The same ones Want to cook adds. Optional ones are left out.
  */
 export const toSortOut = (info: RecipeInfo, recipe: Recipe) =>
-  info.rows.flatMap((r, k) => (r.status === "unlinked" || ((r.status === "short" || r.status === "little") && !isListedItem(r, recipe)) ? [k] : []))
+  info.rows.flatMap((r, k) => (!r.ing.optional && (r.status === "unlinked" || ((r.status === "short" || r.status === "little") && !isListedItem(r, recipe))) ? [k] : []))
 
 export const shortNames = (info: RecipeInfo, max = 3) => {
   const names = info.short.map((r) => (r.item ? r.item.name : r.text))

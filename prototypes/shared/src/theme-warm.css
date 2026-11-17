@@ -56,6 +56,8 @@
   --sidebar-accent-foreground: oklch(0.307 0.034 54.8); /* #3D2B1F generated */
   --sidebar-border: oklch(0.861 0.021 91.6); /* #D6D1C2 generated */
   --sidebar-ring: oklch(0.525 0.061 86.1); /* #7A6840 changed from the mockups for contrast */
+  /* Group header rules and quiet buttons on the recipe page (REC-10 layout A). Not a shadcn token. */
+  --line-strong: oklch(0.795 0.020 93.7); /* #C0BCAE */
 }
 
 /* Colour: dark. .theme-warm.dark outranks the design system's .dark. */
@@ -92,6 +94,7 @@
   --sidebar-accent-foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 generated */
   --sidebar-border: oklch(0.392 0.032 51.5); /* #544136 generated */
   --sidebar-ring: oklch(0.740 0.086 87.5); /* #C2A86A changed from the mockups for contrast */
+  --line-strong: oklch(0.458 0.042 51.3); /* #6B5142, one step above the border; not on the dark board */
 }
 
 /*

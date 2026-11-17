@@ -108,7 +108,7 @@ export type RecipeRow = {
   added_by: "claude" | "you"
   added_at: string
   edited_at?: string
-  recipe_ingredients: { position: number; text: string; group_name?: string | null; item_id: string | null; need: number; buy: number; partial: boolean; uses: number | null }[]
+  recipe_ingredients: { position: number; text: string; group_name?: string | null; item_id: string | null; need: number; buy: number; partial: boolean; optional?: boolean; uses: number | null }[]
 }
 
 /**
@@ -126,7 +126,7 @@ export function toRecipe(r: RecipeRow): SharedRecipe {
     soon: r.soon ?? undefined,
     ingredients: [...r.recipe_ingredients]
       .sort((a, b) => a.position - b.position)
-      .map((i) => ({ text: i.text, itemId: i.item_id ?? "", need: i.need, buy: i.buy, partial: i.partial || undefined, uses: i.uses ?? undefined })),
+      .map((i) => ({ text: i.text, itemId: i.item_id ?? "", need: i.need, buy: i.buy, partial: i.partial || undefined, optional: i.optional || undefined, uses: i.uses ?? undefined })),
     method: r.method,
     prep: r.prep ?? undefined,
     cook: r.cook ?? undefined,
@@ -238,6 +238,7 @@ export function recipeRows(recipes: SharedRecipe[], before: Record<string, Recip
       need: g.need,
       buy: g.buy,
       partial: !!g.partial,
+      optional: !!g.optional,
       uses: g.uses ?? null,
     }))
   })

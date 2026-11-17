@@ -16,7 +16,7 @@ import { Home } from "./screens/home"
 import { ImportScreen } from "./screens/import"
 import { ListScreen } from "./screens/list"
 import { PantryScreen } from "./screens/pantry"
-import { RecipeFull } from "./screens/recipe"
+import { RecipeFull } from "./screens/recipe-page"
 import { RecipesScreen } from "./screens/recipes"
 import { Settings } from "./screens/settings"
 import { isDark, subscribeTheme } from "./theme"
@@ -172,7 +172,7 @@ function Screen({ route }: { route: Route }) {
     case "pantry": return <PantryScreen route={route} />
     case "import": return <ImportScreen />
     case "recipes": return <RecipesScreen route={route} />
-    case "recipe-full": return <RecipeFull id={route.id} item={route.item} serves={route.serves} />
+    case "recipe-full": return <RecipeFull key={route.id} id={route.id} item={route.item} serves={route.serves} />
     case "list": return <ListScreen route={route} />
     case "settings": return <Settings tab={route.tab} store={route.store} />
   }

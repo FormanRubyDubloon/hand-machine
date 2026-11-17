@@ -81,6 +81,8 @@ export type SharedIngredient = {
   buy: number
   /** Uses part of a unit or pack (a clove of garlic, some milk): Cooked it shows "Finished it" instead of a count. */
   partial?: boolean
+  /** The recipe works without it: it doesn't count as missing and Want to cook skips it. */
+  optional?: boolean
   /** Bulk with a pack size: how much it uses, in the pack's measure. Drives the pack-size warning. */
   uses?: number
 }

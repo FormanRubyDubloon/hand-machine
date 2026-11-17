@@ -278,6 +278,7 @@ const ingredientSchema = {
     need: { type: "number", description: "Counted items: how many the recipe uses at its servings. Default 1." },
     buy: { type: "number", description: "How many to put on the list when short. Default 1." },
     partial: { type: "boolean", description: "Uses part of a unit (a clove of garlic, some milk): any stock will do." },
+    optional: { type: "boolean", description: "The recipe works without it. Set it when the wording says so (\"1 tomato, optional\", \"(optional)\")." },
   },
   required: ["text"],
 }
@@ -317,7 +318,7 @@ function buildIngredients(data: PantryData, input: unknown, _now: Date): { ingre
       itemId = findItem(all(), g.item).id
       linked.push(`${text} → ${all()[itemId].name}`)
     } else unlinked.push(text)
-    return { text, itemId, need: Math.max(1, num(g.need) ?? 1), buy: Math.max(1, num(g.buy) ?? 1), partial: g.partial === true || undefined }
+    return { text, itemId, need: Math.max(1, num(g.need) ?? 1), buy: Math.max(1, num(g.buy) ?? 1), partial: g.partial === true || undefined, optional: g.optional === true || undefined }
   })
   return { ingredients, created, linked, unlinked }
 }
@@ -800,12 +801,12 @@ export const tools: Tool[] = [
       const at = ctx.now().toISOString()
       const changed: SharedItem[] = []
       for (const row of info.rows) {
-        if (!row.item || (row.status !== "short" && row.status !== "little")) continue
+        if (!row.item || row.ing.optional || (row.status !== "short" && row.status !== "little")) continue
         const qty = isBulk(row.item) || row.ing.partial ? Math.max(1, row.ing.buy) : Math.max(row.ing.buy, row.missing)
         changed.push({ ...row.item, entries: [...(row.item.entries ?? []), { source: { kind: "recipe", recipe: r.name }, qty, at }] })
       }
       const listed = info.rows.filter((x) => x.status === "listed").map((x) => x.item!.name)
-      const unlinked = info.rows.filter((x) => x.status === "unlinked").map((x) => x.text)
+      const unlinked = info.rows.filter((x) => x.status === "unlinked" && !x.ing.optional).map((x) => x.text)
       await commit(ctx, {
         items: changed,
         recipes: [{ ...r, wantToCook: true }],
