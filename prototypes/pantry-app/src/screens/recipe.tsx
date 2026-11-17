@@ -16,18 +16,20 @@ import {
 } from "../model"
 import { href, navigate, type RecipesTab } from "../router"
 import { usePantry } from "../state"
-import { Eyebrow, ExpiryAlert, NewPill, Segmented, SidePanel, Stepper } from "../components"
+import { Eyebrow, ExpiryAlert, Field, NewPill, SidePanel, Stepper } from "../components"
+import { pluralise } from "./item-panel"
 import { RecipeEditor } from "./recipe-edit"
 import { ItemPicker } from "../link-picker"
 
 // ---------- putting ingredients on the list ----------
 
-type Draft = { position: number; name: string; type: Item["type"]; categoryId: string; location: Item["location"] }
+type Draft = { position: number; name: string; qty: number; unit: string; categoryId: string; location: NonNullable<Item["location"]> }
 
 /**
- * An ingredient the pantry doesn't have can't go on the list until it's a pantry item, so this asks for what the
- * pantry needs (name, type, location, aisle), guessed from the recipe's wording and similar items. Confirming
- * adds each to the pantry and the shopping list. They show as New in the pantry until they're bought.
+ * An ingredient the pantry doesn't have can't go on the list until it's a pantry item, so this asks for the least
+ * the pantry needs, in the same layout as "Add it to your pantry" on the recipe page: name, how many to buy, unit,
+ * aisle and location, guessed from the recipe's wording and similar items. Confirming adds each to the pantry
+ * (none in stock, marked New) and to the shopping list.
  */
 function NewItemsDialog({ recipe, positions, onClose }: { recipe: Recipe; positions: number[]; onClose: () => void }) {
   const { items, db, actions } = usePantry()
@@ -35,54 +37,88 @@ function NewItemsDialog({ recipe, positions, onClose }: { recipe: Recipe; positi
     positions.map((position) => {
       const name = ingredientName(recipe.ingredients[position]?.text ?? "")
       const place = guessPlace(name, items)
-      return { position, name, type: "counted", categoryId: place.categoryId, location: place.location }
+      return { position, name, qty: 1, unit: "", categoryId: place.categoryId, location: place.location ?? "cupboard" }
     }),
   )
   const [tried, setTried] = React.useState(false)
+  const firstName = React.useRef<HTMLInputElement>(null)
   const set = (k: number, patch: Partial<Draft>) => setDrafts((d) => d.map((x, n) => (n === k ? { ...x, ...patch } : x)))
-  const complete = drafts.every((d) => d.name.trim() && d.categoryId && d.location)
+  const complete = drafts.every((d) => d.name.trim() && d.categoryId)
+  const one = drafts.length === 1
+  const save = () => {
+    setTried(true)
+    if (!complete) return
+    actions.addNewIngredients(
+      recipe,
+      drafts.map((d) => ({ position: d.position, name: d.name, qty: d.qty, unit: d.unit.trim() ? [d.unit.trim(), pluralise(d.unit.trim())] : undefined, categoryId: d.categoryId, location: d.location })),
+    )
+    onClose()
+  }
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] gap-5 overflow-y-auto p-8 sm:max-w-[640px]">
+      <DialogContent
+        className="max-h-[90vh] gap-5 overflow-y-auto p-8 sm:max-w-[440px]"
+        // Open with the first guessed name selected, so typing replaces it and Enter keeps it.
+        onOpenAutoFocus={(e) => {
+          if (!firstName.current) return
+          e.preventDefault()
+          firstName.current.focus()
+          firstName.current.select()
+        }}
+      >
         <DialogHeader>
-          <Eyebrow>Not in your pantry yet</Eyebrow>
-          <DialogTitle className="text-[22px] tracking-[0.04em] uppercase">Add {plural(drafts.length, "ingredient")} to your pantry</DialogTitle>
+          <Eyebrow>{one ? recipe.ingredients[drafts[0].position]?.text : "Not in your pantry yet"}</Eyebrow>
+          <DialogTitle className="text-[22px] tracking-[0.04em] uppercase">{one ? "Add to your shopping list" : `Add ${drafts.length} to your shopping list`}</DialogTitle>
           <DialogDescription>
-            To put {drafts.length === 1 ? "it" : "them"} on the shopping list, {drafts.length === 1 ? "it needs" : "they need"} a place in the pantry. We've guessed. Check {drafts.length === 1 ? "it" : "them"}. {drafts.length === 1 ? "It shows" : "They show"} as New until you buy {drafts.length === 1 ? "it" : "them"}.
+            {one ? "It isn't in your pantry yet, so it goes in the pantry too. It shows as New until you buy it." : "They aren't in your pantry yet, so they go in the pantry too. They show as New until you buy them."}
           </DialogDescription>
         </DialogHeader>
-        {drafts.map((d, k) => (
-          <section key={d.position} className="flex flex-col gap-3 border-t border-border pt-4">
-            <span className="text-xs text-muted-foreground">{recipe.ingredients[d.position]?.text}</span>
-            <Input value={d.name} onChange={(e) => set(k, { name: e.target.value })} aria-label="Name" aria-invalid={tried && !d.name.trim()} />
-            <div className="flex flex-wrap items-center gap-4">
-              <Segmented label="Type" value={d.type} onChange={(type) => set(k, { type })} options={[{ value: "counted", label: "Counted" }, { value: "bulk", label: "Bulk" }]} />
-              <Segmented label="Location" value={d.location} onChange={(location) => set(k, { location })} options={locations} />
-            </div>
-            <Select value={d.categoryId || undefined} onValueChange={(categoryId) => set(k, { categoryId })}>
-              <SelectTrigger className="w-full" aria-invalid={tried && !d.categoryId}>
-                <SelectValue placeholder="Choose an aisle" />
-              </SelectTrigger>
-              <SelectContent>
-                {categoriesAtoZ(db.categories).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {tried && !d.location && <span className="text-xs text-destructive">Choose a location.</span>}
-          </section>
-        ))}
-        <DialogFooter className="sm:justify-between">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button
-            onClick={() => {
-              setTried(true)
-              if (!complete) return
-              actions.addNewIngredients(recipe, drafts.map((d) => ({ ...d, location: d.location! })))
-              onClose()
-            }}
-          >
-            Add to pantry and list
-          </Button>
-        </DialogFooter>
+        <form className="flex min-w-0 flex-col gap-5" onSubmit={(e) => { e.preventDefault(); save() }}>
+          {drafts.map((d, k) => (
+            <section key={d.position} className={cn("flex min-w-0 flex-col gap-5", !one && "border-t border-border pt-5")}>
+              {!one && <Eyebrow>{recipe.ingredients[d.position]?.text}</Eyebrow>}
+              <Field label="Name">
+                <Input ref={k === 0 ? firstName : undefined} value={d.name} onChange={(e) => set(k, { name: e.target.value })} aria-invalid={tried && !d.name.trim()} />
+              </Field>
+              <div className="grid grid-cols-[auto_1fr] items-start gap-5">
+                <div className="flex flex-col gap-2">
+                  <Eyebrow>How many</Eyebrow>
+                  <Stepper size="md" label="How many to buy" value={d.qty} min={1} onChange={(qty) => set(k, { qty })} />
+                </div>
+                <Field label="Unit" hint="Optional: tin, jar, bag. Leave blank to count them.">
+                  <Input value={d.unit} placeholder="tin" onChange={(e) => set(k, { unit: e.target.value })} />
+                </Field>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Eyebrow>Aisle</Eyebrow>
+                <Select value={d.categoryId || undefined} onValueChange={(categoryId) => set(k, { categoryId })}>
+                  <SelectTrigger className="w-full" aria-label="Aisle" aria-invalid={tried && !d.categoryId}>
+                    <SelectValue placeholder="Choose an aisle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categoriesAtoZ(db.categories).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {tried && !d.categoryId && <span className="text-xs text-destructive">Choose an aisle.</span>}
+              </div>
+              <div className="flex flex-col gap-2">
+                <Eyebrow>Location</Eyebrow>
+                <Select value={d.location} onValueChange={(l) => set(k, { location: l as Draft["location"] })}>
+                  <SelectTrigger className="w-full" aria-label="Location">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </section>
+          ))}
+          <DialogFooter className="sm:justify-between">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit">Add to shopping list</Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

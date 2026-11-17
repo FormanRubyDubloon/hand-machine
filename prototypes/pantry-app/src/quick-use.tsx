@@ -31,7 +31,7 @@ export function QuickUseActions({ item, compact, className }: { item: Item; comp
       </Button>
       {canOpen && (
         <Button size="xs" variant="outline" className={cn(size, "border-primary", !compact && "min-w-0 flex-1 px-2")} {...keep} onClick={act(() => actions.openPack(item.id))}>
-          {item.open ? "Open" : "Open one"}
+          Open
         </Button>
       )}
     </div>
