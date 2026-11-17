@@ -1,7 +1,7 @@
 // How the pantry reads to Claude: one line per item, recipe or list row, in plain words. Claude
 // rephrases for the chat, so these favour being unambiguous (ids, ISO dates) over being pretty.
 import {
-  daysUntil, haveText, isBulk, isStaple, locationLabel, needOf, normalise, recipeInfo, shortNames, soonest, stockOf, type IngredientRow, type Items,
+  daysUntil, haveText, isBulk, money, isStaple, locationLabel, needOf, normalise, recipeInfo, shortNames, soonest, stockOf, type IngredientRow, type Items,
 } from "../../pantry-app/src/model"
 import { minutesText, type Category, type SharedItem, type SharedRecipe } from "../../shared/src/pantry"
 
@@ -39,9 +39,13 @@ export function itemLine(i: SharedItem, categories: Category[]) {
   parts.push(categoryName(categories, i.categoryId))
   if (i.otherNames?.length) parts.push(`also called ${i.otherNames.join(", ")}`)
   if (i.brand) parts.push(`brand: ${i.brand}`)
+  if (!i.oneOff) parts.push(priceText(i))
   if (i.notes) parts.push(`notes: ${i.notes}`)
   return parts.join(" · ")
 }
+
+/** "£1.65 each", "£1.65 each (estimate)", "no price". */
+export const priceText = (i: SharedItem) => (i.price ? `${money(i.price)} each${i.priceEstimate ? " (estimate)" : ""}` : "no price")
 
 export function recipeLine(r: SharedRecipe, items: Items) {
   const info = recipeInfo(r, items)

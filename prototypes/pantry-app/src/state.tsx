@@ -256,6 +256,7 @@ function usePantryState() {
         if (before.location !== draft.location) changes.push("location")
         if (before.categoryId !== draft.categoryId) changes.push("shop or aisle")
         if (before.price !== draft.price) changes.push("price")
+        else if (!!before.priceEstimate !== !!draft.priceEstimate) changes.push(draft.priceEstimate ? "price marked as an estimate" : "price no longer an estimate")
         if (before.brand !== draft.brand) changes.push("brand")
         if (!!before.openCounts !== !!draft.openCounts) changes.push(draft.openCounts ? "open pack counts towards the minimum" : "open pack doesn't count towards the minimum")
         if (!!before.noExpiry !== !!draft.noExpiry) changes.push(draft.noExpiry ? "marked as not expiring" : "use-by dates tracked again")

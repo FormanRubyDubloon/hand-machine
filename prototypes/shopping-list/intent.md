@@ -1,6 +1,6 @@
 # Intent: pantry, recipes and shopping list app, with Claude access
 
-Author: Isaac Forman · Date: 14 Nov 2026 · Updated: 16 Nov 2026 · Status: draft, awaiting review
+Author: Isaac Forman · Date: 14 Nov 2026 · Updated: 17 Nov 2026 · Status: draft, awaiting review
 
 ## Problem
 
@@ -13,7 +13,7 @@ My recipes aren't connected to any of this. I can't see which recipes I can cook
 One system I own, made of three parts, that replaces Notion completely:
 
 1. **Mobile app (native iPhone app).** One app with three sections:
-   - **Shopping list.** I use it in shops. It shows what I need to buy, and it works without signal. Pantry stock updates when I choose to sync, for example at the end of a shop.
+   - **Shopping list.** I use it in shops. It shows what I need to buy and roughly what it will cost, and it works without signal. Pantry stock updates when I choose to sync, for example at the end of a shop.
    - **Recipes.** All my recipes. A recipe's detail page is where I cook from: it shows what I have and what I'm short of, and has a step-by-step cooking view.
    - **Pantry.** A cut-down version of the pantry for the phone. I can record what I've used, add stock, mark a pack as open, search and view stock, edit an item's details, and review New items.
 2. **Pantry admin app (desktop web).** I use it at my desk to manage pantry items, stock, recipes and categories. It does everything the phone's Pantry section does, plus the jobs that stay on the desktop, such as managing categories and merging items.
@@ -30,7 +30,7 @@ Each pantry item records:
 - category (the shop or aisle section it belongs to, such as dairy or tins)
 - location (fridge, freezer, cupboard)
 - use-by date
-- price
+- price each (marked as an estimate when Claude guessed it rather than me giving it)
 - preferred brand (optional; blank means any brand is fine)
 - other names (optional, such as coriander and cilantro), used to match recipe ingredients
 - notes
@@ -62,6 +62,12 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - A new item made this way is marked "New" until I've reviewed and saved it, because its category and location are guesses. I can review it in the admin app or in the phone's Pantry section.
 - If I undo the check-off on the phone, the item doesn't go into the pantry.
 - Items that are already in the pantry stay there while they're on the list. If I have none, they show as Out.
+
+**Prices and the estimated total**
+- The shopping list shows an estimated total in the mobile app and the admin app: each item's price times how many to buy, added up. The mobile app has it from its first release.
+- Items with no price aren't in the total. The list says how many there are, so I know the figure is short.
+- A price can be marked as an estimate. Claude marks the prices it guesses; a price I set myself, in either app, clears the mark.
+- When any item on the list has no price or an estimated price, the total shows as approximate.
 
 **Syncing**
 - Check-offs from the shopping list update stock when I sync, not on each tap.
@@ -118,6 +124,7 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - Claude can add items, stock, list entries, recipes and stores without asking.
 - When I tell Claude what I've used ("I used the last of the rice"), it takes that off stock without asking. This doesn't count as an edit.
 - Claude must ask me to confirm before it edits or deletes anything else, including changing a store or its aisle numbers.
+- Claude can read prices and the shopping list's estimated total. It can set the prices of many items at once, for example from a receipt or as estimates for items with none, after I confirm the whole batch once. It says whether the prices are estimates.
 - Claude can change a store's aisle numbers, but not add, rename or remove categories. Those stay in the admin app.
 
 **Success looks like:**

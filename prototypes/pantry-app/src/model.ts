@@ -287,6 +287,23 @@ export function listRows(items: Items): ListRow[] {
     })
 }
 
+/**
+ * The shopping list's estimated total, from each item's price each times how many to buy. Rows with
+ * no price aren't in the figure, so they're counted; so are rows whose price is an estimate. The
+ * figure is approximate when either count is above 0.
+ */
+export function listTotal(rows: ListRow[]) {
+  let pence = 0
+  let unpriced = 0
+  let estimated = 0
+  for (const r of rows) {
+    if (!r.item.price) { unpriced++; continue }
+    pence += r.item.price * r.qty
+    if (r.item.priceEstimate) estimated++
+  }
+  return { pence, unpriced, estimated, approximate: unpriced > 0 || estimated > 0 }
+}
+
 export function soldAt(i: Item, store: Store) {
   const aisle = store.aisles[i.categoryId]
   if (aisle === null || aisle === undefined) return false

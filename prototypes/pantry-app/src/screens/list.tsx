@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { FilterChips } from "@/components/ui/filter-chips"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  aisleOrder, cap, containsText, fullOf, haveText, inStockText, isBulk, isStaple, isToday, listRows, locationLabel, money, namesOf, needOf, numberedAisles,
+  aisleOrder, cap, containsText, fullOf, haveText, inStockText, isBulk, isStaple, isToday, listRows, listTotal, locationLabel, money, namesOf, needOf, numberedAisles,
   plural, soldAt, stockOf, timeText, shortDate, unitWord, type Category, type ListRow, type Reason, categoriesAtoZ,
 } from "../model"
 import { navigate, type Route } from "../router"
@@ -110,7 +110,7 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
   const rows = listRows(items)
   const inGroup = rows.filter((r) => group === "all" || r.group === group)
   const shown = inGroup.filter((r) => stock === "all" || stockOf(r.item) === stock)
-  const estimate = rows.reduce((n, r) => n + (r.item.price ?? 0) * r.qty, 0)
+  const total = listTotal(rows)
   const counts = { staples: rows.filter((r) => r.group === "staples").length, recipes: rows.filter((r) => r.group === "recipes").length, added: rows.filter((r) => r.group === "added").length }
 
   // Group by aisle in this store's walking order. Things it doesn't sell go at the end.
@@ -194,7 +194,7 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
                         </div>
                       </TableCell>
                       <TableCell><Why row={r} /></TableCell>
-                      <TableCell className="text-right tabular-nums">{r.item.price ? money(r.item.price * r.qty) : "–"}</TableCell>
+                      <TableCell className="text-right tabular-nums" title={r.item.price ? (r.item.priceEstimate ? "Estimated price" : undefined) : "No price"}>{r.item.price ? `${r.item.priceEstimate ? "≈" : ""}${money(r.item.price * r.qty)}` : "–"}</TableCell>
                       <TableCell className="w-12 pr-3 text-right">
                         {r.group !== "staples" && (
                           <Button variant="ghost" size="icon-xs" aria-label={`Take ${r.item.name} off the list`} title="Take off the list" onClick={() => actions.removeFromList(r.item.id)}>
@@ -217,8 +217,18 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
       <aside className="flex w-[340px] shrink-0 flex-col gap-7 overflow-y-auto border-l border-border bg-muted/50 px-6 py-7">
         <div className="flex flex-col gap-1">
           <Eyebrow>Estimated total</Eyebrow>
-          <span className="text-[44px] leading-none font-semibold tabular-nums">{money(estimate)}</span>
-          <span className="text-xs text-muted-foreground">{plural(rows.length, "item")} · prices from your pantry</span>
+          <span className="text-[44px] leading-none font-semibold tabular-nums">
+            {total.approximate && <span aria-label="about">≈</span>}
+            {money(total.pence)}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {[
+              plural(rows.length, "item"),
+              total.unpriced ? `${total.unpriced} without a price, not counted` : "",
+              total.estimated ? plural(total.estimated, "estimated price") : "",
+              !total.approximate ? "prices from your pantry" : "",
+            ].filter(Boolean).join(" · ")}
+          </span>
         </div>
         <div className="flex flex-col text-sm">
           {[

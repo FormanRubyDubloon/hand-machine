@@ -40,6 +40,7 @@ function toItem(r) {
     open: r.open ?? void 0,
     packSize: r.pack_size_amount && r.pack_size_measure ? { amount: r.pack_size_amount, measure: r.pack_size_measure } : void 0,
     price: r.price ?? void 0,
+    priceEstimate: r.price !== null && r.price_is_estimate || void 0,
     brand: r.brand ?? void 0,
     useBy: r.use_by.length ? r.use_by : void 0,
     noExpiry: r.no_expiry || void 0,
@@ -92,6 +93,7 @@ function toRow(i, knownCategories) {
     pack_size_amount: i.packSize?.amount ?? null,
     pack_size_measure: i.packSize?.measure ?? null,
     price: i.price ?? null,
+    price_is_estimate: i.price !== void 0 && !!i.priceEstimate,
     brand: i.brand ?? null,
     use_by: i.noExpiry ? [] : (i.useBy ?? []).filter((d) => !!d),
     no_expiry: !!i.noExpiry,
@@ -302,6 +304,7 @@ var daysUntil = (iso) => Math.round((startOf(new Date(iso)) - startOf(/* @__PURE
 var todayIso = () => new Date(Date.now() - (/* @__PURE__ */ new Date()).getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
 var soonest = (i) => i.inStock > 0 && !i.noExpiry ? (i.useBy ?? []).find((d) => !!d) ?? null : null;
 var plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+var money = (pence) => `\xA3${(pence / 100).toFixed(2)}`;
 var lower = (s) => s.charAt(0).toLowerCase() + s.slice(1);
 var cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 var norm = (s) => s.toLowerCase().trim().replace(/(es|s)$/, "");
@@ -329,6 +332,20 @@ function listRows(items) {
     const first = reasons[0]?.kind;
     return { item: i, qty: needOf(i), reasons, group: first === "staple" ? "staples" : first === "recipe" ? "recipes" : "added" };
   });
+}
+function listTotal(rows) {
+  let pence = 0;
+  let unpriced = 0;
+  let estimated = 0;
+  for (const r of rows) {
+    if (!r.item.price) {
+      unpriced++;
+      continue;
+    }
+    pence += r.item.price * r.qty;
+    if (r.item.priceEstimate) estimated++;
+  }
+  return { pence, unpriced, estimated, approximate: unpriced > 0 || estimated > 0 };
 }
 function soldAt(i, store) {
   const aisle = store.aisles[i.categoryId];
@@ -431,9 +448,11 @@ function itemLine(i, categories) {
   parts.push(categoryName(categories, i.categoryId));
   if (i.otherNames?.length) parts.push(`also called ${i.otherNames.join(", ")}`);
   if (i.brand) parts.push(`brand: ${i.brand}`);
+  if (!i.oneOff) parts.push(priceText(i));
   if (i.notes) parts.push(`notes: ${i.notes}`);
   return parts.join(" \xB7 ");
 }
+var priceText = (i) => i.price ? `${money(i.price)} each${i.priceEstimate ? " (estimate)" : ""}` : "no price";
 function recipeLine(r, items) {
   const info = recipeInfo(r, items);
   const parts = [`${r.name} [id: ${r.id}]`, minutesText(r.minutes), `serves ${r.serves}`];
@@ -740,17 +759,26 @@ function ingredientsReport(r) {
 }
 var removeRecipeEntries = (i, recipeName) => i.entries?.some((e) => e.source.kind === "recipe" && e.source.recipe === recipeName) ? { ...i, entries: i.entries.filter((e) => !(e.source.kind === "recipe" && e.source.recipe === recipeName)) } : null;
 var reasonText = (r, i) => r.kind === "staple" ? `Staple, have ${haveText(i)}, keep ${i.target}` : r.kind === "recipe" ? `for ${r.recipe}` : r.kind === "claude" ? "added by Claude" : "added by you";
+function totalText(t) {
+  if (t.pence === 0 && t.unpriced) return `No estimated total: nothing on the list has a price yet (${plural(t.unpriced, "thing")}).`;
+  const notes = [
+    t.unpriced ? `not counting ${plural(t.unpriced, "thing")} with no price` : "",
+    t.estimated ? `${t.estimated === 1 ? "1 price is an estimate" : `${t.estimated} prices are estimates`}` : ""
+  ].filter(Boolean);
+  return `Estimated total ${t.approximate ? "about " : ""}${money(t.pence)}${notes.length ? `, ${notes.join("; ")}` : ""}.`;
+}
+var priceChange = (before, after) => `${before.price ? money(before.price) : "none"} \u2192 ${after.price ? money(after.price) : "none"}${after.priceEstimate ? " (estimate)" : ""}`;
 var tools = [
   // ----- read -----
   {
     name: "search_pantry",
     title: "Search the pantry",
-    description: "Look up pantry items and their stock. Each line gives the id, what's in stock, whether it's a Staple (an item with a minimum to keep), whether it's low or out, how many are on the shopping list, the soonest use-by date, location and category. With no query and no filter it lists everything.",
+    description: `Look up pantry items and their stock. Each line gives the id, what's in stock, whether it's a Staple (an item with a minimum to keep), whether it's low or out, how many are on the shopping list, the soonest use-by date, location, category and price each (marked "(estimate)" when it's a guess rather than one the user gave). With no query and no filter it lists everything.`,
     inputSchema: {
       type: "object",
       properties: {
         query: { type: "string", description: "Part of a name, another name, or a category name." },
-        filter: { type: "string", enum: ["all", "staples", "low_or_out", "out", "use_soon", "not_staples"], description: "low_or_out: Out, or Low (half the minimum or fewer). use_soon: has a use-by date in the next 7 days." }
+        filter: { type: "string", enum: ["all", "staples", "low_or_out", "out", "use_soon", "not_staples", "no_price", "estimated_price"], description: "low_or_out: Out, or Low (half the minimum or fewer). use_soon: has a use-by date in the next 7 days. no_price: no price set. estimated_price: the price is an estimate." }
       }
     },
     annotations: { readOnlyHint: true },
@@ -766,6 +794,8 @@ var tools = [
         if (filter === "not_staples") return !isStaple(i);
         if (filter === "out") return isStaple(i) && i.inStock <= 0;
         if (filter === "low_or_out") return stockOf(i) !== null;
+        if (filter === "no_price") return !i.price;
+        if (filter === "estimated_price") return !!i.price && !!i.priceEstimate;
         if (filter === "use_soon") {
           const d = (i.useBy ?? []).find((x) => !!x);
           return i.inStock > 0 && !!d && (new Date(d).getTime() - Date.now()) / 864e5 <= 7;
@@ -784,13 +814,14 @@ ${list.map((i) => itemLine(i, data.categories)).join("\n")}`;
   {
     name: "get_shopping_list",
     title: "Get the shopping list",
-    description: "What's on the shopping list and why: Staples below their minimum, things for recipes the user wants to cook, and things added by hand or by Claude. Give a store to get it in that store's aisle order, with anything the store doesn't sell listed apart.",
+    description: "What's on the shopping list and why: Staples below their minimum, things for recipes the user wants to cook, and things added by hand or by Claude. Give a store to get it in that store's aisle order, with anything the store doesn't sell listed apart. Each line has its cost (price each times how many), and the list starts with an estimated total: it leaves out lines with no price and says how many there are, and it's approximate when any line is unpriced or uses an estimated price.",
     inputSchema: { type: "object", properties: { store: { type: "string", description: "A store's name or id (get_categories_and_stores)." } } },
     annotations: { readOnlyHint: true },
     async run(args, { data }) {
       const rows = listRows(data.items);
       if (!rows.length) return "The shopping list is empty.";
-      const line = (r) => `- ${r.item.oneOff ? r.item.name : amountOf(r.item, r.qty)} [id: ${r.item.id}] \xB7 ${r.reasons.map((x) => reasonText(x, r.item)).join("; ")}`;
+      const cost = (r) => r.item.price ? `${money(r.item.price * r.qty)}${r.item.priceEstimate ? " (estimate)" : ""}` : "no price";
+      const line = (r) => `- ${r.item.oneOff ? r.item.name : amountOf(r.item, r.qty)} [id: ${r.item.id}] \xB7 ${r.reasons.map((x) => reasonText(x, r.item)).join("; ")} \xB7 ${cost(r)}`;
       const store = findStore(data, args.store);
       const out = [];
       if (store) {
@@ -808,6 +839,7 @@ ${list.map((i) => itemLine(i, data.categories)).join("\n")}`;
         }
       }
       return `${plural(rows.length, "thing")} on the list.
+${totalText(listTotal(rows))}
 ${out.join("\n")}`;
     }
   },
@@ -1242,7 +1274,8 @@ ${recipeLine(recipe, ctx.data.items)}`;
             opened_at: { type: "array", items: { type: ["string", "null"] }, description: "Bulk: when each open pack was opened, YYYY-MM-DD, one per open pack. null for unknown." },
             other_names: { type: ["array", "null"], items: { type: "string" }, description: "Replaces the other names." },
             brand: { type: ["string", "null"] },
-            price_pence: { type: ["number", "null"] },
+            price_pence: { type: ["number", "null"], description: "Price each, in pence. Setting it clears the estimate mark unless price_is_estimate is true." },
+            price_is_estimate: { type: "boolean", description: "true when the price is your guess, not one the user gave (from a receipt or the shelf, say)." },
             notes: { type: ["string", "null"] }
           }
         },
@@ -1354,7 +1387,11 @@ ${recipeLine(recipe, ctx.data.items)}`;
       }
       if (has("price_pence")) {
         next.price = cleared("price_pence") ? void 0 : Math.round(num(c.price_pence) ?? 0);
-        said.push(next.price !== void 0 ? "price" : "price cleared");
+        next.priceEstimate = next.price !== void 0 && c.price_is_estimate === true || void 0;
+        said.push(next.price !== void 0 ? `price ${priceChange(i, next)}` : "price cleared");
+      } else if (typeof c.price_is_estimate === "boolean" && next.price !== void 0 && !!i.priceEstimate !== c.price_is_estimate) {
+        next.priceEstimate = c.price_is_estimate || void 0;
+        said.push(c.price_is_estimate ? "price marked as an estimate" : "price no longer an estimate");
       }
       if (has("notes")) {
         next.notes = str(c.notes);
@@ -1368,6 +1405,53 @@ ${recipeLine(recipe, ctx.data.items)}`;
       if (!said.length) return "Nothing to change.";
       await commit(ctx, { items: [next], title: `Changed ${next.name}`, detail: cap(said.join(", ")), itemIds: [i.id] });
       return `Changed. ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`;
+    }
+  },
+  {
+    name: "set_prices",
+    title: "Set prices for several items",
+    description: "Sets the price each of several pantry items at once, for example from a receipt, or your own estimates for items with no price (search_pantry with filter no_price finds them). Say whether these are estimates: estimated prices are marked, and totals that use them show as approximate. An edit: list every item with its old and new price, ask the user once, then call with confirmed: true. One History entry covers the lot, so the pantry app can undo it in one go the same day.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        prices: {
+          type: "array",
+          items: { type: "object", properties: { item: itemRef, price_pence: { type: "number", description: "Price each, in pence: 165 for \xA31.65." } }, required: ["item", "price_pence"] }
+        },
+        estimate: { type: "boolean", description: "true when these are your guesses; false when the user gave them (a receipt, the shelf, a website)." },
+        confirmed
+      },
+      required: ["prices", "estimate", "confirmed"]
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+    async run(args, ctx) {
+      const list = Array.isArray(args.prices) ? args.prices : [];
+      if (!list.length) throw new ToolError("Give prices: a list of { item, price_pence }.");
+      if (typeof args.estimate !== "boolean") throw new ToolError("Say whether these prices are estimates: estimate true (your guesses) or false (the user gave them).");
+      const byId = /* @__PURE__ */ new Map();
+      for (const p of list) {
+        const i = findItem(ctx.data.items, p.item);
+        const pence = num(p.price_pence);
+        if (pence === void 0 || pence <= 0) throw new ToolError(`${i.name}: price_pence has to be a number above 0, in pence (165 for \xA31.65). Nothing was changed.`);
+        byId.set(i.id, { ...byId.get(i.id) ?? i, price: Math.round(pence), priceEstimate: args.estimate || void 0 });
+      }
+      needConfirmed(args, `setting ${plural(byId.size, "price")}`);
+      const changed = [...byId.values()].filter((n) => {
+        const i = ctx.data.items[n.id];
+        return i.price !== n.price || !!i.priceEstimate !== !!n.priceEstimate;
+      });
+      if (!changed.length) return "Nothing to change: those prices are already set.";
+      const lines = changed.map((n) => `${n.name} ${priceChange(ctx.data.items[n.id], n)}`);
+      await commit(ctx, {
+        items: changed,
+        title: `Set ${args.estimate ? "estimated " : ""}prices for ${plural(changed.length, "item")}`,
+        detail: lines.join(", "),
+        itemIds: changed.map((n) => n.id)
+      });
+      const total = listTotal(listRows(ctx.data.items));
+      return `Set ${plural(changed.length, "price")}:
+${lines.map((l) => `- ${l}`).join("\n")}
+Shopping list: ${lower(totalText(total))}`;
     }
   },
   {

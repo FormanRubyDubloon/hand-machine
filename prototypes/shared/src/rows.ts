@@ -38,6 +38,7 @@ export type Row = {
   pack_size_amount: number | null
   pack_size_measure: "g" | "ml" | null
   price: number | null
+  price_is_estimate?: boolean
   brand: string | null
   use_by: string[]
   no_expiry?: boolean
@@ -75,6 +76,7 @@ export function toItem(r: Row): SharedItem {
     open: r.open ?? undefined,
     packSize: r.pack_size_amount && r.pack_size_measure ? { amount: r.pack_size_amount, measure: r.pack_size_measure } : undefined,
     price: r.price ?? undefined,
+    priceEstimate: (r.price !== null && r.price_is_estimate) || undefined,
     brand: r.brand ?? undefined,
     useBy: r.use_by.length ? r.use_by : undefined,
     noExpiry: r.no_expiry || undefined,
@@ -161,6 +163,7 @@ export function toRow(i: SharedItem, knownCategories: Set<string>) {
     pack_size_amount: i.packSize?.amount ?? null,
     pack_size_measure: i.packSize?.measure ?? null,
     price: i.price ?? null,
+    price_is_estimate: i.price !== undefined && !!i.priceEstimate,
     brand: i.brand ?? null,
     use_by: i.noExpiry ? [] : (i.useBy ?? []).filter((d): d is string => !!d),
     no_expiry: !!i.noExpiry,
