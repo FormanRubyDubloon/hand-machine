@@ -11,9 +11,10 @@ import {
   syncHistory, syncRecipes, syncStores,
 } from "./sync"
 import { deleteCategories } from "../../shared/src/pantry-remote"
+import { href } from "./router"
 import type { CategoryColour, CategoryIcon } from "../../shared/src/category-look"
 import {
-  amountOf, cap, haveText, nameList, isBulk, isToday, lower, needOf, normalise, plural, settle, timeText, todayIso, withStock,
+  amountOf, cap, haveText, unitText, nameList, isBulk, isToday, lower, needOf, normalise, plural, settle, timeText, todayIso, withStock,
   type Conflict, type Db, type HistoryEntry, type Item, type Items, type Recipe, type Snapshot, type Store, type Who,
 } from "./model"
 
@@ -456,6 +457,35 @@ function usePantryState() {
         { title: `Added ${nameList(made.map((m) => m.name))} to the pantry and the shopping list`, detail: `New items from ${recipe.name}`, recipeId: recipe.id, itemIds: made.map((m) => m.id) },
       )
     },
+    /**
+     * "I already have this" on an ingredient the pantry doesn't know: makes the pantry item with what you have
+     * (minimum 0, location and type guessed, marked New for review) and links it to the recipe line.
+     */
+    haveNewIngredient(recipe: Recipe, position: number, n: { name: string; qty: number; categoryId: string; location: NonNullable<Item["location"]>; unit?: Item["unit"] }) {
+      const now = new Date().toISOString()
+      let id = uid("item")
+      while (ref.current.items[id]) id = uid("item")
+      const name = cap(n.name.trim())
+      const item = normalise({ id, name, type: "counted", target: 0, inStock: n.qty, unit: n.unit, categoryId: n.categoryId, location: n.location, where: [], review: true, editedAt: now })
+      commit(
+        (s) => {
+          const next = setItems(s, { [id]: item })
+          return setRecipes(next, (rs) =>
+            rs.map((r) => (r.id === recipe.id ? { ...r, ingredients: r.ingredients.map((g, k) => (k === position && !g.itemId ? { ...g, itemId: id } : g)) } : r)),
+          )
+        },
+        { title: `Added ${name} to the pantry`, detail: `${n.qty} in stock · from ${recipe.name}`, recipeId: recipe.id, itemIds: [id] },
+      )
+      toast(`Added ${name} to your pantry`, {
+        description: (
+          <>
+            {unitText(item, n.qty)} in stock ·{" "}
+            {/* Opens the item's side panel over the recipe page. */}
+            <a className="underline underline-offset-4" href={href({ name: "recipe-full", id: recipe.id, item: id })}>Open the item</a>
+          </>
+        ),
+      })
+    },
     /** Sets how many of an ingredient this recipe has put on the list. Below 1 takes it off. */
     setIngredientQty(recipe: Recipe, itemId: string, qty: number) {
       const i = ref.current.items[itemId]
@@ -512,23 +542,23 @@ function usePantryState() {
       )
       toast(isNew ? `Added ${recipe.name}` : `Saved ${recipe.name}`)
     },
-    /** Point one of a recipe's ingredients at a pantry item, keeping the recipe's wording. */
+    /** Points a recipe line at a pantry item, keeping the recipe's wording. Links a recipe line to a pantry item. The item is checked inside the update, so this can follow a saveItem straight away. */
     linkIngredient(recipe: Recipe, position: number, itemId: string) {
-      const i = ref.current.items[itemId]
       const g = recipe.ingredients[position]
-      if (!i || !g) return
+      if (!g) return
       commit(
         (s) =>
-          setRecipes(s, (rs) =>
+          !s.items[itemId] ? s : setRecipes(s, (rs) =>
             rs.map((r) =>
               r.id === recipe.id
                 ? { ...r, editedAt: new Date().toISOString(), ingredients: r.ingredients.map((x, k) => (k === position ? { ...x, itemId } : x)) }
                 : r,
             ),
           ),
-        { title: `Linked "${g.text}" to ${i.name}`, detail: `In ${recipe.name}`, recipeId: recipe.id, itemIds: [itemId] },
+        { title: (_, n) => `Linked "${g.text}" to ${n.items[itemId]?.name}`, detail: `In ${recipe.name}`, recipeId: recipe.id, itemIds: [itemId] },
       )
-      toast(`Linked to ${i.name}`)
+      const name = ref.current.items[itemId]?.name
+      toast(name ? `Linked to ${name}` : `Linked to the new item`)
     },
     deleteRecipe(recipe: Recipe, removeFromList: boolean) {
       commit(

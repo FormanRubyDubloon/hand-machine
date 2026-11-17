@@ -274,6 +274,13 @@ Decisions taken with Isaac (17 November):
 - **Pack warning:** only the existing REC-12 rule, as the row's fourth line in the danger colour. The mock's warning about list amounts isn't built.
 - **No "See the list" link** on the page.
 
+Changed after the first build (Isaac, 17 November):
+
+- Each row's text button is now icon buttons with tooltips: a basket ("Add to shopping list"), filled in To buy and quiet elsewhere, and in To buy (and optional rows not in stock) a quiet check ("I already have this").
+- **I already have this** opens a small dialog. For an ingredient not in the pantry: name (from the wording), how many, unit (optional, free text like the item panel), aisle and location (both guessed from similar items). It becomes a pantry item with that stock, minimum 0, counted, marked New for review, and linked to the recipe line. A link, "More details? Open the full Add item", opens the full item panel over the recipe with what's been typed; saving it links the new item to the recipe line too. For a pantry item that's short: how many only, which sets the stock. Either way the row moves to In stock.
+- The To buy box has the 4px corner radius.
+- The To buy header reads "None on your shopping list yet", "1 of 2 on your shopping list", "All on your shopping list", and the button reads **Add all**.
+
 Gaps and notes:
 
 - The strong line (#C0BCAE) isn't a shadcn token. It's `--line-strong` in `../shared/src/theme-warm.css`; the dark value (#6B5142) is a guess, as the dark board wasn't redrawn.

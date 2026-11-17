@@ -2,18 +2,22 @@
 // Ingredients are grouped into To buy, In stock and Optional, and every row has an Add button that is
 // always visible. The side panel (REC-09) and the edit view (REC-16) are unchanged.
 import * as React from "react"
-import { ArrowLeftIcon, CheckIcon, CircleIcon, MinusIcon, Minimize2Icon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { ArrowLeftIcon, CheckIcon, CircleIcon, MinusIcon, Minimize2Icon, PencilIcon, PlusIcon, ShoppingBasketIcon, Trash2Icon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
-  dateText, inStockText, isBulk, lower, measureText, needOf, recipeInfo, recipeQty, shortDate, unitText,
+  categoriesAtoZ, dateText, locations, guessPlace, ingredientName, inStockText, isBulk, lower, measureText, needOf, recipeInfo, recipeQty, shortDate, unitText,
   type IngredientRow, type Item, type Recipe,
 } from "../model"
 import { href, navigate } from "../router"
 import { usePantry } from "../state"
-import { Eyebrow } from "../components"
+import { Eyebrow, Field, Stepper } from "../components"
 import { RecipeEditor } from "./recipe-edit"
-import { ItemPanel } from "./item-panel"
+import { ItemPanel, pluralise } from "./item-panel"
 import { CookedDialog, DeleteRecipeDialog, WantButton, useRecipeList } from "./recipe"
 
 const MAX_SERVES = 12
@@ -108,12 +112,155 @@ function ListStepper({
   )
 }
 
+/** A 36px icon button with a tooltip on hover and keyboard focus. Filled accent, or quiet outline. */
+const IconButton = React.forwardRef<HTMLButtonElement, { tip: string; label: string; onClick: () => void; quiet?: boolean; children: React.ReactNode }>(
+  function IconButton({ tip, label, onClick, quiet, children }, ref) {
+    return (
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              ref={ref}
+              size="icon-sm"
+              variant={quiet ? "outline" : "default"}
+              className={cn("[&_svg]:size-[18px]", quiet && "border-(--line-strong) bg-transparent hover:bg-muted focus-visible:bg-muted")}
+              aria-label={label}
+              onClick={onClick}
+            >
+              {children}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">{tip}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  },
+)
+
+/**
+ * "I already have this". For an ingredient the pantry doesn't know: name, how many and aisle, and it becomes a
+ * pantry item linked to the recipe (location guessed, marked New for review). For one it knows: just how many.
+ */
+function HaveDialog({
+  recipe, row, position, onClose, onFull,
+}: { recipe: Recipe; row: IngredientRow; position: number; onClose: (saved: boolean) => void; onFull: (seed: Partial<Item>) => void }) {
+  const { items, db, actions } = usePantry()
+  const linked = !!row.item
+  const [name, setName] = React.useState(() => ingredientName(row.ing.text))
+  const [qty, setQty] = React.useState(() => Math.max(1, row.need))
+  const [categoryId, setCategoryId] = React.useState(() => guessPlace(ingredientName(row.ing.text), items).categoryId)
+  const [unitName_, setUnit] = React.useState("")
+  const [location, setLocation] = React.useState<NonNullable<Item["location"]>>(() => guessPlace(ingredientName(row.ing.text), items).location ?? "cupboard")
+  const [tried, setTried] = React.useState(false)
+  const ok = linked || (name.trim() && categoryId)
+  const typedUnit = unitName_.trim()
+  const nameInput = React.useRef<HTMLInputElement>(null)
+  const save = () => {
+    setTried(true)
+    if (!ok) return
+    if (row.item) actions.setStock(row.item.id, qty)
+    else actions.haveNewIngredient(recipe, position, { name, qty, categoryId, location, unit: typedUnit ? [typedUnit, pluralise(typedUnit)] : undefined })
+    onClose(true)
+  }
+  const unit = (n: number) => (row.item?.unit ? (n === 1 ? row.item.unit[0] : row.item.unit[1]) : "")
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose(false)}>
+      <DialogContent
+        className="gap-5 p-8 sm:max-w-[440px]"
+        // Open with the guessed name selected, so typing replaces it and Enter keeps it.
+        onOpenAutoFocus={(e) => {
+          if (!nameInput.current) return
+          e.preventDefault()
+          nameInput.current.focus()
+          nameInput.current.select()
+        }}
+      >
+        <DialogHeader>
+          <Eyebrow>{row.text}</Eyebrow>
+          <DialogTitle className="text-[22px] tracking-[0.04em] uppercase">{linked ? `How much ${lower(row.item!.name)} do you have?` : "Add it to your pantry"}</DialogTitle>
+          <DialogDescription>
+            {linked
+              ? "This sets the stock to what you have, and the recipe counts it as in stock."
+              : "It goes in your pantry with what you have, linked to this recipe. Fill in the rest from the item later."}
+          </DialogDescription>
+        </DialogHeader>
+        <form className="flex min-w-0 flex-col gap-5" onSubmit={(e) => { e.preventDefault(); save() }}>
+          {!linked && (
+            <Field label="Name">
+              <Input ref={nameInput} value={name} onChange={(e) => setName(e.target.value)} aria-invalid={tried && !name.trim()} />
+            </Field>
+          )}
+          <div className={cn("grid items-start gap-5", !linked && "grid-cols-[auto_1fr]")}>
+            <div className="flex flex-col gap-2">
+              <Eyebrow>How many</Eyebrow>
+              <div className="flex items-center gap-3">
+                <Stepper size="md" label="How many" value={qty} min={1} onChange={setQty} />
+                {unit(qty) && <span className="text-sm text-muted-foreground">{unit(qty)}</span>}
+              </div>
+            </div>
+            {!linked && (
+              <Field label="Unit" hint="Optional: tin, jar, bag. Leave blank to count them.">
+                <Input value={unitName_} placeholder="tin" onChange={(e) => setUnit(e.target.value)} />
+              </Field>
+            )}
+          </div>
+          {!linked && (
+            <div className="flex flex-col gap-2">
+              <Eyebrow>Aisle</Eyebrow>
+              <Select value={categoryId || undefined} onValueChange={setCategoryId}>
+                <SelectTrigger className="w-full" aria-label="Aisle" aria-invalid={tried && !categoryId}>
+                  <SelectValue placeholder="Choose an aisle" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoriesAtoZ(db.categories).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {tried && !categoryId && <span className="text-xs text-destructive">Choose an aisle.</span>}
+            </div>
+          )}
+          {!linked && (
+            <div className="flex flex-col gap-2">
+              <Eyebrow>Location</Eyebrow>
+              <Select value={location} onValueChange={(l) => setLocation(l as NonNullable<Item["location"]>)}>
+                <SelectTrigger className="w-full" aria-label="Location">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {!linked && (
+            <button
+              type="button"
+              className="self-start text-xs underline underline-offset-4 hover:text-foreground text-muted-foreground"
+              onClick={() =>
+                onFull({
+                  name: name.trim() || ingredientName(row.ing.text), inStock: qty, useBy: Array(qty).fill(null), categoryId, location,
+                  unit: typedUnit ? [typedUnit, pluralise(typedUnit)] : undefined,
+                })
+              }
+            >
+              More details? Open the full Add item
+            </button>
+          )}
+          <DialogFooter className="sm:justify-between">
+            <Button type="button" variant="outline" onClick={() => onClose(false)}>Cancel</Button>
+            <Button type="submit">{linked ? "Update stock" : "Add to pantry"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ---------- a row ----------
 
 type Focus = { position: number; on: "plus" | "add" } | null
 
 function Row({
-  row, recipe, position, serves, group, focus, onAdd, onSetMine, onSetTotal,
+  row, recipe, position, serves, group, focus, onAdd, onHave, onSetMine, onSetTotal,
 }: {
   row: IngredientRow
   recipe: Recipe
@@ -122,6 +269,7 @@ function Row({
   group: Group
   focus: Focus
   onAdd: () => void
+  onHave: () => void
   onSetMine: (n: number) => void
   onSetTotal: (n: number) => void
 }) {
@@ -132,8 +280,10 @@ function Row({
   const elsewhere = mine === 0 && !!row.item && needOf(row.item) > 0
   // Water is always to hand: nothing to add.
   const canAdd = !!row.item || row.status === "unlinked"
-  const name = lower(row.item?.name ?? row.text)
+  const name = lower(row.item?.name ?? ingredientName(row.text))
   const buy = group === "buy"
+  // Only rows you don't have can be marked as had: everything in To buy, and optional ones not in stock.
+  const canHave = buy || (group === "optional" && row.status !== "have" && row.status !== "some")
 
   React.useEffect(() => {
     if (focus?.position !== position) return
@@ -145,17 +295,16 @@ function Row({
   ) : elsewhere ? (
     <ListStepper name={name} value={needOf(row.item!)} unit={(n) => unitName(row.item, n)} min={1} onChange={onSetTotal} plusRef={plus} />
   ) : canAdd ? (
-    <Button
-      ref={add}
-      size="sm"
-      variant={buy ? "default" : "outline"}
-      className={cn(!buy && "border-(--line-strong) bg-transparent hover:bg-muted focus-visible:bg-muted")}
-      aria-label={`Add 1 ${unitName(row.item, 1)} of ${name} to the shopping list`}
-      onClick={onAdd}
-    >
-      <PlusIcon />
-      {buy ? "Add to list" : "Add"}
-    </Button>
+    <div className="flex items-center gap-2">
+      {canHave && (
+        <IconButton tip="I already have this" label={`I already have ${name}`} onClick={onHave} quiet>
+          <CheckIcon />
+        </IconButton>
+      )}
+      <IconButton ref={add} tip="Add to shopping list" label={`Add 1 ${unitName(row.item, 1)} of ${name} to the shopping list`} onClick={onAdd} quiet={!buy}>
+        <ShoppingBasketIcon />
+      </IconButton>
+    </div>
   ) : null
 
   const warning = row.status === "little" && row.item?.packSize && mine === 0 && (
@@ -195,7 +344,7 @@ function Row({
 function GroupHeader({ id, label, count, hint }: { id: string; label: string; count: number; hint: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-(--line-strong) pb-2">
-      <h3 id={id} className="text-[10px] font-semibold tracking-widest text-foreground uppercase">{label} · {count}</h3>
+      <h3 id={id} tabIndex={-1} className="outline-none text-[10px] font-semibold tracking-widest text-foreground uppercase">{label} · {count}</h3>
       <span className="text-xs text-muted-foreground">{hint}</span>
     </div>
   )
@@ -209,6 +358,11 @@ function Ingredients({ recipe, serves, setServes }: { recipe: Recipe; serves: nu
   const info = recipeInfo(recipe, items, factor)
   const list = useRecipeList(recipe)
   const [focus, setFocus] = React.useState<Focus>(null)
+  const [having, setHaving] = React.useState<number | null>(null)
+  const haveButton = React.useRef<HTMLElement | null>(null)
+  // The full Add item panel, opened from the mini dialog. Saving it links the new item to the recipe line.
+  const [full, setFull] = React.useState<{ position: number; seed: Partial<Item> } | null>(null)
+  const fullSaved = React.useRef(false)
 
   const rows = info.rows.map((row, position) => ({ row, position, group: groupOf(row) }))
   const buy = rows.filter((r) => r.group === "buy")
@@ -230,6 +384,10 @@ function Ingredients({ recipe, serves, setServes }: { recipe: Recipe; serves: nu
       onAdd={() => {
         list.add([r.position])
         if (r.row.item) setFocus({ position: r.position, on: "plus" })
+      }}
+      onHave={() => {
+        haveButton.current = document.activeElement as HTMLElement | null
+        setHaving(r.position)
       }}
       onSetMine={(n) => {
         if (!r.row.item) return
@@ -260,12 +418,12 @@ function Ingredients({ recipe, serves, setServes }: { recipe: Recipe; serves: nu
       ) : (
         <>
           {buy.length > 0 ? (
-            <div className="border border-primary">
+            <div className="overflow-hidden rounded-(--radius) border border-primary">
               <div className="flex items-center justify-between gap-4 bg-muted px-4 py-3">
                 <div className="flex flex-col gap-0.5">
                   <h3 id="to-buy" className="text-[10px] font-semibold tracking-widest text-foreground uppercase">To buy · {buy.length}</h3>
                   <span className="text-xs text-foreground">
-                    {buyListed === 0 ? "None on your list yet" : buyListed === buy.length ? "All on your list" : `${buyListed} of ${buy.length} on your list`}
+                    {buyListed === 0 ? "None on your shopping list yet" : buyListed === buy.length ? "All on your shopping list" : `${buyListed} of ${buy.length} on your shopping list`}
                   </span>
                 </div>
                 <Button
@@ -275,13 +433,13 @@ function Ingredients({ recipe, serves, setServes }: { recipe: Recipe; serves: nu
                   onClick={() => list.add(toAdd)}
                   className="disabled:opacity-100 disabled:text-muted-foreground"
                 >
-                  {!toAdd.length ? "All added" : buyListed === 0 ? "Add all to list" : `Add the other ${toAdd.length}`}
+                  {!toAdd.length ? "All added" : buyListed === 0 ? "Add all" : `Add the other ${toAdd.length}`}
                 </Button>
               </div>
               <ul aria-labelledby="to-buy" className="flex flex-col border-t border-primary">{buy.map(row)}</ul>
             </div>
           ) : (
-            <div className="bg-muted px-4 py-4 text-sm">Nothing to buy. You have everything this recipe needs.</div>
+            <div className="rounded-(--radius) bg-muted px-4 py-4 text-sm">Nothing to buy. You have everything this recipe needs.</div>
           )}
 
           <div className="flex flex-col">
@@ -302,6 +460,41 @@ function Ingredients({ recipe, serves, setServes }: { recipe: Recipe; serves: nu
         </>
       )}
       {list.dialog}
+      {having !== null && info.rows[having] && (
+        <HaveDialog
+          recipe={recipe}
+          row={info.rows[having]}
+          position={having}
+          onFull={(seed) => {
+            setFull({ position: having, seed })
+            setHaving(null)
+          }}
+          onClose={(saved) => {
+            setHaving(null)
+            // Cancel: back to the button. Saved: the row has moved to In stock and its
+            // button is gone, so land on that group rather than the top of the page.
+            const back = saved ? document.getElementById("in-stock") : haveButton.current
+            setTimeout(() => back?.focus(), 0)
+          }}
+        />
+      )}
+      {full && (
+        <ItemPanel
+          id="new"
+          prefill={full.seed.name}
+          seed={full.seed}
+          onSaved={(itemId) => {
+            fullSaved.current = true
+            actions.linkIngredient(recipe, full.position, itemId)
+          }}
+          onClose={() => {
+            setFull(null)
+            const back = fullSaved.current ? document.getElementById("in-stock") : haveButton.current
+            fullSaved.current = false
+            setTimeout(() => back?.focus(), 0)
+          }}
+        />
+      )}
     </section>
   )
 }

@@ -147,12 +147,13 @@ function Summary({ draft }: { draft: Item }) {
   )
 }
 
-export function ItemPanel({ id, prefill, onClose }: { id?: string; prefill?: string; onClose: () => void }) {
+export function ItemPanel({ id, prefill, seed, onSaved, onClose }: { id?: string; prefill?: string; seed?: Partial<Item>; onSaved?: (id: string) => void; onClose: () => void }) {
   const { items, db, actions } = usePantry()
   const isNew = id === "new"
   const saved = id && !isNew ? items[id] : undefined
   const open = isNew || !!saved
-  const [draft, setDraft] = React.useState<Item>(() => saved ?? blankItem(prefill))
+  const fresh = () => (seed ? normalise({ ...blankItem(prefill), ...seed }) : blankItem(prefill))
+  const [draft, setDraft] = React.useState<Item>(() => saved ?? fresh())
   const [merge, setMerge] = React.useState(false)
   const [remove, setRemove] = React.useState(false)
   const [tried, setTried] = React.useState(false)
@@ -162,7 +163,7 @@ export function ItemPanel({ id, prefill, onClose }: { id?: string; prefill?: str
   const [lastKey, setLastKey] = React.useState(key)
   if (key !== lastKey) {
     setLastKey(key)
-    setDraft(saved ?? blankItem(prefill))
+    setDraft(saved ?? fresh())
     setTried(false)
   }
 
@@ -172,6 +173,7 @@ export function ItemPanel({ id, prefill, onClose }: { id?: string; prefill?: str
     setTried(true)
     if (problems.length) return
     actions.saveItem(normalise({ ...draft, name: draft.name.trim() }), isNew)
+    onSaved?.(draft.id)
     if (again) {
       setDraft(blankItem())
       setTried(false)
