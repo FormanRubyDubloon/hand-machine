@@ -95,15 +95,16 @@ export function RecipeEditor({ recipe, onClose, onCancel }: { recipe?: Recipe; o
             <Eyebrow className="text-foreground">Ingredients</Eyebrow>
             <span className="text-xs text-muted-foreground">Keep the recipe's own wording. The pantry item is what stock is checked against.</span>
           </div>
-          <div className="grid grid-cols-[1.4fr_1fr_64px_88px_28px] items-center gap-3 border-b border-primary pb-1 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
+          <div className="grid grid-cols-[1.4fr_1fr_64px_76px_76px_28px] items-center gap-3 border-b border-primary pb-1 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
             <span>Wording</span>
             <span>Pantry item</span>
             <span>Needs</span>
             <span>Part-used</span>
+            <span>Optional</span>
             <span />
           </div>
           {draft.ingredients.map((g, k) => (
-            <div key={k} className="grid grid-cols-[1.4fr_1fr_64px_88px_28px] items-center gap-3 border-b border-border pb-2">
+            <div key={k} className="grid grid-cols-[1.4fr_1fr_64px_76px_76px_28px] items-center gap-3 border-b border-border pb-2">
               <Input
                 value={g.text}
                 placeholder="200 g linguine"
@@ -135,6 +136,7 @@ export function RecipeEditor({ recipe, onClose, onCancel }: { recipe?: Recipe; o
               />
               <Input type="number" min={1} value={g.need} aria-label={`Ingredient ${k + 1} count`} onChange={(e) => setIng(k, { need: Math.max(1, parseInt(e.target.value || "1", 10)) })} />
               <span className="flex justify-center"><Checkbox checked={!!g.partial} onCheckedChange={(c) => setIng(k, { partial: !!c })} aria-label={`Ingredient ${k + 1} uses part of a unit`} /></span>
+              <span className="flex justify-center"><Checkbox checked={!!g.optional} onCheckedChange={(c) => setIng(k, { optional: !!c || undefined })} aria-label={`Ingredient ${k + 1} is optional`} /></span>
               <Button variant="ghost" size="icon-xs" aria-label={`Remove ingredient ${k + 1}`} onClick={() => set({ ingredients: draft.ingredients.filter((_, j) => j !== k) })}>
                 <XIcon />
               </Button>
@@ -144,7 +146,7 @@ export function RecipeEditor({ recipe, onClose, onCancel }: { recipe?: Recipe; o
             <PlusIcon />
             Add ingredient
           </Button>
-          <span className="text-xs text-muted-foreground">"Needs" is how many whole units it uses. Tick part-used for a clove of garlic or some milk: Cooked it then asks if you finished it.</span>
+          <span className="text-xs text-muted-foreground">"Needs" is how many whole units it uses. Tick part-used for a clove of garlic or some milk: Cooked it then asks if you finished it. Tick optional when the recipe works without it: it won't count as missing.</span>
         </section>
 
         <Field label="Method" hint="One step per line.">

@@ -1,6 +1,6 @@
 # Pantry app: design handoff
 
-**Date:** 14 November 2026 (categories added late on 14 November; Claude connection and sync on opening, 15 November; warm reskin and the REC-10 ingredients list, 15 November)
+**Date:** 14 November 2026 (categories added late on 14 November; Claude connection and sync on opening, 15 November; warm reskin and the REC-10 ingredients list, 15 November; REC-10 layout A and optional ingredients, 17 November)
 **Status:** Working design, not final
 **Intent:** [../shopping-list/intent.md](../shopping-list/intent.md). The pantry app and the shopping app share one intent, so there is one copy. Read it before building or changing anything.
 **Design canvas:** "Shopping list app: 5 versions" on claude.ai, page "Pantry explorations". The `screens/` folder has a copy of each screen as it stood when this was written.
@@ -250,74 +250,43 @@ Two changes from the "Warm palette" page of the canvas. Both are for this projec
 
 The pantry app and the shopping list move to the warm palette: new colours in light and dark, Dejanire for display, title and lead text, and 4px corners. It's all in **[../shared/RESKIN-WARM.md](../shared/RESKIN-WARM.md)**, with the tokens in `../shared/src/theme-warm.css`. The hand-machine design system isn't changed. Everything the reskin doesn't mention, such as spacing and motion, stays as it is.
 
-### Ingredients list on a recipe (REC-10)
+### Recipe page, layout A "To buy first" (REC-10)
 
-Boards: "REC-10 · Ingredients" warm light and dark (both clickable), "Add to list · E: hover" (the version chosen out of five), and the four flow boards below it (phone list, phone ticked, pantry before, pantry after). The rules are in the intent.
+**Built 17 November 2026.** The spec is the Claude Docs handoff "Handoff: REC-10 recipe page, layout A (To buy first)" (https://claude.ai/artifact/UvYW1J5daHBcFNKY7s88QP), written from the artboard "REC-10 new layout · A · To buy first" on the PANTRY designs canvas, Style exploration page. It replaces the full-screen page only. Code: `screens/recipe-page.tsx`.
 
-**What it's for.** From a recipe I can put any ingredient on the shopping list, one at a time or all the missing ones at once, without the list filling up my pantry with things I haven't bought.
+**Superseded:** the 15 November option E rows (hover + List, the summary line, Add all missing) and the 17 November ··· menu, basket icon, Mark as optional and edit-in-place design. The ··· menu design was never built. Its optional flag was, through the edit view instead (below).
 
-**Rows**
+What the page does:
 
-- Every ingredient row shows its status on the right: **Short** (the pantry has it but not enough, or none), **New** (not in the pantry yet, for example parsley) or a tick (enough in stock).
-- Hovering or focusing a row gives it the muted fill. The status fades out and a **+ List** button fades in where it was. The button is filled primary on Short rows. On New and ticked rows it's the outline style (page colour with a border). There's no third style.
-- The whole row is the target. Clicking anywhere on a row that isn't on the list adds 1. The link to the pantry item inside the row still opens the item and doesn't add.
-- Once an ingredient is on the list, the row shows a stepper in place of the status: −, the number, +. Only the number shows. The unit goes in the button labels for screen readers ("2 packs of linguine on your list"). Taking it below 1 takes it off the list and the status comes back.
-- The New pill stands out: gold fill, darker gold border, a soft glow and a dot. It has a tooltip on hover and focus: it isn't in your pantry yet, and it will be added when you tick it off in the shop. There's no star or extra icon.
-- No row has a fill at rest. The old muted background on short rows goes.
+- Ingredients sit in three groups, each in the recipe's order: **To buy** (short, too little, or not in the pantry), **In stock** (have it, or have some) and **Optional** (flagged optional, whatever the stock; not drawn when there are none). A row moves group only when stock or servings change, never when it goes on the list.
+- Every row has an Add control that is always visible: filled "+ Add to list" in To buy, quiet outline "+ Add" elsewhere. Add puts 1 pack or unit on the list, with the note "Sardine linguine: 200 g" shown on the row's third line. The stepper (36px, the count with its unit) replaces the button; minus at 1 takes it off.
+- The To buy box has "None on your list yet / 1 of 2 on your list / All on your list" and Add all ("Add all to list", "Add the other 1", disabled "All added"). Add all doesn't mark the recipe; Want to cook does both.
+- The verdict reads "You have 5 of the 7 it needs". Optional ingredients are left out of both numbers, out of "missing", can-cook and nearly, and out of Want to cook (in the app and the Claude connection).
+- The meta line under the title replaces the facts strip. Edit opens the existing edit view over the page; Save redraws it, and focus goes back to Edit.
+- Servings run 1 to 12 (or the recipe's own Serves if higher) and carry across to the side panel and back.
 
-**Above and below the list**
+Decisions taken with Isaac (17 November):
 
-- The summary line reads "X missing · Y on your list" and updates as I add and remove.
-- **Add all missing (n)** adds 1 of each missing ingredient that isn't already on the list. When nothing is left to add, it reads "All missing added" on muted and does nothing.
-- The callout sentence under the ingredients is worked out from the rows (what's short, what's on the list), as it is now.
+- **Optional is a stored flag:** `optional` on `SharedIngredient`, `recipe_ingredients.optional` (migration `20261117140000_optional_ingredients`, which also flags the 4 lines whose wording says "optional"), an Optional tick column in the edit view, and an `optional` field on Claude's `save_recipe` and `update_recipe`.
+- **The side panel is read-only for ingredients:** no + List, no Add all missing, no row click. It keeps its banner, Short pills and ticks, and shows "(optional)" and a quiet dashed pill on optional rows.
+- **An ingredient already on the list for another reason** (a Staple below its minimum, another recipe, added by hand) shows a stepper with the list's total, changed the same way as on the List screen. It reads "On your list already, not from this recipe" and can't be taken off from here (minus stops at 1).
+- **Want to cook reads "On the list"** with a tick once pressed, on every view. It's a toggle (`aria-pressed`).
+- **Pack warning:** only the existing REC-12 rule, as the row's fourth line in the danger colour. The mock's warning about list amounts isn't built.
+- **No "See the list" link** on the page.
 
-**What goes on the list**
+Changed after the first build (Isaac, 17 November):
 
-- One pack or one unit, never the recipe's amount. The amount goes in the entry's note, with the recipe: "Sardine linguine: 200 g".
-- The entry is marked as coming from the recipe, the same as Want to cook does now.
-- In the initial state of the boards, linguine is already on the list at 1.
+- Each row's text button is now icon buttons with tooltips: a basket ("Add to shopping list"), filled in To buy and quiet elsewhere, and in To buy (and optional rows not in stock) a quiet check ("I already have this").
+- **I already have this** opens a small dialog. For an ingredient not in the pantry: name (from the wording), how many, unit (optional, free text like the item panel), aisle and location (both guessed from similar items). It becomes a pantry item with that stock, minimum 0, counted, marked New for review, and linked to the recipe line. A link, "More details? Open the full Add item", opens the full item panel over the recipe with what's been typed; saving it links the new item to the recipe line too. For a pantry item that's short: how many only, which sets the stock. Either way the row moves to In stock.
+- The To buy box has the 4px corner radius.
+- The To buy header reads "None on your shopping list yet", "1 of 2 on your shopping list", "All on your shopping list", and the button reads **Add all**.
 
-**The pantry**
+Gaps and notes:
 
-- An ingredient that's already a pantry item stays in the pantry while it's on the list. If it's at 0 it shows as Out, as now.
-- An ingredient that isn't in the pantry (New) goes on the **list only**. It doesn't become a pantry item when it's added.
-- It becomes a pantry item when it's ticked off on the phone and the phone syncs: minimum 0, the category and location guessed, marked **New** for review, and linked to the recipe ingredient so the recipe shows it as in stock.
-- If it's unticked (Undo) on the phone before syncing, it stays out of the pantry.
-
-**On the phone**
-
-- Recipe entries show their note under the name ("Sardine linguine: 200 g"), as hand-added notes do now.
-- A list entry with no pantry item (parsley) looks like any other entry. It goes under its guessed category. If there's no guess, it needs one picked at check-off or sync (not drawn).
-- Ticking it off works as for any item. The pantry item is made when the phone syncs, not when it's ticked.
-
-**Changes needed in the code**
-
-The current build can't do all of this yet:
-
-1. **List entries without a pantry item.** Today a list entry lives on an item (`SharedItem.entries`, and `list_entries` rows in Supabase belong to an item). An ingredient with no item can't go on the list. It needs an entry that holds its own name, guessed category and the recipe ingredient it came from, with no item. That's a change to `ListEntry` in `prototypes/shared/src/pantry.ts`, the row mapping in `rows.ts` and `pantry-remote.ts`, and a migration for `list_entries` (nullable `item_id`, plus `name`, `category_id` and `ingredient_id`). Ask Isaac before writing the migration.
-2. **A note on list entries.** `ListEntry` has `source`, `qty` and `at`, but no note. Add one, or work the note out from the recipe each time it's shown. Working it out is simpler and can't go stale. Worth asking.
-3. **Make the item at sync.** The phone's Sync has to turn ticked entries with no item into pantry items (minimum 0, `new: true` or similar for the review flag), then link the recipe ingredient. The pantry app needs somewhere to show and clear the New flag. That isn't drawn yet.
-4. **Replace `IngredientLine`** in `screens/recipe.tsx` with the new row: status, hover button, stepper. The stepper is the pantry app's existing one at 28px (`components.tsx`, `role="group"`), which the reskin rounds as a group.
-5. **The Claude connection** still makes pantry items for unmatched ingredients when it saves a recipe (the Pantry instructions say so too). That goes against this rule. Leave it for now and add it to Open questions. Changing it needs `pnpm build:mcp` and a redeploy.
-
-**Built 15 November 2026:** the warm reskin, the new ingredient rows, the summary line and Add all missing.
-
-**Ingredients not in the pantry.** Claude no longer makes pantry items for recipe lines with nothing similar (its `new_item` option is gone): they stay on the recipe, unlinked. Nothing goes in the pantry or on the list until you act. Clicking **+ List** on one, **Add all missing**, or **Want to cook** opens a dialog for what the pantry needs (name, counted or bulk, location, aisle), guessed from the wording and similar items. Confirming makes a real pantry item (minimum 0, none in stock), links the recipe ingredient to it, and puts 1 on the shopping list. It shows a gold **New** pill in the pantry until some is bought (stock above 0: `normalise` clears the flag, and so does the phone's sync). **Want to cook** now marks the recipe *and* adds what's missing, the same as Add all missing, which merges the two (decided with Isaac on 15 November, reversing the earlier "only marks the recipe"). The flag is `review` on the item (`needs_review` in Supabase, migration `20261115130000`). That migration also added `from_recipe_id` and `from_ingredient_position`, and `20261115120000` added columns on `list_entries`; none of those are used and can be dropped.
-
-**Still not built:** the phone showing a recipe note under these items. The Claude connection's `want_to_cook` tool still skips unlinked ingredients rather than opening the dialog, and its bundle is rebuilt but not deployed.
-
-**Not drawn**
-
-- The pantry app's view of New items waiting for review.
-- What happens when the same ingredient is added from two recipes (one entry with two notes, or two entries).
-- A recipe ingredient that matches a pantry item only loosely.
-
-**Open questions**
-
-- **Want to cook and Add all missing:** both put the missing ingredients on the list. Keep both, merge them, or have Want to cook only mark the recipe?
-- **Claude saving recipes:** should the Claude connection stop making pantry items for unmatched ingredients, to match the new rule?
-- **The flow boards** show parsley joining the pantry when it's ticked. The intent says at sync. The intent wins. The boards need a fix.
-- **The original REC-10** on the "Pantry explorations" page doesn't have the new list. Update it, or mark it as replaced by the warm version.
+- The strong line (#C0BCAE) isn't a shadcn token. It's `--line-strong` in `../shared/src/theme-warm.css`; the dark value (#6B5142) is a guess, as the dark board wasn't redrawn.
+- Built from the handoff's text, not checked against the artboard pixel by pixel.
+- Below a 976px content width the method stacks under the ingredients (the handoff's suggestion; the design only shows 1440px).
+- Still not built from 15 November: the phone showing the recipe note. The intent still describes Add all missing and has nothing on optional ingredients; update it.
 
 ## Not drawn yet
 

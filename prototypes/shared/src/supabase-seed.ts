@@ -14,7 +14,7 @@ export function loadSeedFromSupabase(): Promise<void> {
   loaded ??= (async () => {
     const [items, recipes] = await Promise.all([
       supabase.from("items").select(ITEM_SELECT).order("name"),
-      supabase.from("recipes").select("*, recipe_ingredients(position, text, item_id, need, buy, partial, uses)").order("name"),
+      supabase.from("recipes").select("*, recipe_ingredients(position, text, item_id, need, buy, partial, optional, uses)").order("name"),
     ])
     if (items.error || !items.data) console.error("Couldn't load the pantry from Supabase:", items.error?.message)
     else seedItems.splice(0, seedItems.length, ...(items.data as Row[]).map(toItem))

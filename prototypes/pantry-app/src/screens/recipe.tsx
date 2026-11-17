@@ -1,7 +1,7 @@
-// REC-09 (side panel), REC-10 (full screen), REC-11 (cooked it), REC-12 (pack-size warning),
+// REC-09 (side panel), REC-11 (cooked it), REC-12 (pack-size warning),
 // REC-13 (want to cook, a toast) and REC-14 (delete recipe).
 import * as React from "react"
-import { CheckIcon, Maximize2Icon, Minimize2Icon, PencilIcon, Trash2Icon, ArrowLeftIcon } from "lucide-react"
+import { CheckIcon, Maximize2Icon, PencilIcon } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -14,12 +14,11 @@ import {
   dateText, guessPlace, haveText, inStockText, ingredientName, isBulk, locations, lower, measureText, nameList, plural, shortfall, recipeInfo, recipesUsing, recipeTags, shortDate, unitText, unitWord,
   withStock, isListedItem, recipeQty, toSortOut, type IngredientRow, type Item, type Recipe, categoriesAtoZ,
 } from "../model"
-import { href, navigate } from "../router"
+import { href, navigate, type RecipesTab } from "../router"
 import { usePantry } from "../state"
 import { Eyebrow, NewPill, Segmented, SidePanel, Stepper } from "../components"
 import { RecipeEditor } from "./recipe-edit"
 import { ItemPicker } from "../link-picker"
-import { ItemPanel } from "./item-panel"
 
 // ---------- putting ingredients on the list ----------
 
@@ -110,22 +109,23 @@ export function useRecipeList(recipe: Recipe) {
 }
 
 /** Want to cook: the phone saves the recipe for the shop, and what's missing goes on the list (REC-13 toast with Undo). */
-export function WantButton({ recipe, size = "default", className }: { recipe: Recipe; size?: "default" | "sm" | "xs"; className?: string }) {
+export function WantButton({ recipe, size = "default", className, filled }: { recipe: Recipe; size?: "default" | "sm" | "xs"; className?: string; filled?: boolean }) {
   const { actions } = usePantry()
   const list = useRecipeList(recipe)
   if (recipe.wantToCook)
     return (
-      <Button size={size} className={className} onClick={() => actions.unwant(recipe)} title="Saved to your phone. Click to stop saving it.">
+      <Button size={size} className={className} aria-pressed onClick={() => actions.unwant(recipe)} title="Saved to your phone and what's missing is on the list. Click to stop saving it.">
         <CheckIcon />
-        Saved to phone
+        On the list
       </Button>
     )
   return (
     <>
       <Button
         size={size}
-        variant="outline"
-        className={cn("border-primary", className)}
+        variant={filled ? "default" : "outline"}
+        className={cn(!filled && "border-primary", className)}
+        aria-pressed={false}
         onClick={() => {
           const entryId = actions.wantToCook(recipe)
           list.add(list.missing)
@@ -176,41 +176,36 @@ function stockLine(r: IngredientRow) {
   return inStockText(r.item, ", ")
 }
 
-/** What this recipe has put on the list for the ingredient. */
-function IngredientLine({
-  row, recipe, position, serves, factor, onAdd, onSet, onAddPack,
-}: { row: IngredientRow; recipe: Recipe; position: number; serves: number; factor: number; onAdd: () => void; onSet: (n: number) => void; onAddPack: () => void }) {
+/** One ingredient in the side panel. Read-only: adding single ingredients happens on the full page (REC-10). */
+function IngredientLine({ row, recipe, tab, position, serves }: { row: IngredientRow; recipe: Recipe; tab: RecipesTab; position: number; serves: number }) {
   const qty = recipeQty(row, recipe)
-  const onList = qty > 0
-  const listedElsewhere = !onList && isListedItem(row, recipe)
-  const short = row.status === "short" || row.status === "little" || row.status === "unlinked"
-  // Water is always to hand, so there's nothing to add.
-  const canAdd = !!row.item || row.status === "unlinked"
-  const unit = row.item ? (qty === 1 ? row.item.unit?.[0] : row.item.unit?.[1]) ?? (qty === 1 ? "unit" : "units") : qty === 1 ? "unit" : "units"
-  const label = row.item?.name ?? row.text
+  const listed = qty > 0 || isListedItem(row, recipe)
+  const optional = !!row.ing.optional
+  const short = !optional && (row.status === "short" || row.status === "little" || row.status === "unlinked")
+  const quiet = "border border-dashed border-(--line-strong) bg-transparent text-muted-foreground"
   const status =
     row.status === "unlinked" ? (
-      <NewPill tip="It isn't in your pantry yet. It will be added when you tick it off in the shop." />
-    ) : row.status === "have" || row.status === "some" || row.status === "listed" ? (
+      optional ? <Badge variant="outlined" className={quiet}>New</Badge> : <NewPill tip="It isn't in your pantry yet. It will be added when you tick it off in the shop." />
+    ) : row.status === "have" || row.status === "some" ? (
       <CheckIcon strokeWidth={2.5} className={cn("size-5 shrink-0", row.status === "some" && "text-ring")} aria-label={row.status === "some" ? "Have an open pack" : "Have it"} />
     ) : row.status === "little" ? (
-      <Badge variant="solid">Too little</Badge>
+      <Badge variant={optional ? "outlined" : "solid"} className={cn(optional && quiet)}>Too little</Badge>
     ) : (
-      <Badge variant="solid">{row.missing > 1 ? `Short ${row.missing}` : "Short"}</Badge>
+      <Badge variant={optional ? "outlined" : "solid"} className={cn(optional && quiet)}>{row.missing > 1 ? `Short ${row.missing}` : "Short"}</Badge>
     )
   return (
-    <div
-      className={cn("group flex flex-col gap-2 border-b border-border px-3 py-3 transition-colors hover:bg-muted focus-within:bg-muted", canAdd && !onList && !listedElsewhere && "cursor-pointer")}
-      onClick={() => canAdd && !onList && !listedElsewhere && onAdd()}
-    >
+    <div className="flex flex-col gap-2 border-b border-border px-3 py-3">
       <div className="flex items-center gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className={cn("text-[15px] leading-snug", short ? "font-semibold" : "font-medium")}>{row.text}</span>
+          <span className={cn("text-[15px] leading-snug", short ? "font-semibold" : "font-medium")}>
+            {row.text}
+            {optional && !/\boptional\b/i.test(row.text) && <span className="font-serif font-normal text-muted-foreground italic"> (optional)</span>}
+          </span>
           <span className="text-xs text-muted-foreground">
             {row.item && (
               <>
                 {/* Opens the item's side panel over the full-screen recipe; from the side panel this expands the recipe first. */}
-                <a className="underline underline-offset-4" href={href({ name: "recipe-full", id: recipe.id, item: row.item.id, serves })} onClick={(e) => e.stopPropagation()}>{row.item.name}</a>
+                <a className="underline underline-offset-4" href={href({ name: "recipe-full", id: recipe.id, tab, item: row.item.id, serves })}>{row.item.name}</a>
                 {row.item.packSize ? ` (${measureText(row.item.packSize.amount, row.item.packSize.measure)} ${row.item.unit?.[0] ?? "pack"})` : ""} ·{" "}
               </>
             )}
@@ -218,53 +213,26 @@ function IngredientLine({
             {row.status === "unlinked" && <> · <LinkPicker recipe={recipe} position={position} text={row.ing.text} /></>}
           </span>
         </div>
-        {onList ? (
-          <div onClick={(e) => e.stopPropagation()} title={`${qty} ${unit} of ${lower(label)} on your list`}>
-            <Stepper size="sm" label={`${label}: ${qty} ${unit} on your list`} value={qty} min={0} onChange={onSet} />
-          </div>
-        ) : listedElsewhere ? (
-          <Eyebrow className="text-foreground">On your list</Eyebrow>
-        ) : (
-          <div className="relative flex h-7 min-w-16 items-center justify-end">
-            <span className={cn("flex items-center transition-opacity", canAdd && "group-hover:opacity-0 group-focus-within:opacity-0")}>{status}</span>
-            {canAdd && <Button
-              size="xs"
-              variant={row.status === "short" || row.status === "little" ? "default" : "outline"}
-              className={cn("absolute right-0 h-7 opacity-0 transition-opacity", canAdd && "group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100")}
-              aria-label={`Add ${label} to your shopping list`}
-              onClick={(e) => { e.stopPropagation(); onAdd() }}
-            >
-              + List
-            </Button>}
-          </div>
-        )}
+        {listed && row.status !== "have" && row.status !== "some" ? <Eyebrow className="shrink-0 text-foreground">On your list</Eyebrow> : status}
       </div>
-      {row.status === "little" && row.item?.packSize && !onList && (
-        <div className="flex items-center justify-between gap-4 pl-0">
-          <span className="text-xs">
-            Needs {measureText(row.required!, row.item.packSize.measure)}{factor !== 1 ? "" : ""}. You have {unitText(row.item, row.item.inStock)}, which{" "}
-            {row.item.inStock === 1 ? "holds" : "hold"} {measureText(row.capacity!, row.item.packSize.measure)} at most{row.item.open ? `, and ${row.item.inStock === 1 ? "it's" : "one's"} open` : ""}.
-          </span>
-          <Button size="xs" variant="outline" className="h-8 shrink-0 border-primary bg-background" onClick={(e) => { e.stopPropagation(); onAddPack() }}>
-            Add 1 {row.item.unit?.[0] ?? "pack"} to the list
-          </Button>
-        </div>
+      {row.status === "little" && row.item?.packSize && !listed && (
+        <span className="text-xs">
+          Needs {measureText(row.required!, row.item.packSize.measure)}. You have {unitText(row.item, row.item.inStock)}, which{" "}
+          {row.item.inStock === 1 ? "holds" : "hold"} {measureText(row.capacity!, row.item.packSize.measure)} at most{row.item.open ? `, and ${row.item.inStock === 1 ? "it's" : "one's"} open` : ""}.
+        </span>
       )}
     </div>
   )
 }
 
-/** The servings-scaled recipe: summary, ingredients against stock, method and notes. */
-export function RecipeBody({ recipe, serves, setServes, columns }: { recipe: Recipe; serves: number; setServes: (n: number) => void; columns?: boolean }) {
-  const { items, actions } = usePantry()
+/** The servings-scaled recipe in the side panel: summary, ingredients against stock, method and notes. */
+export function RecipeBody({ recipe, tab, serves, setServes }: { recipe: Recipe; tab: RecipesTab; serves: number; setServes: (n: number) => void }) {
+  const { items } = usePantry()
   const factor = serves / recipe.serves
   const info = recipeInfo(recipe, items, factor)
   const listed = info.rows.filter((r) => r.status === "listed")
-  const little = info.rows.filter((r) => r.status === "little")
-  const truelyShort = info.rows.filter((r) => r.status === "short")
-  const list = useRecipeList(recipe)
-  const onListCount = info.rows.filter((r) => isListedItem(r, recipe)).length
-  const toAdd = list.missing
+  const little = info.rows.filter((r) => r.status === "little" && !r.ing.optional)
+  const truelyShort = info.rows.filter((r) => r.status === "short" && !r.ing.optional)
 
   const summary =
     factor !== 1 && (little.length || info.short.length) ? (
@@ -273,77 +241,14 @@ export function RecipeBody({ recipe, serves, setServes, columns }: { recipe: Rec
         {little.length ? `, and the ${nameList(little.map((r) => lower(r.item!.name)))} ${little.length === 1 ? "needs" : "need"} more than your ${little.length === 1 ? "pack holds" : "packs hold"}` : ""}.
       </>
     ) : info.canCook ? (
-      <>You have everything.</>
+      <>You have everything{info.needed < info.rows.length ? " it needs" : ""}.</>
     ) : (
       <>
-        You have {info.have} of {info.rows.length}.{" "}
+        You have {info.have} of {info.needed}{info.needed < info.rows.length ? " needed" : ""}.{" "}
         {listed.length > 0 && <>{nameList(listed.map((r, k) => (k ? lower(r.item!.name) : r.item!.name)))} {listed.length === 1 ? "is" : "are"} on your shopping list. </>}
         {truelyShort.length > 0 && <>Short of {nameList(truelyShort.map((r) => lower(r.item?.name ?? r.text)))}.</>}
       </>
     )
-
-  const ingredients = (
-    <section className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <Eyebrow className="text-foreground">Ingredients · {info.rows.length}</Eyebrow>
-        <div className="flex items-center gap-3">
-          <Eyebrow>Serves</Eyebrow>
-          <Stepper size="sm" label="Servings" value={serves} min={1} max={24} onChange={setServes} />
-        </div>
-      </div>
-      <div className="flex items-center justify-between gap-4">
-        <span className="text-xs text-muted-foreground">
-          {info.short.length} missing · {onListCount} on your list
-        </span>
-        <Button
-          size="xs"
-          variant={toAdd.length ? "outline" : "secondary"}
-          className={cn("h-8", toAdd.length ? "border-primary" : "bg-muted")}
-          aria-disabled={!toAdd.length}
-          onClick={() => toAdd.length && list.add(toAdd)}
-        >
-          {toAdd.length ? `Add all missing (${toAdd.length})` : "All missing added"}
-        </Button>
-      </div>
-      <div className="flex flex-col border-t border-border">
-        {info.rows.map((row, k) => (
-          <IngredientLine
-            key={k}
-            row={row}
-            recipe={recipe}
-            position={k}
-            serves={serves}
-            factor={factor}
-            onAdd={() => list.add([k])}
-            onSet={(n) => row.item && actions.setIngredientQty(recipe, row.item.id, n)}
-            onAddPack={() => list.add([k])}
-          />
-        ))}
-      </div>
-      {list.dialog}
-      {info.rows.some((r) => r.status === "some") && <span className="text-xs text-muted-foreground">A light tick means there's an open pack. The app doesn't measure what's left in it.</span>}
-    </section>
-  )
-
-  const method = (
-    <section className="flex flex-col gap-3">
-      <Eyebrow className="text-foreground">Method</Eyebrow>
-      <ol className="flex flex-col gap-4">
-        {recipe.method.map((step, k) => (
-          <li key={k} className="flex gap-4">
-            <span className="flex size-7 shrink-0 items-center justify-center border border-primary text-xs font-semibold">{k + 1}</span>
-            <span className="type-lead text-[15px] leading-relaxed">{step}</span>
-          </li>
-        ))}
-      </ol>
-      {recipe.notes && (
-        <div className="mt-2 flex flex-col gap-1 border-l-2 border-primary pl-4">
-          <Eyebrow>My notes</Eyebrow>
-          <span className="text-sm">{recipe.notes}</span>
-        </div>
-      )}
-    </section>
-  )
 
   return (
     <div className="flex flex-col gap-7">
@@ -359,24 +264,43 @@ export function RecipeBody({ recipe, serves, setServes, columns }: { recipe: Rec
           </Button>
         ) : null}
       </div>
-      {columns ? (
-        <div className="grid grid-cols-[1fr_1.1fr] gap-12">
-          {ingredients}
-          {method}
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <Eyebrow className="text-foreground">Ingredients · {info.rows.length}</Eyebrow>
+          <div className="flex items-center gap-3">
+            <Eyebrow>Serves</Eyebrow>
+            <Stepper size="sm" label="Servings" value={serves} min={1} max={24} onChange={setServes} />
+          </div>
         </div>
-      ) : (
-        <>
-          {ingredients}
-          {method}
-        </>
-      )}
+        <div className="flex flex-col border-t border-border">
+          {info.rows.map((row, k) => <IngredientLine key={k} row={row} recipe={recipe} tab={tab} position={k} serves={serves} />)}
+        </div>
+        {info.rows.some((r) => r.status === "some") && <span className="text-xs text-muted-foreground">A light tick means there's an open pack. The app doesn't measure what's left in it.</span>}
+      </section>
+      <section className="flex flex-col gap-3">
+        <Eyebrow className="text-foreground">Method</Eyebrow>
+        <ol className="flex flex-col gap-4">
+          {recipe.method.map((step, k) => (
+            <li key={k} className="flex gap-4">
+              <span className="flex size-7 shrink-0 items-center justify-center border border-primary text-xs font-semibold">{k + 1}</span>
+              <span className="type-lead text-[15px] leading-relaxed">{step}</span>
+            </li>
+          ))}
+        </ol>
+        {recipe.notes && (
+          <div className="mt-2 flex flex-col gap-1 border-l-2 border-primary pl-4">
+            <Eyebrow>My notes</Eyebrow>
+            <span className="text-sm">{recipe.notes}</span>
+          </div>
+        )}
+      </section>
     </div>
   )
 }
 
 // ---------- REC-09 side panel ----------
 
-export function RecipePanel({ id, edit, serves: initial, onClose }: { id?: string; edit?: boolean; serves?: number; onClose: () => void }) {
+export function RecipePanel({ id, tab = "cook", edit, serves: initial, onClose }: { id?: string; tab?: RecipesTab; edit?: boolean; serves?: number; onClose: () => void }) {
   const { db } = usePantry()
   const recipe = id ? db.recipes.find((r) => r.id === id) : undefined
   const [serves, setServes] = React.useState(initial ?? recipe?.serves ?? 2)
@@ -387,7 +311,7 @@ export function RecipePanel({ id, edit, serves: initial, onClose }: { id?: strin
     setLast(id)
     setServes(initial ?? recipe?.serves ?? 2)
   }
-  if (id === "new" || (recipe && edit)) return <RecipeEditor recipe={recipe} onClose={() => (recipe ? navigate({ name: "recipes", tab: "cook", recipe: recipe.id }, { replace: true }) : onClose())} onCancel={onClose} />
+  if (id === "new" || (recipe && edit)) return <RecipeEditor recipe={recipe} onClose={() => (recipe ? navigate({ name: "recipes", tab, recipe: recipe.id }, { replace: true }) : onClose())} onCancel={onClose} />
   return (
     <>
       <SidePanel
@@ -399,7 +323,7 @@ export function RecipePanel({ id, edit, serves: initial, onClose }: { id?: strin
         description={recipe ? metaLine(recipe) : undefined}
         headerActions={
           recipe && (
-            <Button variant="outline" size="icon-sm" aria-label="Full screen" title="Full screen" onClick={() => navigate({ name: "recipe-full", id: recipe.id, serves })}>
+            <Button variant="outline" size="icon-sm" aria-label="Full screen" title="Full screen" onClick={() => navigate({ name: "recipe-full", id: recipe.id, tab, serves })}>
               <Maximize2Icon />
             </Button>
           )
@@ -407,7 +331,7 @@ export function RecipePanel({ id, edit, serves: initial, onClose }: { id?: strin
         footer={
           recipe && (
             <>
-              <Button variant="outline" onClick={() => navigate({ name: "recipes", tab: "cook", recipe: recipe.id, edit: true })}>
+              <Button variant="outline" onClick={() => navigate({ name: "recipes", tab, recipe: recipe.id, edit: true })}>
                 <PencilIcon />
                 Edit
               </Button>
@@ -419,7 +343,7 @@ export function RecipePanel({ id, edit, serves: initial, onClose }: { id?: strin
           )
         }
       >
-        {recipe && <RecipeBody recipe={recipe} serves={serves} setServes={setServes} />}
+        {recipe && <RecipeBody recipe={recipe} tab={tab} serves={serves} setServes={setServes} />}
       </SidePanel>
       {recipe && <CookedDialog open={cooked} onOpenChange={setCooked} recipe={recipe} serves={serves} />}
       {recipe && <DeleteRecipeDialog open={remove} onOpenChange={setRemove} recipe={recipe} onDone={onClose} />}
@@ -427,78 +351,7 @@ export function RecipePanel({ id, edit, serves: initial, onClose }: { id?: strin
   )
 }
 
-// ---------- REC-10 full screen ----------
-
-export function RecipeFull({ id, item, serves: initial }: { id: string; item?: string; serves?: number }) {
-  const { db } = usePantry()
-  const recipe = db.recipes.find((r) => r.id === id)
-  const [serves, setServes] = React.useState(initial ?? recipe?.serves ?? 2)
-  const [cooked, setCooked] = React.useState(false)
-  const [remove, setRemove] = React.useState(false)
-  if (!recipe) {
-    return (
-      <div className="p-8">
-        <p className="text-sm">That recipe isn't here any more.</p>
-        <a className="text-sm underline" href="#/recipes/cook">Back to recipes</a>
-      </div>
-    )
-  }
-  const facts: [string, React.ReactNode][] = [
-    ["Prep", recipe.prep !== undefined ? `${recipe.prep} min` : "–"],
-    ["Cook", recipe.cook ? `${recipe.cook} min` : "–"],
-    ["Serves", String(recipe.serves)],
-    ["Last cooked", recipe.lastCooked ? shortDate(recipe.lastCooked) : "Never"],
-    [
-      "Source",
-      <>
-        <span className="block truncate" title={recipe.source}>{recipe.source ?? "–"}</span>
-        {recipe.addedBy && <span className="block">Added by {recipe.addedBy === "claude" ? "Claude" : "you"}{recipe.addedAt ? ` ${shortDate(recipe.addedAt)}` : ""}</span>}
-      </>,
-    ],
-  ]
-  return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-12 py-8">
-      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-8">
-        <Button variant="link" className="h-auto self-start p-0 text-xs" onClick={() => navigate({ name: "recipes", tab: "cook" })}>
-          <ArrowLeftIcon />
-          Recipes · What to cook
-        </Button>
-        <div className="flex items-start justify-between gap-6">
-          <div className="flex flex-col gap-2">
-            <Eyebrow>{recipeTags(recipe).join(" · ")}</Eyebrow>
-            <h1 className="type-display text-[40px] leading-none font-semibold tracking-[0.02em] uppercase">{recipe.name}</h1>
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <WantButton recipe={recipe} />
-            <Button variant="outline" className="border-primary" onClick={() => setCooked(true)}>Cooked it</Button>
-            <Button variant="outline" onClick={() => navigate({ name: "recipes", tab: "cook", recipe: recipe.id, edit: true })}>
-              <PencilIcon />
-              Edit
-            </Button>
-            <Button variant="outline" size="icon" aria-label="Back to the side panel" title="Back to the side panel" onClick={() => navigate({ name: "recipes", tab: "cook", recipe: recipe.id, serves })}>
-              <Minimize2Icon />
-            </Button>
-            <Button variant="outline" size="icon" aria-label="Delete recipe" title="Delete recipe" onClick={() => setRemove(true)}>
-              <Trash2Icon />
-            </Button>
-          </div>
-        </div>
-        <dl className="grid grid-cols-5 border-y border-border">
-          {facts.map(([k, v]) => (
-            <div key={k} className="flex min-w-0 flex-col gap-1 border-r border-border px-4 py-3 last:border-r-0">
-              <dt><Eyebrow>{k}</Eyebrow></dt>
-              <dd className="text-sm font-semibold">{v}</dd>
-            </div>
-          ))}
-        </dl>
-        <RecipeBody recipe={recipe} serves={serves} setServes={setServes} columns />
-      </div>
-      <CookedDialog open={cooked} onOpenChange={setCooked} recipe={recipe} serves={serves} />
-      <DeleteRecipeDialog open={remove} onOpenChange={setRemove} recipe={recipe} onDone={() => navigate({ name: "recipes", tab: "cook" })} />
-      <ItemPanel id={item} onClose={() => navigate({ name: "recipe-full", id: recipe.id, serves })} />
-    </div>
-  )
-}
+// REC-10 full screen is in ./recipe-page.tsx (layout A, To buy first).
 
 // ---------- REC-11 cooked it ----------
 

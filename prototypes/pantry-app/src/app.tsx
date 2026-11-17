@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ChevronDownIcon, CloudIcon, PlusIcon, SettingsIcon, SmartphoneIcon, SparklesIcon } from "lucide-react"
+import { ChevronDownIcon, CloudIcon, PlusIcon, SettingsIcon, SmartphoneIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -10,13 +10,12 @@ import { signOutOfSupabase, useAuthSession } from "../../shared/src/auth"
 import { navigate, useRoute, type Route } from "./router"
 import { PantryProvider, usePantry } from "./state"
 import { Search } from "./search"
-import { AddWithClaude } from "./screens/claude"
 import { ConflictsDialog } from "./screens/conflicts"
 import { Home } from "./screens/home"
 import { ImportScreen } from "./screens/import"
 import { ListScreen } from "./screens/list"
 import { PantryScreen } from "./screens/pantry"
-import { RecipeFull } from "./screens/recipe"
+import { RecipeFull } from "./screens/recipe-page"
 import { RecipesScreen } from "./screens/recipes"
 import { Settings } from "./screens/settings"
 import { isDark, subscribeTheme } from "./theme"
@@ -95,9 +94,8 @@ function SyncButton() {
   )
 }
 
-function Header({ route, onAddWithClaude }: { route: Route; onAddWithClaude: () => void }) {
+function Header({ route }: { route: Route }) {
   const { phoneSyncedAt } = usePantry()
-  const onRecipes = route.name === "recipes" || route.name === "recipe-full"
   return (
     <header className="flex h-16 shrink-0 items-center gap-10 border-b border-border px-8">
       <a href="#/" className="text-base font-semibold tracking-[0.12em] uppercase">
@@ -132,17 +130,10 @@ function Header({ route, onAddWithClaude }: { route: Route; onAddWithClaude: () 
         <Button variant="outline" size="icon" aria-label="Settings" title="Settings" onClick={() => navigate({ name: "settings", tab: "general" })}>
           <SettingsIcon className="size-4.5" />
         </Button>
-        {onRecipes ? (
-          <Button onClick={onAddWithClaude}>
-            <SparklesIcon />
-            Add with Claude
-          </Button>
-        ) : (
-          <Button onClick={() => navigate({ name: "pantry", item: "new" })}>
-            <PlusIcon />
-            Add item
-          </Button>
-        )}
+        <Button onClick={() => navigate({ name: "pantry", item: "new" })}>
+          <PlusIcon />
+          Add item
+        </Button>
       </div>
     </header>
   )
@@ -172,7 +163,7 @@ function Screen({ route }: { route: Route }) {
     case "pantry": return <PantryScreen route={route} />
     case "import": return <ImportScreen />
     case "recipes": return <RecipesScreen route={route} />
-    case "recipe-full": return <RecipeFull id={route.id} item={route.item} serves={route.serves} />
+    case "recipe-full": return <RecipeFull key={route.id} id={route.id} tab={route.tab ?? "cook"} item={route.item} serves={route.serves} />
     case "list": return <ListScreen route={route} />
     case "settings": return <Settings tab={route.tab} store={route.store} />
   }
@@ -190,7 +181,6 @@ function Shell() {
     void actions.syncNow({ quiet: true })
   }, [session, actions])
   const route = useRoute()
-  const [claude, setClaude] = React.useState(false)
   const [conflicts, setConflicts] = React.useState(false)
   // PAN-19 opens by itself when a sync brings conflicts in.
   const count = db.conflicts.length
@@ -204,12 +194,11 @@ function Shell() {
   if (!signedIn) return <SignIn />
   return (
     <div className="flex h-dvh min-w-[1180px] flex-col bg-background">
-      <Header route={route} onAddWithClaude={() => setClaude(true)} />
+      <Header route={route} />
       <ConflictBanner onReview={() => setConflicts(true)} />
       <main className="flex min-h-0 flex-1">
         <Screen route={route} />
       </main>
-      <AddWithClaude open={claude} onOpenChange={setClaude} />
       <ConflictsDialog open={conflicts && count > 0} onOpenChange={setConflicts} />
     </div>
   )
