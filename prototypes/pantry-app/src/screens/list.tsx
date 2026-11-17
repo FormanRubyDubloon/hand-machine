@@ -9,10 +9,11 @@ import { FilterChips } from "@/components/ui/filter-chips"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   aisleOrder, containsText, fullOf, haveText, isBulk, isStaple, isToday, listRows, locationLabel, money, namesOf, needOf, numberedAisles,
-  plural, soldAt, timeText, shortDate, unitWord, type ListRow, type Reason, categoriesAtoZ,
+  plural, soldAt, timeText, shortDate, unitWord, type Category, type ListRow, type Reason, categoriesAtoZ,
 } from "../model"
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
+import { CategoryLabel, CategoryMark } from "../category-look"
 import { Eyebrow, PageTitle, SidePanel, Stepper, StockPill, TagPill } from "../components"
 
 type Group = "all" | ListRow["group"]
@@ -113,8 +114,8 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
   // Group by aisle in this store's walking order. Things it doesn't sell go at the end.
   const aisles = store ? aisleOrder(store, db.categories) : categoriesAtoZ(db.categories)
   const groups = [
-    ...aisles.map((c) => ({ key: c.id, name: c.name, number: store?.aisles[c.id] ?? null, rows: shown.filter((r) => r.item.categoryId === c.id && (!store || soldAt(r.item, store))) })),
-    { key: "elsewhere", name: store ? `Not at ${store.name.split(",")[0]}` : "Other", number: null, rows: shown.filter((r) => !store || !soldAt(r.item, store)) },
+    ...aisles.map((c) => ({ key: c.id, name: c.name, category: c as Category | undefined, number: store?.aisles[c.id] ?? null, rows: shown.filter((r) => r.item.categoryId === c.id && (!store || soldAt(r.item, store))) })),
+    { key: "elsewhere", category: undefined, name: store ? `Not at ${store.name.split(",")[0]}` : "Other", number: null, rows: shown.filter((r) => !store || !soldAt(r.item, store)) },
   ].filter((g) => g.rows.length)
 
   return (
@@ -155,7 +156,7 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
                 <React.Fragment key={g.key}>
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={5} className="border-b border-primary pt-5 pb-1.5 pl-3">
-                      <Eyebrow>{g.number !== null ? `Aisle ${g.number} · ` : ""}{g.name} · {g.rows.length}</Eyebrow>
+                      <span className="flex items-center gap-2"><CategoryMark category={g.category} size="sm" /><Eyebrow>{g.number !== null ? `Aisle ${g.number} · ` : ""}{g.name} · {g.rows.length}</Eyebrow></span>
                     </TableCell>
                   </TableRow>
                   {g.rows.map((r) => (
@@ -330,7 +331,7 @@ function AddToList({ open, onClose }: { open: boolean; onClose: () => void }) {
                         </div>
                         <div className="flex flex-col gap-1">
                           <Eyebrow>Aisle</Eyebrow>
-                          <span className="text-sm">{db.categories.find((c) => c.id === i.categoryId)?.name ?? "–"}</span>
+                          <CategoryLabel category={db.categories.find((c) => c.id === i.categoryId)} className="text-sm" />
                         </div>
                       </div>
                       {!isStaple(i) && (

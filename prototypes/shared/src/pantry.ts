@@ -7,6 +7,8 @@
 // a sync without knowing about them.
 
 /** Pantry items, shared. The phone reads and writes this at sync. */
+import type { CategoryColour, CategoryIcon } from "./category-look"
+
 export const ITEMS_KEY = "hm-pantry:items:v2"
 /** Stores, aisles (categories), recipes and history. Owned by the pantry app; the phone pulls at sync. */
 export const DB_KEY = "hm-pantry:db:v3"
@@ -14,7 +16,8 @@ export const DB_KEY = "hm-pantry:db:v3"
 export const PHONE_KEY = "hm-shopping-list:v5"
 
 export type Location = "fridge" | "freezer" | "cupboard" | "household"
-export type Category = { id: string; name: string }
+/** A category (an aisle). Colour and icon are optional: one without them shows plain. */
+export type Category = { id: string; name: string; colour?: CategoryColour; icon?: CategoryIcon }
 export type ListSource = { kind: "hand" } | { kind: "claude" } | { kind: "recipe"; recipe: string }
 export type ListEntry = { source: ListSource; qty: number; at?: string }
 
@@ -133,24 +136,24 @@ export function at(h: number, m: number, daysAgo = 0) {
 // ---------- seed ----------
 
 export const seedCategories: Category[] = [
-  { id: "fruit-and-veg", name: "Fruit & veg" },
-  { id: "meat-and-fish", name: "Meat & fish" },
-  { id: "deli-and-cured-meats", name: "Deli & cured meats" },
-  { id: "dairy-and-chilled", name: "Dairy & chilled" },
-  { id: "frozen", name: "Frozen" },
-  { id: "tins-and-jars", name: "Tins & jars" },
-  { id: "grains-and-pulses", name: "Grains & pulses" },
-  { id: "bread-and-crackers", name: "Bread & crackers" },
-  { id: "baking", name: "Baking" },
-  { id: "herbs-and-spices", name: "Herbs & spices" },
-  { id: "stock-and-seasonings", name: "Stock & seasonings" },
-  { id: "sauces-and-condiments", name: "Sauces & condiments" },
-  { id: "oils-and-vinegar", name: "Oils & vinegar" },
-  { id: "nuts-and-dried-fruit", name: "Nuts & dried fruit" },
-  { id: "tea-and-coffee", name: "Tea & coffee" },
-  { id: "long-life-milk", name: "Long-life milk" },
-  { id: "snacks-and-treats", name: "Snacks & treats" },
-  { id: "bathroom-and-kitchen", name: "Bathroom & kitchen" },
+  { id: "fruit-and-veg", name: "Fruit & veg", colour: "sage", icon: "Carrot" },
+  { id: "meat-and-fish", name: "Meat & fish", colour: "rose", icon: "Beef" },
+  { id: "deli-and-cured-meats", name: "Deli & cured meats", colour: "coral", icon: "Ham" },
+  { id: "dairy-and-chilled", name: "Dairy & chilled", colour: "sky", icon: "Milk" },
+  { id: "frozen", name: "Frozen", colour: "teal", icon: "Snowflake" },
+  { id: "tins-and-jars", name: "Tins & jars", colour: "periwinkle", icon: "Cylinder" },
+  { id: "grains-and-pulses", name: "Grains & pulses", colour: "butter", icon: "Wheat" },
+  { id: "bread-and-crackers", name: "Bread & crackers", colour: "apricot", icon: "Croissant" },
+  { id: "baking", name: "Baking", colour: "lavender", icon: "Cake" },
+  { id: "herbs-and-spices", name: "Herbs & spices", colour: "lime", icon: "Leaf" },
+  { id: "stock-and-seasonings", name: "Stock & seasonings", colour: "mint", icon: "CookingPot" },
+  { id: "sauces-and-condiments", name: "Sauces & condiments", colour: "mauve", icon: "Amphora" },
+  { id: "oils-and-vinegar", name: "Oils & vinegar", colour: "butter", icon: "Droplet" },
+  { id: "nuts-and-dried-fruit", name: "Nuts & dried fruit", colour: "apricot", icon: "Nut" },
+  { id: "tea-and-coffee", name: "Tea & coffee", colour: "coral", icon: "Coffee" },
+  { id: "long-life-milk", name: "Long-life milk", colour: "sky", icon: "Milk" },
+  { id: "snacks-and-treats", name: "Snacks & treats", colour: "rose", icon: "Cookie" },
+  { id: "bathroom-and-kitchen", name: "Bathroom & kitchen", colour: "periwinkle", icon: "SprayCan" },
 ]
 
 export const seedStores: SharedStore[] = [

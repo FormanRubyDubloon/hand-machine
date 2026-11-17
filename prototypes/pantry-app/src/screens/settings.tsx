@@ -17,6 +17,7 @@ import { navigate, type SettingsTab } from "../router"
 import { usePantry } from "../state"
 import { getTheme, setTheme, type ThemeChoice } from "../theme"
 import { Eyebrow, Field, NavRow, PageTitle, Segmented } from "../components"
+import { CategoryLookPicker, CategoryMark } from "../category-look"
 
 // ---------- SET-01 ----------
 
@@ -60,7 +61,7 @@ function AisleRow({ category, store, count, onNumber, onRename }: { category: Ca
           <Button type="submit" size="icon-xs" variant="outline" aria-label="Save name"><CheckIcon /></Button>
         </form>
       ) : (
-        <span className="flex-1 text-sm">{category.name}</span>
+        <span className="flex flex-1 items-center gap-2 text-sm"><CategoryMark category={category} size="sm" />{category.name}</span>
       )}
       <span className="w-16 text-right text-xs text-muted-foreground">{plural(count, "item")}</span>
       {!renaming && (
@@ -226,6 +227,7 @@ function numberedIn(category: Category, stores: Store[]) {
 
 const head = "h-10 text-[10px] font-semibold tracking-widest"
 
+
 function NameForm({ initial, placeholder, submit, onSubmit, onCancel }: { initial: string; placeholder?: string; submit: string; onSubmit: (name: string) => void; onCancel: () => void }) {
   const [name, setName] = React.useState(initial)
   return (
@@ -364,7 +366,10 @@ function Categories({ intro }: { intro: string }) {
                         onCancel={() => setRenaming(null)}
                       />
                     ) : (
-                      <span className="text-[15px] font-medium">{c.name}</span>
+                      <span className="flex items-center gap-3">
+                        <CategoryLookPicker category={c} onChange={(look) => actions.setCategoryLook(c.id, look)} />
+                        <span className="text-[15px] font-medium">{c.name}</span>
+                      </span>
                     )}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{n.items}</TableCell>

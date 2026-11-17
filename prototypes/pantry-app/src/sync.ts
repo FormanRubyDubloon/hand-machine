@@ -5,7 +5,7 @@
 // in Supabase. Changed only here: pushed. Changed only in Supabase: pulled. Changed in both and
 // different: the later edit wins, and the sync says how many that was.
 import {
-  deleteRecipes, deleteStores, fetchCategories, fetchRecipeRows, toRecipe, writeRecipes, fetchRemote, fetchHistory, fetchStores, fingerprint, sortKeys, writeHistory, upsertCategories, writeRemote, writeStores, type CategoryRow, type HistoryRow,
+  deleteRecipes, deleteStores, fetchCategories, fetchRecipeRows, toRecipe, writeRecipes, fetchRemote, fetchHistory, fetchStores, fingerprint, sortKeys, toCategory, writeHistory, upsertCategories, writeRemote, writeStores, type CategoryRow, type HistoryRow,
 } from "../../shared/src/pantry-remote"
 import { normalise, type Category, type HistoryEntry, type Item, type Items, type Recipe, type Store } from "./model"
 
@@ -89,14 +89,15 @@ export async function syncItems(local: Items, base: Items | undefined): Promise<
 
 // ---------- categories ----------
 
-const nameOf = (c: Category | undefined) => c?.name ?? ""
+/** What counts as a change to a category: its name, colour and icon. */
+export const categoryFingerprint = (c: Category | undefined) => (c ? `${c.name}|${c.colour ?? ""}|${c.icon ?? ""}` : "")
 
 /** The categories that differ from the last sync. */
 export function pendingCategoryIds(local: Category[], base: Category[] | undefined): string[] {
   if (!base) return []
   const l = Object.fromEntries(local.map((c) => [c.id, c]))
   const b = Object.fromEntries(base.map((c) => [c.id, c]))
-  return [...new Set([...Object.keys(l), ...Object.keys(b)])].filter((id) => nameOf(l[id]) !== nameOf(b[id]))
+  return [...new Set([...Object.keys(l), ...Object.keys(b)])].filter((id) => categoryFingerprint(l[id]) !== categoryFingerprint(b[id]))
 }
 
 export type CategorySync = {
@@ -110,18 +111,20 @@ export type CategorySync = {
 
 /**
  * The first half of a sync: merges the categories by id, the same three-way way as items, and sends
- * the added and renamed ones before the items go (so an item in a new category keeps it). A
- * category renamed in both places keeps this computer's name: there's no edit time to compare.
+ * the added and changed ones before the items go (so an item in a new category keeps it). A category is
+ * its name, colour and icon together: one changed in both places keeps this computer's version, since
+ * there's no edit time to compare.
  */
 export async function syncCategories(local: Category[], base: Category[] | undefined): Promise<CategorySync> {
   const remoteRows = await fetchCategories()
-  const remote = Object.fromEntries(remoteRows.map((r) => [r.id, { id: r.id, name: r.name }]))
+  const remote = Object.fromEntries(remoteRows.map((r) => [r.id, toCategory(r)]))
   const here = Object.fromEntries(local.map((c) => [c.id, c]))
-  const was = Object.fromEntries((base ?? remoteRows).map((c) => [c.id, { id: c.id, name: c.name }]))
+  const was = Object.fromEntries((base ?? remoteRows.map(toCategory)).map((c) => [c.id, c]))
   const first = !base
+  const fp = categoryFingerprint
 
   const keep = new Set<string>()
-  const names: Record<string, string> = {}
+  const taken: Record<string, Category> = {}
   const push: Category[] = []
   const remove: string[] = []
   let pulled = 0
@@ -130,16 +133,16 @@ export async function syncCategories(local: Category[], base: Category[] | undef
     const l = here[id]
     const r = remote[id]
     const b = was[id]
-    if (nameOf(l) === nameOf(r)) {
+    if (fp(l) === fp(r)) {
       if (l) keep.add(id)
       continue
     }
-    const localChanged = nameOf(l) !== nameOf(b)
+    const localChanged = fp(l) !== fp(b)
     if (!localChanged) {
-      // Only Supabase moved: take its name, or drop it here if it was deleted there.
+      // Only Supabase moved: take its version, or drop it here if it was deleted there.
       if (r) {
         keep.add(id)
-        names[id] = r.name
+        taken[id] = r
       }
       pulled++
     } else if (l) {
@@ -148,18 +151,18 @@ export async function syncCategories(local: Category[], base: Category[] | undef
     } else if (!first) remove.push(id)
     else if (r) {
       keep.add(id)
-      names[id] = r.name
+      taken[id] = r
     }
   }
 
   const sorts = Object.fromEntries(remoteRows.map((r) => [r.id, r.sort]))
   let next = Math.max(-1, ...remoteRows.map((r) => r.sort))
-  const rows: CategoryRow[] = push.map((c) => ({ id: c.id, name: c.name, sort: sorts[c.id] ?? ++next }))
+  const rows: CategoryRow[] = push.map((c) => ({ id: c.id, name: c.name, sort: sorts[c.id] ?? ++next, colour: c.colour ?? null, icon: c.icon ?? null }))
   await upsertCategories(rows)
 
   const categories = [
-    ...local.filter((c) => keep.has(c.id)).map((c) => (names[c.id] ? { ...c, name: names[c.id] } : c)),
-    ...remoteRows.filter((r) => keep.has(r.id) && !here[r.id]).map((r) => ({ id: r.id, name: names[r.id] ?? r.name })),
+    ...local.filter((c) => keep.has(c.id)).map((c) => taken[c.id] ?? c),
+    ...remoteRows.filter((r) => keep.has(r.id) && !here[r.id]).map((r) => taken[r.id] ?? toCategory(r)),
   ]
   return { categories, remove, pushed: push.length + remove.length, pulled }
 }

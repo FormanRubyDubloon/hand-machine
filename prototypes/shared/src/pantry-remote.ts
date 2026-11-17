@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase"
 import { ITEM_SELECT } from "./supabase-seed"
 import { recipeRows, toEntryRow, toItem, toRecipe, toRow, type RecipeRow, type Row } from "./rows"
 import type { Category, SharedItem, SharedRecipe, SharedStore } from "./pantry"
+import { isCategoryColour, isCategoryIcon } from "./category-look"
 
 type Items = Record<string, SharedItem>
 
@@ -91,16 +92,24 @@ export async function writeRemote(push: SharedItem[], remove: string[], categori
 // ---------- categories ----------
 // Writing needs the policies in supabase/migrations/20261114160000_category_writes.sql.
 
-export type CategoryRow = { id: string; name: string; sort: number }
+export type CategoryRow = { id: string; name: string; sort: number; colour: string | null; icon: string | null }
 
-/** Every category in Supabase, in its saved order. */
+/** A category row as the apps hold it. A colour or icon the apps don't know is dropped. */
+export function toCategory(r: Pick<CategoryRow, "id" | "name"> & Partial<CategoryRow>): Category {
+  const c: Category = { id: r.id, name: r.name }
+  if (isCategoryColour(r.colour)) c.colour = r.colour
+  if (isCategoryIcon(r.icon)) c.icon = r.icon
+  return c
+}
+
+/** Every category in Supabase, in its saved order. Needs 20261117120000_category_colour_and_icon. */
 export async function fetchCategories(): Promise<CategoryRow[]> {
-  const { data, error } = await supabase.from("categories").select("id, name, sort").order("sort")
+  const { data, error } = await supabase.from("categories").select("id, name, sort, colour, icon").order("sort")
   if (error) throw new Error(error.message)
   return data as CategoryRow[]
 }
 
-/** Adds or renames categories. Throws if Supabase refuses (for example, two categories with one name). */
+/** Adds, renames or recolours categories. Throws if Supabase refuses (for example, two categories with one name). */
 export async function upsertCategories(rows: CategoryRow[]) {
   if (!rows.length) return
   const { error } = await supabase.from("categories").upsert(rows, { onConflict: "id" })

@@ -11,6 +11,7 @@ import {
   syncHistory, syncRecipes, syncStores,
 } from "./sync"
 import { deleteCategories } from "../../shared/src/pantry-remote"
+import type { CategoryColour, CategoryIcon } from "../../shared/src/category-look"
 import {
   amountOf, cap, haveText, nameList, isBulk, isToday, lower, needOf, normalise, plural, settle, timeText, todayIso, withStock,
   type Conflict, type Db, type HistoryEntry, type Item, type Items, type Recipe, type Snapshot, type Store, type Who,
@@ -567,6 +568,18 @@ function usePantryState() {
     },
     renameCategory(id: string, name: string) {
       commit((s) => setDb(s, { categories: s.db.categories.map((c) => (c.id === id ? { ...c, name } : c)) }))
+    },
+    /** Sets or clears a category's colour and icon. Leaving a key out keeps what's there; null clears it. */
+    setCategoryLook(id: string, look: { colour?: CategoryColour | null; icon?: CategoryIcon | null }) {
+      commit((s) => setDb(s, {
+        categories: s.db.categories.map((c) => {
+          if (c.id !== id) return c
+          const { colour, icon, ...rest } = c
+          const nextColour = look.colour === undefined ? colour : look.colour
+          const nextIcon = look.icon === undefined ? icon : look.icon
+          return { ...rest, ...(nextColour && { colour: nextColour }), ...(nextIcon && { icon: nextIcon }) }
+        }),
+      }))
     },
     /** A new category. With a store, it gets the next aisle number there; every other store has none. */
     addCategory(storeId: string | null, name: string) {
