@@ -37,9 +37,15 @@ function ToBuyPill() {
 import { ItemPanel } from "./item-panel"
 
 type Show = "staples" | "not" | "soon"
-type Stock = "all" | "low" | "out"
+type Stock = "all" | "in" | "low" | "out"
 /** Which stock filter an item falls under. To buy (not a Staple, on the list) counts as Out, as you have none to rely on. */
 const stockFilterOf = (i: Item) => stockOf(i) ?? (!isStaple(i) && needOf(i) > 0 ? "out" : null)
+/** In stock: you have at least one, Low items included. Low and Out follow the Status column. */
+const stockTests: Record<Exclude<Stock, "all">, (i: Item) => boolean> = {
+  in: (i) => i.inStock > 0,
+  low: (i) => stockFilterOf(i) === "low",
+  out: (i) => stockFilterOf(i) === "out",
+}
 type Filters = { location: "all" | Location; show: Show | null; type: "counted" | "bulk" | null; aisle: string | null; stock: Stock }
 
 const showTests: Record<Show, (i: Item) => boolean> = {
@@ -54,7 +60,7 @@ function matches(i: Item, f: Filters, skip?: keyof Filters) {
   if (skip !== "show" && f.show && !showTests[f.show](i)) return false
   if (skip !== "type" && f.type && i.type !== f.type) return false
   if (skip !== "aisle" && f.aisle && i.categoryId !== f.aisle) return false
-  if (skip !== "stock" && f.stock !== "all" && stockFilterOf(i) !== f.stock) return false
+  if (skip !== "stock" && f.stock !== "all" && !stockTests[f.stock](i)) return false
   return true
 }
 
@@ -126,7 +132,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
         >
           <div className="flex items-center gap-3">
             <SortSelect value={sort} onChange={setSort} options={(Object.keys(sorts) as Sort[]).map((k) => ({ value: k, label: sorts[k].label }))} />
-            {/* Matches the LOW and OUT pills in the Status column; works alongside the filters on the left. */}
+            {/* In stock: have at least one. Low and Out match the LOW and OUT pills in the Status column; works alongside the filters on the left. */}
             <Segmented
               label="Stock"
               className="w-auto"
@@ -134,8 +140,9 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
               onChange={(v) => set("stock", v)}
               options={[
                 { value: "all", label: `All ${count("stock", () => true)}` },
-                { value: "low", label: `Low ${count("stock", (i) => stockOf(i) === "low")}` },
-                { value: "out", label: `Out ${count("stock", (i) => stockFilterOf(i) === "out")}` },
+                { value: "in", label: `In stock ${count("stock", stockTests.in)}` },
+                { value: "low", label: `Low ${count("stock", stockTests.low)}` },
+                { value: "out", label: `Out ${count("stock", stockTests.out)}` },
               ]}
             />
             <Button variant="outline" onClick={() => navigate({ name: "import" })}>
