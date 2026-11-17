@@ -13,7 +13,7 @@ import {
   categoriesAtoZ, dateText, locations, guessPlace, ingredientName, inStockText, isBulk, lower, measureText, needOf, recipeInfo, recipeQty, shortDate, unitText,
   type IngredientRow, type Item, type Recipe,
 } from "../model"
-import { href, navigate } from "../router"
+import { href, navigate, type RecipesTab } from "../router"
 import { usePantry } from "../state"
 import { Eyebrow, Field, Stepper } from "../components"
 import { RecipeEditor } from "./recipe-edit"
@@ -260,10 +260,11 @@ function HaveDialog({
 type Focus = { position: number; on: "plus" | "add" } | null
 
 function Row({
-  row, recipe, position, serves, group, focus, onAdd, onHave, onSetMine, onSetTotal,
+  row, recipe, tab, position, serves, group, focus, onAdd, onHave, onSetMine, onSetTotal,
 }: {
   row: IngredientRow
   recipe: Recipe
+  tab: RecipesTab
   position: number
   serves: number
   group: Group
@@ -326,7 +327,7 @@ function Row({
         <span className="text-xs text-muted-foreground">
           {row.item && (
             <>
-              <a className="underline underline-offset-4 hover:text-foreground" href={href({ name: "recipe-full", id: recipe.id, item: row.item.id, serves })}>{row.item.name}</a>
+              <a className="underline underline-offset-4 hover:text-foreground" href={href({ name: "recipe-full", id: recipe.id, tab, item: row.item.id, serves })}>{row.item.name}</a>
               {" · "}
             </>
           )}
@@ -352,7 +353,7 @@ function GroupHeader({ id, label, count, hint }: { id: string; label: string; co
 
 // ---------- ingredients column ----------
 
-function Ingredients({ recipe, serves, setServes }: { recipe: Recipe; serves: number; setServes: (n: number) => void }) {
+function Ingredients({ recipe, tab, serves, setServes }: { recipe: Recipe; tab: RecipesTab; serves: number; setServes: (n: number) => void }) {
   const { items, actions } = usePantry()
   const factor = serves / recipe.serves
   const info = recipeInfo(recipe, items, factor)
@@ -377,6 +378,7 @@ function Ingredients({ recipe, serves, setServes }: { recipe: Recipe; serves: nu
       key={r.position}
       row={r.row}
       recipe={recipe}
+      tab={tab}
       position={r.position}
       serves={serves}
       group={r.group}
@@ -548,7 +550,7 @@ function Method({ recipe }: { recipe: Recipe }) {
   )
 }
 
-export function RecipeFull({ id, item, serves: initial }: { id: string; item?: string; serves?: number }) {
+export function RecipeFull({ id, tab = "cook", item, serves: initial }: { id: string; tab?: RecipesTab; item?: string; serves?: number }) {
   const { db } = usePantry()
   const recipe = db.recipes.find((r) => r.id === id)
   const [serves, setServes] = React.useState(initial ?? recipe?.serves ?? 2)
@@ -573,12 +575,12 @@ export function RecipeFull({ id, item, serves: initial }: { id: string; item?: s
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 pt-7 pb-8">
       <div className="@container mx-auto flex w-full max-w-[1120px] flex-col gap-6">
         <a
-          href="#/recipes/cook"
+          href={href({ name: "recipes", tab })}
           className="inline-flex items-center gap-1.5 self-start text-xs font-semibold tracking-[0.1em] uppercase underline underline-offset-4"
-          onClick={(e) => { e.preventDefault(); navigate({ name: "recipes", tab: "cook" }) }}
+          onClick={(e) => { e.preventDefault(); navigate({ name: "recipes", tab }) }}
         >
           <ArrowLeftIcon className="size-3.5" />
-          Recipes · What to cook
+          Recipes · {tab === "all" ? "All recipes" : "What to cook"}
         </a>
         <div className="flex items-start justify-between gap-6">
           <div className="flex min-w-0 flex-col gap-2.5">
@@ -592,7 +594,7 @@ export function RecipeFull({ id, item, serves: initial }: { id: string; item?: s
               <PencilIcon />
               Edit
             </Button>
-            <Button variant="outline" size="icon" aria-label="Back to the side panel" title="Back to the side panel" onClick={() => navigate({ name: "recipes", tab: "cook", recipe: recipe.id, serves })}>
+            <Button variant="outline" size="icon" aria-label="Back to the side panel" title="Back to the side panel" onClick={() => navigate({ name: "recipes", tab, recipe: recipe.id, serves })}>
               <Minimize2Icon />
             </Button>
             <Button variant="outline" size="icon" aria-label="Delete recipe" title="Delete recipe" onClick={() => setRemove(true)}>
@@ -601,13 +603,13 @@ export function RecipeFull({ id, item, serves: initial }: { id: string; item?: s
           </div>
         </div>
         <div className="grid gap-x-14 gap-y-10 border-t border-border pt-6 @min-[976px]:grid-cols-[560px_minmax(360px,1fr)] @min-[976px]:items-start">
-          <Ingredients recipe={recipe} serves={serves} setServes={setServes} />
+          <Ingredients recipe={recipe} tab={tab} serves={serves} setServes={setServes} />
           <Method recipe={recipe} />
         </div>
       </div>
       <CookedDialog open={cooked} onOpenChange={setCooked} recipe={recipe} serves={serves} />
-      <DeleteRecipeDialog open={remove} onOpenChange={setRemove} recipe={recipe} onDone={() => navigate({ name: "recipes", tab: "cook" })} />
-      <ItemPanel id={item} onClose={() => navigate({ name: "recipe-full", id: recipe.id, serves })} />
+      <DeleteRecipeDialog open={remove} onOpenChange={setRemove} recipe={recipe} onDone={() => navigate({ name: "recipes", tab })} />
+      <ItemPanel id={item} onClose={() => navigate({ name: "recipe-full", id: recipe.id, tab, serves })} />
       {editing && <RecipeEditor recipe={recipe} onClose={closeEditor} onCancel={closeEditor} />}
     </div>
   )

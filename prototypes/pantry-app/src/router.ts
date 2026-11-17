@@ -10,7 +10,7 @@ export type Route =
   | { name: "pantry"; item?: string; prefill?: string }
   | { name: "import" }
   | { name: "recipes"; tab: RecipesTab; recipe?: string; edit?: boolean; serves?: number }
-  | { name: "recipe-full"; id: string; item?: string; serves?: number }
+  | { name: "recipe-full"; id: string; tab?: RecipesTab; item?: string; serves?: number }
   | { name: "list"; add?: boolean }
   | { name: "settings"; tab: SettingsTab; store?: string }
 
@@ -35,7 +35,7 @@ export function parse(hash: string): Route {
       const n = parseInt(q.get("serves") ?? "", 10)
       const serves = n > 0 ? n : undefined
       if (parts.includes("full") && recipe) {
-        return { name: "recipe-full", id: recipe, item: parts[parts.indexOf("full") + 1], serves }
+        return { name: "recipe-full", id: recipe, tab, item: parts[parts.indexOf("full") + 1], serves }
       }
       return { name: "recipes", tab, recipe, edit: parts.includes("edit") || undefined, serves: recipe ? serves : undefined }
     }
@@ -61,7 +61,7 @@ export function href(route: Route): string {
     case "import": return "#/pantry/import"
     case "recipes":
       return `#/recipes/${route.tab}${route.recipe ? `/${enc(route.recipe)}${route.edit ? "/edit" : ""}${route.serves ? `?serves=${route.serves}` : ""}` : ""}`
-    case "recipe-full": return `#/recipes/cook/${enc(route.id)}/full${route.item ? `/${enc(route.item)}` : ""}${route.serves ? `?serves=${route.serves}` : ""}`
+    case "recipe-full": return `#/recipes/${route.tab ?? "cook"}/${enc(route.id)}/full${route.item ? `/${enc(route.item)}` : ""}${route.serves ? `?serves=${route.serves}` : ""}`
     case "list": return route.add ? "#/list/add" : "#/list"
     case "settings": return `#/settings/${route.tab}${route.tab === "stores" && route.store ? `/${enc(route.store)}` : ""}`
   }

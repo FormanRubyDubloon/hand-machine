@@ -14,7 +14,7 @@ import {
   dateText, guessPlace, haveText, inStockText, ingredientName, isBulk, locations, lower, measureText, nameList, plural, shortfall, recipeInfo, recipesUsing, recipeTags, shortDate, unitText, unitWord,
   withStock, isListedItem, recipeQty, toSortOut, type IngredientRow, type Item, type Recipe, categoriesAtoZ,
 } from "../model"
-import { href, navigate } from "../router"
+import { href, navigate, type RecipesTab } from "../router"
 import { usePantry } from "../state"
 import { Eyebrow, NewPill, Segmented, SidePanel, Stepper } from "../components"
 import { RecipeEditor } from "./recipe-edit"
@@ -177,7 +177,7 @@ function stockLine(r: IngredientRow) {
 }
 
 /** One ingredient in the side panel. Read-only: adding single ingredients happens on the full page (REC-10). */
-function IngredientLine({ row, recipe, position, serves }: { row: IngredientRow; recipe: Recipe; position: number; serves: number }) {
+function IngredientLine({ row, recipe, tab, position, serves }: { row: IngredientRow; recipe: Recipe; tab: RecipesTab; position: number; serves: number }) {
   const qty = recipeQty(row, recipe)
   const listed = qty > 0 || isListedItem(row, recipe)
   const optional = !!row.ing.optional
@@ -205,7 +205,7 @@ function IngredientLine({ row, recipe, position, serves }: { row: IngredientRow;
             {row.item && (
               <>
                 {/* Opens the item's side panel over the full-screen recipe; from the side panel this expands the recipe first. */}
-                <a className="underline underline-offset-4" href={href({ name: "recipe-full", id: recipe.id, item: row.item.id, serves })}>{row.item.name}</a>
+                <a className="underline underline-offset-4" href={href({ name: "recipe-full", id: recipe.id, tab, item: row.item.id, serves })}>{row.item.name}</a>
                 {row.item.packSize ? ` (${measureText(row.item.packSize.amount, row.item.packSize.measure)} ${row.item.unit?.[0] ?? "pack"})` : ""} ·{" "}
               </>
             )}
@@ -226,7 +226,7 @@ function IngredientLine({ row, recipe, position, serves }: { row: IngredientRow;
 }
 
 /** The servings-scaled recipe in the side panel: summary, ingredients against stock, method and notes. */
-export function RecipeBody({ recipe, serves, setServes }: { recipe: Recipe; serves: number; setServes: (n: number) => void }) {
+export function RecipeBody({ recipe, tab, serves, setServes }: { recipe: Recipe; tab: RecipesTab; serves: number; setServes: (n: number) => void }) {
   const { items } = usePantry()
   const factor = serves / recipe.serves
   const info = recipeInfo(recipe, items, factor)
@@ -273,7 +273,7 @@ export function RecipeBody({ recipe, serves, setServes }: { recipe: Recipe; serv
           </div>
         </div>
         <div className="flex flex-col border-t border-border">
-          {info.rows.map((row, k) => <IngredientLine key={k} row={row} recipe={recipe} position={k} serves={serves} />)}
+          {info.rows.map((row, k) => <IngredientLine key={k} row={row} recipe={recipe} tab={tab} position={k} serves={serves} />)}
         </div>
         {info.rows.some((r) => r.status === "some") && <span className="text-xs text-muted-foreground">A light tick means there's an open pack. The app doesn't measure what's left in it.</span>}
       </section>
@@ -300,7 +300,7 @@ export function RecipeBody({ recipe, serves, setServes }: { recipe: Recipe; serv
 
 // ---------- REC-09 side panel ----------
 
-export function RecipePanel({ id, edit, serves: initial, onClose }: { id?: string; edit?: boolean; serves?: number; onClose: () => void }) {
+export function RecipePanel({ id, tab = "cook", edit, serves: initial, onClose }: { id?: string; tab?: RecipesTab; edit?: boolean; serves?: number; onClose: () => void }) {
   const { db } = usePantry()
   const recipe = id ? db.recipes.find((r) => r.id === id) : undefined
   const [serves, setServes] = React.useState(initial ?? recipe?.serves ?? 2)
@@ -311,7 +311,7 @@ export function RecipePanel({ id, edit, serves: initial, onClose }: { id?: strin
     setLast(id)
     setServes(initial ?? recipe?.serves ?? 2)
   }
-  if (id === "new" || (recipe && edit)) return <RecipeEditor recipe={recipe} onClose={() => (recipe ? navigate({ name: "recipes", tab: "cook", recipe: recipe.id }, { replace: true }) : onClose())} onCancel={onClose} />
+  if (id === "new" || (recipe && edit)) return <RecipeEditor recipe={recipe} onClose={() => (recipe ? navigate({ name: "recipes", tab, recipe: recipe.id }, { replace: true }) : onClose())} onCancel={onClose} />
   return (
     <>
       <SidePanel
@@ -323,7 +323,7 @@ export function RecipePanel({ id, edit, serves: initial, onClose }: { id?: strin
         description={recipe ? metaLine(recipe) : undefined}
         headerActions={
           recipe && (
-            <Button variant="outline" size="icon-sm" aria-label="Full screen" title="Full screen" onClick={() => navigate({ name: "recipe-full", id: recipe.id, serves })}>
+            <Button variant="outline" size="icon-sm" aria-label="Full screen" title="Full screen" onClick={() => navigate({ name: "recipe-full", id: recipe.id, tab, serves })}>
               <Maximize2Icon />
             </Button>
           )
@@ -331,7 +331,7 @@ export function RecipePanel({ id, edit, serves: initial, onClose }: { id?: strin
         footer={
           recipe && (
             <>
-              <Button variant="outline" onClick={() => navigate({ name: "recipes", tab: "cook", recipe: recipe.id, edit: true })}>
+              <Button variant="outline" onClick={() => navigate({ name: "recipes", tab, recipe: recipe.id, edit: true })}>
                 <PencilIcon />
                 Edit
               </Button>
@@ -343,7 +343,7 @@ export function RecipePanel({ id, edit, serves: initial, onClose }: { id?: strin
           )
         }
       >
-        {recipe && <RecipeBody recipe={recipe} serves={serves} setServes={setServes} />}
+        {recipe && <RecipeBody recipe={recipe} tab={tab} serves={serves} setServes={setServes} />}
       </SidePanel>
       {recipe && <CookedDialog open={cooked} onOpenChange={setCooked} recipe={recipe} serves={serves} />}
       {recipe && <DeleteRecipeDialog open={remove} onOpenChange={setRemove} recipe={recipe} onDone={onClose} />}

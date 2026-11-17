@@ -11,7 +11,7 @@ import {
   type Item, type Recipe, type RecipeInfo,
 } from "../model"
 import { minutesText } from "../../../shared/src/pantry"
-import { navigate, type Route } from "../router"
+import { href, navigate, type RecipesTab, type Route } from "../router"
 import { usePantry } from "../state"
 import { Eyebrow, FilterGroup, FilterSidebar, PageTitle, SortSelect } from "../components"
 import { ClaudeExamples } from "./claude"
@@ -26,6 +26,28 @@ const quickTest: Record<Quick, (r: Recipe) => boolean> = {
 }
 
 type Ranked = { recipe: Recipe; info: RecipeInfo }
+
+/**
+ * Clicks on a card or row open the side panel, except on its own buttons and links, and except clicks inside a
+ * dialog one of those buttons opened (React passes those up through the card even though they're drawn elsewhere).
+ */
+const opensPanel = (e: React.MouseEvent) =>
+  e.currentTarget.contains(e.target as Node) && !(e.target as HTMLElement).closest("button, a, input, [role=menuitem]")
+/** Enter or Space on the focused card or row itself (not on something inside it). */
+const panelKey = (e: React.KeyboardEvent, open: () => void) => {
+  if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return
+  e.preventDefault()
+  open()
+}
+
+/** The recipe's name: a link to the full recipe page. */
+function RecipeName({ recipe, tab }: { recipe: Recipe; tab: RecipesTab }) {
+  return (
+    <a className="text-left text-[15px] leading-tight font-semibold underline-offset-4 hover:underline" href={href({ name: "recipe-full", id: recipe.id, tab })}>
+      {recipe.name}
+    </a>
+  )
+}
 
 /**
  * Flags a recipe with ingredients to sort out: not linked to a pantry item, or short and not on the shopping list.
@@ -48,13 +70,21 @@ function SortOutFlag({ recipe, info, className }: Ranked & { className?: string 
 
 function RecipeCard({ recipe, info, onCooked }: Ranked & { onCooked: () => void }) {
   const uses = usesUpText(info.usesUp)
+  const open = () => navigate({ name: "recipes", tab: "cook", recipe: recipe.id })
   return (
-    <div className={cn("flex flex-col gap-2 border bg-background p-4", info.canCook && info.usesUp ? "border-primary" : "border-border")}>
+    <div
+      tabIndex={0}
+      aria-label={`${recipe.name}: open in the side panel`}
+      className={cn(
+        "flex cursor-pointer flex-col gap-2 border bg-background p-4 transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
+        info.canCook && info.usesUp ? "border-primary" : "border-border",
+      )}
+      onClick={(e) => opensPanel(e) && open()}
+      onKeyDown={(e) => panelKey(e, open)}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <button type="button" className="text-left text-[15px] leading-tight font-semibold hover:underline" onClick={() => navigate({ name: "recipes", tab: "cook", recipe: recipe.id })}>
-            {recipe.name}
-          </button>
+          <RecipeName recipe={recipe} tab="cook" />
           <span className="text-xs text-muted-foreground">{[minutesText(recipe.minutes), `Serves ${recipe.serves}`, ...recipeTags(recipe)].join(" · ")}</span>
         </div>
         {info.canCook ? (
@@ -164,7 +194,7 @@ const sorts: Record<Sort, { label: string; compare: (a: Ranked, b: Ranked) => nu
   added: { label: "Date added", compare: newest((r) => r.addedAt) },
   edited: { label: "Date edited", compare: newest((r) => r.editedAt) },
 }
-function AllRecipes({ ranked }: { ranked: Ranked[] }) {
+function AllRecipes({ ranked, selected }: { ranked: Ranked[]; selected?: string }) {
   const [show, setShow] = React.useState<Show | null>(null)
   const [meal, setMeal] = React.useState<string | null>(null)
   const [time, setTime] = React.useState<string | null>(null)
@@ -222,11 +252,17 @@ function AllRecipes({ ranked }: { ranked: Ranked[] }) {
           </TableHeader>
           <TableBody>
             {rows.map(({ recipe, info }) => (
-              <TableRow key={recipe.id} className="h-12">
+              <TableRow
+                key={recipe.id}
+                tabIndex={0}
+                aria-label={`${recipe.name}: open in the side panel`}
+                data-state={selected === recipe.id ? "selected" : undefined}
+                className={cn("h-12 cursor-pointer outline-none focus-visible:bg-muted", selected === recipe.id && "shadow-[inset_2px_0_0_var(--primary)]")}
+                onClick={(e) => opensPanel(e) && navigate({ name: "recipes", tab: "all", recipe: recipe.id })}
+                onKeyDown={(e) => panelKey(e, () => navigate({ name: "recipes", tab: "all", recipe: recipe.id }))}
+              >
                 <TableCell className="pl-3">
-                  <button type="button" className="text-left text-[15px] font-semibold hover:underline" onClick={() => navigate({ name: "recipes", tab: "all", recipe: recipe.id })}>
-                    {recipe.name}
-                  </button>
+                  <RecipeName recipe={recipe} tab="all" />
                 </TableCell>
                 <TableCell>
                   <span className="flex items-center gap-3">
@@ -291,10 +327,10 @@ export function RecipesScreen({ route }: { route: Extract<Route, { name: "recipe
         ) : route.tab === "cook" ? (
           <div className="overflow-y-auto px-8 py-6"><WhatToCook ranked={ranked} /></div>
         ) : (
-          <AllRecipes ranked={ranked} />
+          <AllRecipes ranked={ranked} selected={route.recipe} />
         )}
       </div>
-      <RecipePanel id={route.recipe} edit={route.edit} serves={route.serves} onClose={() => navigate({ name: "recipes", tab: route.tab })} />
+      <RecipePanel id={route.recipe} tab={route.tab} edit={route.edit} serves={route.serves} onClose={() => navigate({ name: "recipes", tab: route.tab })} />
     </div>
   )
 }
