@@ -1,6 +1,6 @@
 # Intent: pantry, recipes and shopping list app, with Claude access
 
-Author: Isaac Forman · Date: 14 Nov 2026 · Status: draft, awaiting review
+Author: Isaac Forman · Date: 14 Nov 2026 · Updated: 16 Nov 2026 · Status: draft, awaiting review
 
 ## Problem
 
@@ -10,12 +10,16 @@ My recipes aren't connected to any of this. I can't see which recipes I can cook
 
 ## Proposed outcome
 
-One system I own, made of four parts, that replaces Notion completely:
+One system I own, made of three parts, that replaces Notion completely:
 
-1. **Shopping app (mobile-first web).** I use it in shops on my iPhone. It shows what I need to buy, and it works without signal. Pantry stock updates when I choose to sync, for example at the end of a shop. I can also look at recipes here and add what I'm missing for one.
-2. **Pantry admin app (desktop web).** I use it at my desk to manage pantry items, stock, recipes and categories.
-3. **Kitchen app (mobile web).** A separate app I use on my phone in the kitchen. I use it for the quick pantry jobs (recording what I've used, adding stock), viewing recipes and cooking. Everything else, such as setting up items and minimums, stays in the admin app. It is built after the shopping app and the admin app are working.
-4. **Claude connection.** Claude can read pantry stock, update stock, edit the shopping list, create or change pantry items, and read, search and add recipes. I can use it from the Claude phone app and on desktop or web. For example: "what can I cook tonight?", "I used the last of the rice", "add what I need for this recipe to the list", "save this recipe".
+1. **Mobile app (native iPhone app).** One app with three sections:
+   - **Shopping list.** I use it in shops. It shows what I need to buy, and it works without signal. Pantry stock updates when I choose to sync, for example at the end of a shop.
+   - **Recipes.** All my recipes. A recipe's detail page is where I cook from: it shows what I have and what I'm short of, and has a step-by-step cooking view.
+   - **Pantry.** A cut-down version of the pantry for the phone. I can record what I've used, add stock, mark a pack as open, search and view stock, edit an item's details, and review New items.
+2. **Pantry admin app (desktop web).** I use it at my desk to manage pantry items, stock, recipes and categories. It does everything the phone's Pantry section does, plus the jobs that stay on the desktop, such as managing categories and merging items.
+3. **Claude connection.** Claude can read pantry stock, update stock, edit the shopping list, create or change pantry items, and read, search and add recipes. I can use it from the Claude phone app and on desktop or web. For example: "what can I cook tonight?", "I used the last of the rice", "add what I need for this recipe to the list", "save this recipe".
+
+All three sections of the mobile app are built and released together.
 
 Each pantry item records:
 - name
@@ -33,7 +37,7 @@ Each pantry item records:
 
 Any pantry item with a minimum above 0 is a **Staple**. Staples are the things I always keep in stock.
 
-Preferred brand is for online shopping. It shows in the pantry admin app but not in the shopping app.
+Preferred brand is a note for when I shop online. Ordering online is out of scope. The brand shows in the pantry admin app but not in the shopping list.
 
 Each recipe records:
 - name
@@ -55,18 +59,20 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - An item leaves the list once what I've checked off brings stock back above its minimum.
 - The list can hold things that aren't in the pantry yet, such as a recipe ingredient I've never bought. These stay on the list only and don't appear in the pantry while I'm shopping.
 - When I check one of these off and sync, it becomes a pantry item with the amount I bought and a minimum of 0. The app guesses its category and location, and I can change them. It is linked to the recipe ingredient it came from.
-- A new item made this way is marked "New" in the admin app until I've reviewed and saved it, because its category and location are guesses.
+- A new item made this way is marked "New" until I've reviewed and saved it, because its category and location are guesses. I can review it in the admin app or in the phone's Pantry section.
 - If I undo the check-off on the phone, the item doesn't go into the pantry.
 - Items that are already in the pantry stay there while they're on the list. If I have none, they show as Out.
 
 **Syncing**
-- Stock from the shopping app updates when I sync, not on each tap.
+- Check-offs from the shopping list update stock when I sync, not on each tap.
+- Changes I make in the phone's Pantry section (recording what I've used, editing an item) also wait for a sync.
+- Manual sync is for now. Eventually I want to remove it everywhere, so changes go through by themselves.
 - If I finish a shop and haven't synced, the app reminds me.
 - If the same item has changed in two places since the last sync (for example, I changed it in the admin app while I was out shopping), the app asks me which change to keep.
 - Until I choose, that item keeps the value from the app I'm using. The rest of the sync still goes through.
 
 **Stock**
-- Stock goes down when I record what I've used. I can do that in the pantry admin app or the kitchen app, or by telling Claude.
+- Stock goes down when I record what I've used. I can do that in the pantry admin app, in the phone's Pantry section, or by telling Claude.
 - Counted items are tracked by number. Bulk items are tracked as whole packs, and the app knows whether one is open. I want to see the quantity the way I'd say it, for example "two bags of flour, one open". It doesn't measure how much is left in an open pack.
 - I can mark a pack as open. An open pack counts as less than one full pack.
 - For bulk items, only full packs count towards the minimum. The amount to buy is the minimum minus the full packs. For example, one open bag of rice with a minimum of 2 means buying 2.
@@ -86,18 +92,22 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - I can also add any single ingredient to the shopping list from the recipe, including ones I already have some of. Adding one puts 1 pack or unit on the list. The list item's note says what the recipe needs, for example "Sardine linguine: 200 g".
 - Once an ingredient is on the list, the recipe shows a number I can raise or lower. Taking it below 1 removes it from the list.
 - An "Add all missing" action adds 1 of every ingredient I'm short of that isn't already on the list.
-- The kitchen app has a step-by-step cooking view to follow while I cook.
+- A recipe's detail page in the mobile app has a step-by-step cooking view to follow while I cook.
 - When I mark a recipe as cooked, I check what was used and then stock goes down. Counted ingredients are filled in with the recipe amounts, which I can change. Each bulk ingredient has a "finished it" tick, and ticking it takes one pack off stock.
 - For bulk ingredients, a recipe shows that I have some, not whether I have enough. If a bulk item has a pack size, the app warns me when a recipe needs more than my packs could hold (for example, 1.5 kg of flour when I have one 1 kg bag).
-- I can see recipes in the pantry admin app, the kitchen app and the shopping app.
-- Recipes I've marked "Want to cook" are downloaded to the shopping app, so I can read them in a shop without signal.
+- I can see all my recipes in the pantry admin app and in the mobile app's Recipes section.
+- Recipes I've marked "Want to cook" are downloaded to the phone, so I can read them in a shop without signal. Other recipes need signal.
+
+**Pantry on the phone**
+- The phone's Pantry section covers: recording what I've used, adding stock, marking a pack as open, searching and viewing stock, editing an item's details (such as minimum, category, location and notes), and reviewing New items.
+- Managing categories and merging items stay in the admin app.
 
 **Categories**
 - I can add, rename and remove categories in the pantry admin app. They aren't fixed. Today's set comes from Notion's 18.
 - Every item belongs to one category. Renaming a category renames it everywhere, including each store's aisle order and the shopping list.
 - A new category appears in every store's aisle order. It starts with no aisle number until I set one.
 - I can't remove a category that still has items in it. The app tells me how many, and offers to move them to another category first.
-- Categories reach the shopping app when it syncs, like stores and aisles.
+- Categories reach the mobile app when it syncs, like stores and aisles.
 - In a shop I can change a store's aisle numbers, and add or edit a store, on the phone. These changes go to the pantry when I sync, so the admin app and Claude see them. If the same store was changed in both places, the phone's version wins. I can't add, rename or remove categories on the phone; that stays in the admin app.
 
 **Undo**
@@ -119,31 +129,37 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - I can ask Claude what to cook from what I have, and tell it what I've used, without opening any of the apps.
 - I can pick a recipe and know straight away what I have and what I need to buy.
 - Marking a recipe as cooked keeps stock right without extra work.
+- The mobile app looks and moves like a proper iPhone app, not a web page.
 
 ## Affected users and systems
 
-- **Me**, as the only user for now. Others in the household may share the pantry and list later. That shouldn't need a rebuild.
-- **The current shopping-list prototype**, which reads from and syncs with Notion today. That Notion sync goes away.
+- **Me**, as the only user for now.
+- **Other people, later.** They will sign up and create their own pantry. Each person's pantry, shopping list and recipes are separate from mine and private to them. Adding this shouldn't need a rebuild.
+- **The current shopping-list web app.** The native mobile app takes over from it. The web app stays running as a fallback but isn't improved any further.
+- **The pantry admin app, the pantry database and the Claude connection**, which already exist. The mobile app uses the same data and the same sign-in.
 - **My Notion pantry, shopping list and recipes**, as a one-off data source.
-- **Claude** (phone app and desktop/web), as a new way in to the same data.
+- **Claude** (phone app and desktop/web), as a way in to the same data.
 - **My recipes skill**, which currently suggests meals from my pantry. It should be able to use the new pantry and recipe data.
 
 ## Constraints
 
-- The shopping app is used one-handed, on an iPhone, in supermarkets, corner shops, greengrocers, butchers and fishmongers. Signal is often poor.
-- All three apps need a login. The pantry is private. I sign in with my email and a password.
-- The admin app is desktop-only. The quick pantry jobs can be done on a phone in the kitchen app.
-- The kitchen app is used while cooking, on a phone, often with wet or messy hands.
+- The mobile app is a native iPhone app, not a web app. I want it for four reasons: it should feel like a proper iPhone app, keep its data on the phone reliably without signal, be able to use phone features (such as barcode scanning, notifications, widgets and keeping the screen awake while cooking), and teach me how to build one.
+- It runs on iPhone now. Android may be needed later when other people sign up, which Expo allows.
+- It reaches phones through TestFlight, for me and a few people I invite. It isn't a public App Store app.
+- I've never built a mobile app.
+- The shopping list is used one-handed, in supermarkets, corner shops, greengrocers, butchers and fishmongers. Signal is often poor.
+- The recipe detail page is used while cooking, often with wet or messy hands.
+- The mobile app and the admin app need a login. The pantry is private. I sign in with my email and a password.
+- The admin app is desktop-only.
 - The Claude connection has to work from the Claude phone app, not just on a desktop.
 - It doesn't have to be free to run, but it should be cheap for one person.
-- There are no set tools or tech stack.
+- The mobile app is built with Expo (React Native). It has to work with the pantry database, sign-in and Claude connection that already exist.
 
 ## Open questions
 
 - **Success numbers:** the numbers in the success list are starting guesses. Review them after a month of use, especially the 10 minutes a week.
 - **Use-by warnings:** recipes are ranked by what needs using first. Should anything also warn me before things go off?
-- **Notion import:** which Notion fields map to the new item and recipe fields, and what do I do with items or recipes that don't fit?
-- **Categories and Claude:** Claude only uses the categories that exist (decided 15 Nov). Revisit if that gets in the way.
-- **Sharing later:** if others join, do they see the same pantry, and does anyone have different permissions?
-- **Want to cook and Add all missing:** both put missing ingredients on the list. Do I need both, or should Want to cook do only that and also mark the recipe for download to the shopping app?
-- **Online shopping:** preferred brand exists for online orders. Is ordering online in scope, or is the brand just a note for now?
+- **Other users:** people will sign up and create their own pantry. When does sign-up open? Can two people in one household share a pantry? Does each person get their own Claude connection?
+- **Removing manual sync:** when does this happen, and what replaces it where there's no signal?
+- **Phone features:** which of barcode scanning, notifications, widgets and keeping the screen awake are in the first release, and which come later?
+- **The fallback web app:** it won't be improved, so it will fall behind the native app. When is it switched off?
