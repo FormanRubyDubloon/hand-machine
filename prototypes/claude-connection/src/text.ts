@@ -66,5 +66,6 @@ const statusText: Record<IngredientRow["status"], string> = {
 export function ingredientLine(row: IngredientRow) {
   const linked = row.item ? ` → ${row.item.name} [id: ${row.item.id}], have ${haveText(row.item)}` : ""
   const missing = row.missing > 1 ? ` (${row.missing} short)` : ""
-  return `${row.text}${linked} · ${statusText[row.status]}${missing}`
+  const optional = row.ing.optional ? " · optional: the recipe works without it, so it doesn't count as missing" : ""
+  return `${row.text}${linked} · ${statusText[row.status]}${missing}${optional}`
 }

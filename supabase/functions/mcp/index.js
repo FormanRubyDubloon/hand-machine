@@ -455,7 +455,8 @@ var statusText = {
 function ingredientLine(row) {
   const linked = row.item ? ` \u2192 ${row.item.name} [id: ${row.item.id}], have ${haveText(row.item)}` : "";
   const missing = row.missing > 1 ? ` (${row.missing} short)` : "";
-  return `${row.text}${linked} \xB7 ${statusText[row.status]}${missing}`;
+  const optional = row.ing.optional ? " \xB7 optional: the recipe works without it, so it doesn't count as missing" : "";
+  return `${row.text}${linked} \xB7 ${statusText[row.status]}${missing}${optional}`;
 }
 
 // prototypes/claude-connection/src/tools.ts
