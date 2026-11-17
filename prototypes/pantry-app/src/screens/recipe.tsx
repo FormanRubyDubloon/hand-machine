@@ -86,7 +86,7 @@ function NewItemsDialog({ recipe, positions, onClose }: { recipe: Recipe; positi
                   <Stepper size="md" label="How many to buy" value={d.qty} min={1} onChange={(qty) => set(k, { qty })} />
                 </div>
                 <Field label="Unit" hint="Optional: tin, jar, bag. Leave blank to count them.">
-                  <Input value={d.unit} placeholder="tin" onChange={(e) => set(k, { unit: e.target.value })} />
+                  <Input value={d.unit} placeholder="pack" onChange={(e) => set(k, { unit: e.target.value })} />
                 </Field>
               </div>
               <div className="flex flex-col gap-2">
