@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
-  categoriesAtoZ, dateText, locations, guessPlace, ingredientName, inStockText, isBulk, lower, measureText, needOf, recipeInfo, recipeQty, shortDate, unitText,
+  categoriesAtoZ, dateText, locations, guessPlace, ingredientName, inStockText, isBulk, lower, measureText, needOf, plural, recipeInfo, recipeQty, shortDate, unitText,
   type IngredientRow, type Item, type Recipe,
 } from "../model"
 import { href, navigate, type RecipesTab } from "../router"
@@ -84,7 +84,8 @@ function ServesStepper({ value, onChange, max }: { value: number; onChange: (n: 
 }
 
 /**
- * How many are on the shopping list: 36px high, accent border on the surface colour, the count with its unit.
+ * How many are on the shopping list: 36px high, accent border on the surface colour, the count alone. The
+ * unit is in the row's text, and screen readers still hear it.
  * Minus at `min` takes the ingredient off the list when `canRemove`.
  */
 function ListStepper({
@@ -102,8 +103,8 @@ function ListStepper({
       >
         <MinusIcon className="size-3.5" />
       </Button>
-      <span className="min-w-[76px] px-1 text-center text-sm font-semibold tabular-nums" aria-live="polite">
-        {value} {unit(value)}
+      <span className="min-w-10 px-1 text-center text-sm font-semibold tabular-nums" aria-live="polite">
+        {value}<span className="sr-only"> {unit(value)}</span>
       </span>
       <Button ref={plusRef} variant="ghost" className="h-full w-9 rounded-none p-0 hover:bg-background" aria-label={`One more ${unit(1)}`} onClick={() => onChange(value + 1)}>
         <PlusIcon className="size-3.5" />
@@ -406,8 +407,13 @@ function Ingredients({ recipe, tab, serves, setServes }: { recipe: Recipe; tab: 
       <div className="flex items-start justify-between gap-6">
         <div className="flex flex-col gap-1">
           <h2 id="ingredients-heading"><Eyebrow className="text-foreground">Ingredients · {info.rows.length}</Eyebrow></h2>
-          {info.rows.length > 0 && (
-            <p className="font-serif text-xl leading-[26px]">You have {info.have} of the {info.needed} it needs.</p>
+          {/* Optional ingredients aren't counted. A recipe that's all optional has no line. */}
+          {info.needed > 0 && (
+            <p className="font-serif text-xl leading-[26px]">
+              {info.have >= info.needed
+                ? info.needed === 1 ? "You have the 1 item" : `You have all ${info.needed} items`
+                : `You have ${info.have} of ${plural(info.needed, "item")}`}
+            </p>
           )}
         </div>
         <div className="flex items-center gap-3">
