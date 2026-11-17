@@ -8,13 +8,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { FilterChips } from "@/components/ui/filter-chips"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  aisleOrder, containsText, fullOf, haveText, isBulk, isStaple, isToday, listRows, locationLabel, money, namesOf, needOf, numberedAisles,
-  plural, soldAt, timeText, shortDate, unitWord, type Category, type ListRow, type Reason, categoriesAtoZ,
+  aisleOrder, cap, containsText, fullOf, haveText, inStockText, isBulk, isStaple, isToday, listRows, locationLabel, money, namesOf, needOf, numberedAisles,
+  plural, soldAt, stockOf, timeText, shortDate, unitWord, type Category, type ListRow, type Reason, categoriesAtoZ,
 } from "../model"
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
 import { CategoryLabel, CategoryMark } from "../category-look"
-import { Eyebrow, PageTitle, SidePanel, Stepper, StockPill, TagPill } from "../components"
+import { Eyebrow, PageTitle, Segmented, SidePanel, Stepper, StockPill, TagPill } from "../components"
 
 type Group = "all" | ListRow["group"]
 
@@ -28,7 +28,7 @@ function Why({ row }: { row: ListRow }) {
         return (
           <span key={k} className="flex items-center gap-2">
             <StockPill item={i} />
-            <span>Staple · Have {i.inStock ? haveText(i) : 0}{isBulk(i) ? " ·" : ","} keep {i.target}</span>
+            <span>Staple · {cap(inStockText(i))} · {i.target} min</span>
           </span>
         )
       case "recipe":
@@ -103,11 +103,13 @@ function NothingToBuy() {
 export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> }) {
   const { items, db, actions, phoneSyncedAt, store: defaultStore } = usePantry()
   const [group, setGroup] = React.useState<Group>("all")
+  const [stock, setStock] = React.useState<"all" | "low" | "out">("all")
   const [storeId, setStoreId] = React.useState(defaultStore?.id)
   const store = db.stores.find((s) => s.id === storeId) ?? defaultStore
 
   const rows = listRows(items)
-  const shown = rows.filter((r) => group === "all" || r.group === group)
+  const inGroup = rows.filter((r) => group === "all" || r.group === group)
+  const shown = inGroup.filter((r) => stock === "all" || stockOf(r.item) === stock)
   const estimate = rows.reduce((n, r) => n + (r.item.price ?? 0) * r.qty, 0)
   const counts = { staples: rows.filter((r) => r.group === "staples").length, recipes: rows.filter((r) => r.group === "recipes").length, added: rows.filter((r) => r.group === "added").length }
 
@@ -126,6 +128,7 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
           subtitle={rows.length ? `${plural(rows.length, "item")}, in aisle order for ${store?.name ?? "your store"}. Change an amount here and it updates on your phone at its next sync.` : "Nothing to buy right now."}
         >
           {rows.length > 0 && (
+            <div className="flex w-full items-center justify-between gap-3">
             <FilterChips<Group>
               aria-label="Show"
               value={group}
@@ -137,6 +140,19 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
                 { value: "added", label: "Added", count: counts.added },
               ]}
             />
+            {/* The same control as the Pantry page; counts follow the Show choice. */}
+            <Segmented
+              label="Stock"
+              className="w-auto"
+              value={stock}
+              onChange={setStock}
+              options={[
+                { value: "all", label: `All ${inGroup.length}` },
+                { value: "low", label: `Low ${inGroup.filter((r) => stockOf(r.item) === "low").length}` },
+                { value: "out", label: `Out ${inGroup.filter((r) => stockOf(r.item) === "out").length}` },
+              ]}
+            />
+            </div>
           )}
         </PageTitle>
 
@@ -146,8 +162,9 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
+                {/* The table's own wrapper is what scrolls here (the filters and title stay put), so the headers stick at its top. */}
                 {["Item", "To buy", "Why it's on the list", "Estimate", ""].map((h) => (
-                  <TableHead key={h} className={cn("h-10 text-[10px] font-semibold tracking-widest", h === "Estimate" && "text-right")}>{h}</TableHead>
+                  <TableHead key={h} className={cn("sticky top-0 z-10 h-10 bg-background text-[10px] font-semibold tracking-widest shadow-[inset_0_-1px_0_var(--border)]", h === "Estimate" && "text-right")}>{h}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>
@@ -156,7 +173,7 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
                 <React.Fragment key={g.key}>
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={5} className="border-b border-primary pt-5 pb-1.5 pl-3">
-                      <span className="flex items-center gap-2"><CategoryMark category={g.category} size="sm" /><Eyebrow>{g.number !== null ? `Aisle ${g.number} · ` : ""}{g.name} · {g.rows.length}</Eyebrow></span>
+                      <span className="flex items-center gap-2"><CategoryMark category={g.category} size="sm" /><Eyebrow>{g.name} · {plural(g.rows.length, "item")}{g.number !== null ? ` (Aisle ${g.number})` : ""}</Eyebrow></span>
                     </TableCell>
                   </TableRow>
                   {g.rows.map((r) => (
@@ -191,6 +208,9 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
               ))}
             </TableBody>
           </Table>
+        )}
+        {rows.length > 0 && shown.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nothing here is {stock === "out" ? "out of stock" : "low"}.</p>
         )}
       </div>
 
@@ -313,7 +333,7 @@ function AddToList({ open, onClose }: { open: boolean; onClose: () => void }) {
                     <span className="flex flex-col">
                       <span className="text-sm font-semibold">{i.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {[locationLabel(i.location), i.type, i.inStock ? `have ${haveText(i)}` : "none in stock", isStaple(i) ? `keep ${i.target}` : "not a Staple"].join(" · ")}
+                        {[locationLabel(i.location), i.type, inStockText(i), isStaple(i) ? `${i.target} min` : "not a Staple"].join(" · ")}
                       </span>
                     </span>
                     <Eyebrow className="text-foreground">{listed ? "Already on the list" : on ? "Selected" : ""}</Eyebrow>

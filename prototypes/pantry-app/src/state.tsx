@@ -270,7 +270,7 @@ function usePantryState() {
         },
         {
           title: isNew ? `Added ${draft.name} to the pantry` : `Changed ${draft.name}`,
-          detail: isNew ? (draft.target > 0 ? `A Staple · keep ${draft.target}` : "Not a Staple") : cap(changes.join(", ") || "No changes"),
+          detail: isNew ? (draft.target > 0 ? `A Staple · ${draft.target} min` : "Not a Staple") : cap(changes.join(", ") || "No changes"),
           itemIds: [draft.id],
         },
       )
@@ -379,7 +379,7 @@ function usePantryState() {
       if (!i) return
       commit(
         (s) => edit(s, id, (x) => (makeStaple ? { ...x, target: x.inStock + qty } : { ...x, entries: [...(x.entries ?? []), { source: { kind: "hand" }, qty, at: new Date().toISOString() }] })),
-        { title: `Added ${amountOf(i, qty)} to the shopping list`, detail: makeStaple ? `Now a Staple · keep ${i.inStock + qty}` : "Added by you", itemIds: [id] },
+        { title: `Added ${amountOf(i, qty)} to the shopping list`, detail: makeStaple ? `Now a Staple · ${i.inStock + qty} min` : "Added by you", itemIds: [id] },
       )
       toast(`Added ${amountOf(i, qty)} to the list`)
     },

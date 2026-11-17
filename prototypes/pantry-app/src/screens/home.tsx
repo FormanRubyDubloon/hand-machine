@@ -5,12 +5,13 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { FilterChips } from "@/components/ui/filter-chips"
 import {
-  byUseFirst, containsText, haveText, isBulk, locationLabel, namesOf, recipeInfo, unitWord, usesUpText, type Db, type HistoryEntry, type Item, type Items, type Location, type Who,
+  byUseFirst, containsText, haveText, isBulk, locationLabel, namesOf, recipeInfo, usesUpText, type Db, type HistoryEntry, type Item, type Items, type Location, type Who,
 } from "../model"
 import { href, navigate } from "../router"
 import { canUndo, usePantry } from "../state"
 import { Eyebrow, HistoryRow, StockPill, type HistoryLinks } from "../components"
 import { CategoryMark } from "../category-look"
+import { QuickUseActions } from "../quick-use"
 import { ItemPanel } from "./item-panel"
 import { RecipePanel } from "./recipe"
 
@@ -18,11 +19,10 @@ type Group = "often" | Location
 
 /** PAN-09 tile: name, where, a big number, Out or Low, and the actions that fit the type. */
 function QuickUseTile({ item }: { item: Item }) {
-  const { db, actions } = usePantry()
+  const { db } = usePantry()
   const category = db.categories.find((c) => c.id === item.categoryId)
   const bulk = isBulk(item)
   const where = [locationLabel(item.location), bulk && item.inStock ? haveText(item).replace(/^\d+ /, "") : null].filter(Boolean).join(" · ")
-  const canOpen = bulk && (item.open ?? 0) < item.inStock
   return (
     <div className={cn("flex flex-col justify-between gap-4 border border-border p-4", item.inStock === 0 && "bg-muted")}>
       <div className="flex items-start justify-between gap-3">
@@ -44,26 +44,8 @@ function QuickUseTile({ item }: { item: Item }) {
       </div>
       {item.inStock === 0 ? (
         <span className="text-xs text-muted-foreground">None left{item.target > 0 ? " · on the shopping list" : ""}</span>
-      ) : bulk ? (
-        <div className="flex gap-2">
-          <Button size="xs" className="h-9 min-w-0 flex-1 px-2" onClick={() => actions.finishPack(item.id)}>
-            Finished
-          </Button>
-          {canOpen && (
-            <Button size="xs" variant="outline" className="h-9 min-w-0 flex-1 border-primary px-2" onClick={() => actions.openPack(item.id)}>
-              {item.open ? "Open" : "Open one"}
-            </Button>
-          )}
-        </div>
       ) : (
-        <div className="flex gap-2">
-          <Button size="xs" className="h-9 flex-1" onClick={() => actions.useOne(item.id)}>
-            Used 1
-          </Button>
-          <Button size="xs" variant="outline" className="h-9 border-primary px-4" onClick={() => actions.useAll(item.id)} aria-label={`Used all ${unitWord(item, 2) || item.name.toLowerCase()}`}>
-            All
-          </Button>
-        </div>
+        <QuickUseActions item={item} />
       )}
     </div>
   )
