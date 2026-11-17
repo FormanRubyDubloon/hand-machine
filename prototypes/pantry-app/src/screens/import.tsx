@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { categoriesAtoZ, cap, locations, matchesName, normalise, plural, type Item, type Items, type Location } from "../model"
 import { navigate } from "../router"
 import { usePantry } from "../state"
-import { Eyebrow, PageTitle, Segmented } from "../components"
+import { Eyebrow, PageTitle } from "../components"
 import { pluralise } from "./item-panel"
 
 const methods = [
@@ -99,7 +99,7 @@ function parseLine(line: string, items: Items, k: number): Row | null {
 export function ImportScreen() {
   const { items, db, actions } = usePantry()
   const [method, setMethod] = React.useState<(typeof methods)[number]["id"]>("paste")
-  const [text, setText] = React.useState(example)
+  const [text, setText] = React.useState("")
   const [edits, setEdits] = React.useState<Record<string, Partial<Row>>>({})
 
   const parsed = React.useMemo(() => text.split("\n").map((l, k) => parseLine(l, items, k)).filter((r): r is Row => !!r), [text, items])
@@ -166,7 +166,7 @@ export function ImportScreen() {
             <div className="grid grid-cols-[minmax(280px,1fr)_2.4fr] gap-8">
               <div className="flex flex-col gap-2">
                 <Eyebrow>Your list</Eyebrow>
-                <Textarea value={text} onChange={(e) => { setText(e.target.value); setEdits({}) }} className="min-h-56 border border-border p-3 font-mono text-[13px]" aria-label="Your list" />
+                <Textarea value={text} onChange={(e) => { setText(e.target.value); setEdits({}) }} placeholder={example} className="min-h-56 border border-border p-3 font-mono text-[13px]" aria-label="Your list" />
                 <span className="text-xs text-muted-foreground">Add amounts, location ("fridge") or a minimum ("keep 2") if you know them.</span>
               </div>
               <div className="flex min-w-0 flex-col gap-2">
@@ -191,16 +191,12 @@ export function ImportScreen() {
                         <TableCell className="font-semibold">{r.name}</TableCell>
                         <TableCell className="text-muted-foreground">{r.type === "bulk" ? `Bulk${r.packSize ? ` · ${r.packSize >= 1000 ? `${r.packSize / 1000} kg` : `${r.packSize} g`}` : ""}` : "Counted"}</TableCell>
                         <TableCell>{r.existing ? "+" : ""}{r.qty}{r.unit ? ` ${r.qty === 1 ? r.unit : pluralise(r.unit)}` : ""}</TableCell>
-                        <TableCell className="w-[180px]">
+                        <TableCell className="w-[140px]">
                           {r.existing ? <span className="text-muted-foreground">{locations.find((l) => l.value === r.location)?.label}</span> : (
-                            <Segmented
-                              size="sm"
-                              label={`Location for ${r.name}`}
-                              value={r.location}
-                              onChange={(location) => edit(r.key, { location })}
-                              options={locations.map((l) => ({ value: l.value, label: l.label.slice(0, 3) }))}
-                              className="[&>button]:h-7 [&>button]:min-w-0 [&>button]:px-2 [&>button]:text-[10px]"
-                            />
+                            <Select value={r.location} onValueChange={(location) => edit(r.key, { location: location as Location })}>
+                              <SelectTrigger size="sm" className="h-7 w-full" aria-label={`Location for ${r.name}`}><SelectValue placeholder="Choose" /></SelectTrigger>
+                              <SelectContent>{locations.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}</SelectContent>
+                            </Select>
                           )}
                         </TableCell>
                         <TableCell className="w-20">

@@ -200,7 +200,7 @@ function HaveDialog({
             </div>
             {!linked && (
               <Field label="Unit" hint="Optional: tin, jar, bag. Leave blank to count them.">
-                <Input value={unitName_} placeholder="tin" onChange={(e) => setUnit(e.target.value)} />
+                <Input value={unitName_} placeholder="pack" onChange={(e) => setUnit(e.target.value)} />
               </Field>
             )}
           </div>
