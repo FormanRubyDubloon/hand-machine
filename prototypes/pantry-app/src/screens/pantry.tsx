@@ -14,7 +14,7 @@ import {
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
 import { CategoryLabel, CategoryMark } from "../category-look"
-import { EstimateMark, ExpiryAlert, FilterGroup, FilterSidebar, HeadingTip, OrderedPill, PageTitle, SortSelect, Stepper, StockPill, statusHelp } from "../components"
+import { EstimateMark, ExpiryAlert, FilterChecks, FilterGroup, FilterSidebar, HeadingTip, OrderedPill, PageTitle, SortSelect, Stepper, StockPill, statusHelp } from "../components"
 
 /** "To buy": not a Staple, and on the shopping list (from a recipe or added by hand). Outlined, with a basket. */
 function ToBuyPill() {
@@ -37,20 +37,23 @@ function ToBuyPill() {
 import { ItemPanel } from "./item-panel"
 
 type Show = "staples" | "not" | "soon"
-type Stock = "all" | "in" | "low" | "out" | "ordered"
+type Stock = "in" | "low" | "out" | "ordered"
 /**
  * Which status an item has, as the Status column shows it. Ordered comes first: it's on its way, so it isn't Low or Out.
  * To buy (not a Staple, on the list) counts as Out, as you have none to rely on.
  */
 const stockFilterOf = (i: Item) => (i.ordered ? "ordered" : stockOf(i) ?? (!isStaple(i) && needOf(i) > 0 ? "out" : null))
-/** In stock: you have at least one, Low items included. Low, Out and Ordered follow the Status column. */
-const stockTests: Record<Exclude<Stock, "all">, (i: Item) => boolean> = {
-  in: (i) => i.inStock > 0,
+/**
+ * In stock: you have at least one, Low items included. Low, Out and Ordered follow the Status column. Ordered
+ * items count only as Ordered, so unticking Ordered hides them even when you have some.
+ */
+const stockTests: Record<Stock, (i: Item) => boolean> = {
+  in: (i) => i.inStock > 0 && stockFilterOf(i) !== "ordered",
   low: (i) => stockFilterOf(i) === "low",
   out: (i) => stockFilterOf(i) === "out",
   ordered: (i) => stockFilterOf(i) === "ordered",
 }
-type Filters = { location: "all" | Location; show: Show | null; type: "counted" | "bulk" | null; aisle: string | null; stock: Stock }
+type Filters = { location: "all" | Location; show: Show | null; type: "counted" | "bulk" | null; aisle: string | null; stock: Stock[] }
 
 const showTests: Record<Show, (i: Item) => boolean> = {
   staples: isStaple,
@@ -64,7 +67,8 @@ function matches(i: Item, f: Filters, skip?: keyof Filters) {
   if (skip !== "show" && f.show && !showTests[f.show](i)) return false
   if (skip !== "type" && f.type && i.type !== f.type) return false
   if (skip !== "aisle" && f.aisle && i.categoryId !== f.aisle) return false
-  if (skip !== "stock" && f.stock !== "all" && !stockTests[f.stock](i)) return false
+  // Several statuses can be ticked: an item matching any of them shows. None ticked shows everything.
+  if (skip !== "stock" && f.stock.length && !f.stock.some((k) => stockTests[k](i))) return false
   return true
 }
 
@@ -85,7 +89,7 @@ const sorts: Record<Sort, { label: string; summary: string; compare: (a: Item, b
 export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry" }> }) {
   const { items, db, actions } = usePantry()
   const [sort, setSort] = React.useState<Sort>("name")
-  const [f, setF] = React.useState<Filters>({ location: "all", show: null, type: null, aisle: null, stock: "all" })
+  const [f, setF] = React.useState<Filters>({ location: "all", show: null, type: null, aisle: null, stock: [] })
   const all = Object.values(items).filter((i) => !i.oneOff)
   const rows = all.filter((i) => matches(i, f)).sort(sorts[sort].compare)
   const count = (k: keyof Filters, test: (i: Item) => boolean) => all.filter((i) => matches(i, f, k) && test(i)).length
@@ -106,14 +110,13 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
           onChange={(v) => set("location", v ?? "all")}
           options={[{ value: "all" as const, label: "All", count: count("location", () => true) }, ...locations.map((l) => ({ value: l.value, label: l.label, count: count("location", (i) => i.location === l.value) }))]}
         />
-        {/* In stock: have at least one. Low, Out and Ordered match the pills in the Status column. */}
-        <FilterGroup<Stock>
+        {/* In stock: have at least one, not ordered. Low, Out and Ordered match the pills in the Status column. */}
+        <FilterChecks<Stock>
           label="Status"
-          required
           value={f.stock}
-          onChange={(v) => set("stock", v ?? "all")}
+          onChange={(v) => set("stock", v)}
+          allCount={count("stock", () => true)}
           options={[
-            { value: "all", label: "All", count: count("stock", () => true) },
             { value: "in", label: "In stock", count: count("stock", stockTests.in) },
             { value: "low", label: "Low", count: count("stock", stockTests.low) },
             { value: "out", label: "Out", count: count("stock", stockTests.out) },
