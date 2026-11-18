@@ -21,7 +21,7 @@ export function itemLine(i: SharedItem, categories: Category[]) {
   const stock = stockOf(i)
   if (stock) parts.push(stock === "out" ? "OUT" : "LOW")
   const need = needOf(i)
-  if (need > 0) parts.push(`${need} on the shopping list`)
+  if (need > 0) parts.push(`${need} on the shopping list${i.ordered ? ", already ordered" : ""}`)
   // Every unit's date, numbered as update_item's use_by_one counts them, when there's more than one.
   const dates = i.inStock > 0 ? (normalise(i).useBy ?? []) : []
   if (i.noExpiry) {

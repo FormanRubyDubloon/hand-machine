@@ -38,6 +38,8 @@ export type SharedItem = {
   /** Store ids that sell it. Empty means any store with the aisle. */
   where: string[]
   entries?: ListEntry[]
+  /** On the list and already ordered, so not to buy in a shop. Clears once it's no longer needed. */
+  ordered?: boolean
   editedAt?: string
   /** When the item was first added. Read from Supabase (created_at); never written back. */
   addedAt?: string

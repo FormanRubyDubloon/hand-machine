@@ -46,6 +46,7 @@ function toItem(r) {
     noExpiry: r.no_expiry || void 0,
     openCounts: r.open_counts || void 0,
     oneOff: r.one_off || void 0,
+    ordered: r.ordered || void 0,
     review: r.needs_review || void 0,
     uses: r.uses || void 0,
     entries: r.list_entries?.length ? [...r.list_entries].sort((a, b) => a.position - b.position).map(toEntry) : void 0,
@@ -100,6 +101,7 @@ function toRow(i, knownCategories) {
     open_counts: !!i.openCounts,
     opened_at: (i.openedAt ?? []).filter((d) => !!d),
     one_off: !!i.oneOff,
+    ordered: !!i.ordered,
     needs_review: !!i.review,
     uses: i.uses ?? 0,
     edited_at: i.editedAt ?? (/* @__PURE__ */ new Date()).toISOString()
@@ -275,7 +277,7 @@ function normalise(i) {
   while (dates.length < want) dates.push(null);
   const opened = [...i.openedAt ?? []].slice(0, open ?? 0);
   while (opened.length < (open ?? 0)) opened.push(null);
-  return { ...i, open, useBy: dates, openedAt: isBulk(i) ? opened : void 0, review: i.review && i.inStock <= 0 ? true : void 0 };
+  return { ...i, open, useBy: dates, openedAt: isBulk(i) ? opened : void 0, review: i.review && i.inStock <= 0 ? true : void 0, ordered: i.ordered && needOf(i) > 0 ? true : void 0 };
 }
 function withStock(i, n) {
   const next = Math.max(0, n);
@@ -431,7 +433,7 @@ function itemLine(i, categories) {
   const stock = stockOf(i);
   if (stock) parts.push(stock === "out" ? "OUT" : "LOW");
   const need = needOf(i);
-  if (need > 0) parts.push(`${need} on the shopping list`);
+  if (need > 0) parts.push(`${need} on the shopping list${i.ordered ? ", already ordered" : ""}`);
   const dates = i.inStock > 0 ? normalise(i).useBy ?? [] : [];
   if (i.noExpiry) {
     parts.push("doesn't expire");
@@ -814,14 +816,14 @@ ${list.map((i) => itemLine(i, data.categories)).join("\n")}`;
   {
     name: "get_shopping_list",
     title: "Get the shopping list",
-    description: "What's on the shopping list and why: Staples below their minimum, things for recipes the user wants to cook, and things added by hand or by Claude. Give a store to get it in that store's aisle order, with anything the store doesn't sell listed apart. Each line has its cost (price each times how many), and the list starts with an estimated total: it leaves out lines with no price and says how many there are, and it's approximate when any line is unpriced or uses an estimated price.",
+    description: "What's on the shopping list and why: Staples below their minimum, things for recipes the user wants to cook, and things added by hand or by Claude. Lines marked ORDERED are already ordered (online, say), so not to buy in a shop; they stay on the list until they arrive. Give a store to get it in that store's aisle order, with anything the store doesn't sell listed apart. Each line has its cost (price each times how many), and the list starts with an estimated total: it leaves out lines with no price and says how many there are, and it's approximate when any line is unpriced or uses an estimated price.",
     inputSchema: { type: "object", properties: { store: { type: "string", description: "A store's name or id (get_categories_and_stores)." } } },
     annotations: { readOnlyHint: true },
     async run(args, { data }) {
       const rows = listRows(data.items);
       if (!rows.length) return "The shopping list is empty.";
       const cost = (r) => r.item.price ? `${money(r.item.price * r.qty)}${r.item.priceEstimate ? " (estimate)" : ""}` : "no price";
-      const line = (r) => `- ${r.item.oneOff ? r.item.name : amountOf(r.item, r.qty)} [id: ${r.item.id}] \xB7 ${r.reasons.map((x) => reasonText(x, r.item)).join("; ")} \xB7 ${cost(r)}`;
+      const line = (r) => `- ${r.item.oneOff ? r.item.name : amountOf(r.item, r.qty)} [id: ${r.item.id}]${r.item.ordered ? " \xB7 ORDERED" : ""} \xB7 ${r.reasons.map((x) => reasonText(x, r.item)).join("; ")} \xB7 ${cost(r)}`;
       const store = findStore(data, args.store);
       const out = [];
       if (store) {
@@ -1242,7 +1244,7 @@ ${recipeLine(recipe, ctx.data.items)}`;
   {
     name: "update_item",
     title: "Change a pantry item",
-    description: "Changes any property of an item: name, type, minimum, stock, open packs, unit, pack size, category, location, use-by (best before) dates, when packs were opened, other names, brand, price and notes. Set a property to null to clear it. Use-by dates are numbered soonest first, undated last, as search_pantry lists them; change one with use_by_one, or replace them all with use_by. An edit: ask the user first, then call with confirmed: true. To record something used, use record_used instead (no asking needed).",
+    description: "Changes any property of an item: name, type, minimum, stock, open packs, unit, pack size, category, location, use-by (best before) dates, when packs were opened, other names, brand, price, notes, and whether it's been ordered (only for something on the shopping list). Set a property to null to clear it. Use-by dates are numbered soonest first, undated last, as search_pantry lists them; change one with use_by_one, or replace them all with use_by. An edit: ask the user first, then call with confirmed: true. To record something used, use record_used instead (no asking needed).",
     inputSchema: {
       type: "object",
       properties: {
@@ -1276,7 +1278,8 @@ ${recipeLine(recipe, ctx.data.items)}`;
             brand: { type: ["string", "null"] },
             price_pence: { type: ["number", "null"], description: "Price each, in pence. Setting it clears the estimate mark unless price_is_estimate is true." },
             price_is_estimate: { type: "boolean", description: "true when the price is your guess, not one the user gave (from a receipt or the shelf, say)." },
-            notes: { type: ["string", "null"] }
+            notes: { type: ["string", "null"] },
+            ordered: { type: "boolean", description: "true when the user has ordered it (online, say), so it isn't bought in a shop. It stays on the shopping list, marked, and clears by itself once it's no longer needed. Only for something on the list." }
           }
         },
         confirmed
@@ -1396,6 +1399,11 @@ ${recipeLine(recipe, ctx.data.items)}`;
       if (has("notes")) {
         next.notes = str(c.notes);
         said.push(next.notes ? "notes" : "notes cleared");
+      }
+      if (typeof c.ordered === "boolean" && c.ordered !== !!i.ordered) {
+        if (c.ordered && needOf(next) <= 0) throw new ToolError(`${next.name} isn't on the shopping list, so it can't be marked as ordered.`);
+        next.ordered = c.ordered || void 0;
+        said.push(c.ordered ? "marked as ordered" : "no longer marked as ordered");
       }
       if (next.type !== "bulk") {
         next.open = void 0;

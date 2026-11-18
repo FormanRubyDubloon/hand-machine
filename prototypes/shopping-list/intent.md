@@ -1,6 +1,6 @@
 # Intent: pantry, recipes and shopping list app, with Claude access
 
-Author: Isaac Forman · Date: 14 Nov 2026 · Updated: 17 Nov 2026 · Status: draft, awaiting review
+Author: Isaac Forman · Date: 14 Nov 2026 · Updated: 18 Nov 2026 · Status: draft, awaiting review
 
 ## Problem
 
@@ -37,7 +37,7 @@ Each pantry item records:
 
 Any pantry item with a minimum above 0 is a **Staple**. Staples are the things I always keep in stock.
 
-Preferred brand is a note for when I shop online. Ordering online is out of scope. The brand shows in the pantry admin app but not in the shopping list.
+Preferred brand is a note for when I shop online. Placing online orders from the app is out of scope, but I can mark something on the list as ordered (see The shopping list). The brand shows in the pantry admin app but not in the shopping list.
 
 Each recipe records:
 - name
@@ -62,6 +62,7 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - A new item made this way is marked "New" until I've reviewed and saved it, because its category and location are guesses. I can review it in the admin app or in the phone's Pantry section.
 - If I undo the check-off on the phone, the item doesn't go into the pantry.
 - Items that are already in the pantry stay there while they're on the list. If I have none, they show as Out.
+- I can mark an item on the list as Ordered (for example, when I've ordered it online), so I don't also buy it in a shop. It stays on the list, marked Ordered, until it arrives and is no longer needed; then the mark clears by itself. I mark it in the admin app's shopping list or by telling Claude, and the mobile app's shopping list shows it.
 
 **Prices and the estimated total**
 - The shopping list shows an estimated total in the mobile app and the admin app: each item's price times how many to buy, added up. The mobile app has it from its first release.

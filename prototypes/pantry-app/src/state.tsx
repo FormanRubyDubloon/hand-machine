@@ -361,6 +361,15 @@ function usePantryState() {
         { title: (_, n) => `${n.items[id]?.name} on the list: ${needOf(n.items[id]!)} to buy`, itemIds: [id], key: `list:${id}` },
       )
     },
+    /** Ordered (online, say), so not to buy in a shop. It stays on the list until it's no longer needed. */
+    setOrdered(id: string, ordered: boolean) {
+      const i = ref.current.items[id]
+      if (!i || !!i.ordered === ordered || needOf(i) <= 0) return
+      commit((s) => edit(s, id, (x) => ({ ...x, ordered: ordered || undefined })), {
+        title: ordered ? `Marked ${lower(i.name)} as ordered` : `${i.name} no longer marked as ordered`,
+        itemIds: [id],
+      })
+    },
     removeFromList(id: string) {
       const i = ref.current.items[id]
       if (!i) return
