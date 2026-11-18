@@ -5,6 +5,7 @@ import { CheckIcon, EqualApproximatelyIcon, MinusIcon, PlusIcon, TriangleAlertIc
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
@@ -312,6 +313,51 @@ export function FilterGroup<T extends string>({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+/**
+ * A sidebar group where several options can be ticked at once; an item matching any of them shows.
+ * The first row, All, is ticked when nothing else is, and ticking it clears the rest.
+ */
+export function FilterChecks<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  allCount,
+}: {
+  label: string
+  options: FilterOption<T>[]
+  value: T[]
+  onChange: (v: T[]) => void
+  allCount: number
+}) {
+  const row = (key: string, text: React.ReactNode, count: number, on: boolean, toggle: () => void) => (
+    <label
+      key={key}
+      className={cn(
+        "flex h-9 cursor-pointer items-center justify-between gap-3 px-3 text-sm transition-colors hover:bg-muted has-focus-visible:ring-2 has-focus-visible:ring-ring/50",
+        on && "font-semibold",
+      )}
+    >
+      <span className="flex min-w-0 items-center gap-2.5">
+        <Checkbox checked={on} onCheckedChange={toggle} />
+        <span className="truncate">{text}</span>
+      </span>
+      <span className="font-normal text-muted-foreground tabular-nums">{count}</span>
+    </label>
+  )
+  return (
+    <div className="flex flex-col gap-1" role="group" aria-label={label}>
+      <Eyebrow className="px-3 pb-1">{label}</Eyebrow>
+      {row("all", "All", allCount, value.length === 0, () => onChange([]))}
+      {options.map((o) =>
+        row(o.value, <span className="flex items-center gap-2">{o.icon}{o.label}</span>, o.count, value.includes(o.value), () =>
+          onChange(value.includes(o.value) ? value.filter((v) => v !== o.value) : [...value, o.value]),
+        ),
+      )}
     </div>
   )
 }
