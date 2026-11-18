@@ -14,7 +14,7 @@ import {
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
 import { CategoryLabel, CategoryMark } from "../category-look"
-import { EstimateMark, ExpiryAlert, FilterGroup, FilterSidebar, HeadingTip, PageTitle, Segmented, SortSelect, Stepper, StockPill, statusHelp } from "../components"
+import { EstimateMark, ExpiryAlert, FilterGroup, FilterSidebar, HeadingTip, OrderedPill, PageTitle, SortSelect, Stepper, StockPill, statusHelp } from "../components"
 
 /** "To buy": not a Staple, and on the shopping list (from a recipe or added by hand). Outlined, with a basket. */
 function ToBuyPill() {
@@ -37,14 +37,18 @@ function ToBuyPill() {
 import { ItemPanel } from "./item-panel"
 
 type Show = "staples" | "not" | "soon"
-type Stock = "all" | "in" | "low" | "out"
-/** Which stock filter an item falls under. To buy (not a Staple, on the list) counts as Out, as you have none to rely on. */
-const stockFilterOf = (i: Item) => stockOf(i) ?? (!isStaple(i) && needOf(i) > 0 ? "out" : null)
-/** In stock: you have at least one, Low items included. Low and Out follow the Status column. */
+type Stock = "all" | "in" | "low" | "out" | "ordered"
+/**
+ * Which status an item has, as the Status column shows it. Ordered comes first: it's on its way, so it isn't Low or Out.
+ * To buy (not a Staple, on the list) counts as Out, as you have none to rely on.
+ */
+const stockFilterOf = (i: Item) => (i.ordered ? "ordered" : stockOf(i) ?? (!isStaple(i) && needOf(i) > 0 ? "out" : null))
+/** In stock: you have at least one, Low items included. Low, Out and Ordered follow the Status column. */
 const stockTests: Record<Exclude<Stock, "all">, (i: Item) => boolean> = {
   in: (i) => i.inStock > 0,
   low: (i) => stockFilterOf(i) === "low",
   out: (i) => stockFilterOf(i) === "out",
+  ordered: (i) => stockFilterOf(i) === "ordered",
 }
 type Filters = { location: "all" | Location; show: Show | null; type: "counted" | "bulk" | null; aisle: string | null; stock: Stock }
 
@@ -102,6 +106,20 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
           onChange={(v) => set("location", v ?? "all")}
           options={[{ value: "all" as const, label: "All", count: count("location", () => true) }, ...locations.map((l) => ({ value: l.value, label: l.label, count: count("location", (i) => i.location === l.value) }))]}
         />
+        {/* In stock: have at least one. Low, Out and Ordered match the pills in the Status column. */}
+        <FilterGroup<Stock>
+          label="Status"
+          required
+          value={f.stock}
+          onChange={(v) => set("stock", v ?? "all")}
+          options={[
+            { value: "all", label: "All", count: count("stock", () => true) },
+            { value: "in", label: "In stock", count: count("stock", stockTests.in) },
+            { value: "low", label: "Low", count: count("stock", stockTests.low) },
+            { value: "out", label: "Out", count: count("stock", stockTests.out) },
+            { value: "ordered", label: "Ordered", count: count("stock", stockTests.ordered) },
+          ]}
+        />
         <FilterGroup
           label="Show"
           value={f.show}
@@ -132,19 +150,6 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
         >
           <div className="flex items-center gap-3">
             <SortSelect value={sort} onChange={setSort} options={(Object.keys(sorts) as Sort[]).map((k) => ({ value: k, label: sorts[k].label }))} />
-            {/* In stock: have at least one. Low and Out match the LOW and OUT pills in the Status column; works alongside the filters on the left. */}
-            <Segmented
-              label="Stock"
-              className="w-auto"
-              value={f.stock}
-              onChange={(v) => set("stock", v)}
-              options={[
-                { value: "all", label: `All ${count("stock", () => true)}` },
-                { value: "in", label: `In stock ${count("stock", stockTests.in)}` },
-                { value: "low", label: `Low ${count("stock", stockTests.low)}` },
-                { value: "out", label: `Out ${count("stock", stockTests.out)}` },
-              ]}
-            />
             <Button variant="outline" onClick={() => navigate({ name: "import" })}>
               <UploadIcon />
               Import
@@ -195,7 +200,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{i.target}</TableCell>
                   <TableCell>
-                    {isStaple(i) ? <StockPill item={i} /> : needOf(i) > 0 ? <ToBuyPill /> : <span className="text-xs text-muted-foreground">Not a Staple</span>}
+                    {i.ordered ? <OrderedPill /> : isStaple(i) ? <StockPill item={i} /> : needOf(i) > 0 ? <ToBuyPill /> : <span className="text-xs text-muted-foreground">Not a Staple</span>}
                   </TableCell>
                   <TableCell className={cn(d && daysUntil(d) <= 3 && "font-semibold", i.noExpiry && "text-xs text-muted-foreground")}>{i.noExpiry ? "No expiry" : dateText(d)}</TableCell>
                   <TableCell>{i.brand || "Any"}</TableCell>

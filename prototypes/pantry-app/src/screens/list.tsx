@@ -105,13 +105,15 @@ function NothingToBuy() {
 export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> }) {
   const { items, db, actions, phoneSyncedAt, store: defaultStore } = usePantry()
   const [group, setGroup] = React.useState<Group>("all")
-  const [stock, setStock] = React.useState<"all" | "low" | "out">("all")
+  const [stock, setStock] = React.useState<"all" | "low" | "out" | "ordered">("all")
+  // Ordered comes first: it's on its way, so it isn't counted as Low or Out (the things still to buy in a shop).
+  const statusOf = (r: ListRow) => (r.item.ordered ? "ordered" : stockOf(r.item))
   const [storeId, setStoreId] = React.useState(defaultStore?.id)
   const store = db.stores.find((s) => s.id === storeId) ?? defaultStore
 
   const rows = listRows(items)
   const inGroup = rows.filter((r) => group === "all" || r.group === group)
-  const shown = inGroup.filter((r) => stock === "all" || stockOf(r.item) === stock)
+  const shown = inGroup.filter((r) => stock === "all" || statusOf(r) === stock)
   // The total follows the Show and Stock filters, and its heading says which are on.
   const total = listTotal(shown)
   const filterNames = [group !== "all" && groupNames[group], stock !== "all" && cap(stock)].filter(Boolean)
@@ -152,8 +154,9 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
               onChange={setStock}
               options={[
                 { value: "all", label: `All ${inGroup.length}` },
-                { value: "low", label: `Low ${inGroup.filter((r) => stockOf(r.item) === "low").length}` },
-                { value: "out", label: `Out ${inGroup.filter((r) => stockOf(r.item) === "out").length}` },
+                { value: "low", label: `Low ${inGroup.filter((r) => statusOf(r) === "low").length}` },
+                { value: "out", label: `Out ${inGroup.filter((r) => statusOf(r) === "out").length}` },
+                { value: "ordered", label: `Ordered ${inGroup.filter((r) => statusOf(r) === "ordered").length}` },
               ]}
             />
             </div>
@@ -167,8 +170,8 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 {/* The table's own wrapper is what scrolls here (the filters and title stay put), so the headers stick at its top. */}
-                {["Item", "To buy", "Why it's on the list", "Estimate", ""].map((h) => (
-                  <TableHead key={h} className={cn("sticky top-0 z-10 h-10 bg-background text-[10px] font-semibold tracking-widest shadow-[inset_0_-1px_0_var(--border)]", h === "Estimate" && "text-right")}>{h}</TableHead>
+                {["Item", "Ordered", "To buy", "Why it's on the list", "Estimate", ""].map((h) => (
+                  <TableHead key={h} className={cn("sticky top-0 z-10 h-10 bg-background text-[10px] font-semibold tracking-widest shadow-[inset_0_-1px_0_var(--border)]", h === "Estimate" && "text-right", h === "Ordered" && "text-center")}>{h}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>
@@ -176,20 +179,30 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
               {groups.map((g) => (
                 <React.Fragment key={g.key}>
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={5} className="border-b border-primary pt-5 pb-1.5 pl-3">
+                    <TableCell colSpan={6} className="border-b border-primary pt-5 pb-1.5 pl-3">
                       <span className="flex items-center gap-2"><CategoryMark category={g.category} size="sm" /><Eyebrow>{g.name} · {plural(g.rows.length, "item")}{g.number !== null ? ` (Aisle ${g.number})` : ""}</Eyebrow></span>
                     </TableCell>
                   </TableRow>
                   {g.rows.map((r) => (
                     <TableRow key={r.item.id} data-state={route.item === r.item.id ? "selected" : undefined} className={cn("h-14", route.item === r.item.id && "shadow-[inset_2px_0_0_var(--primary)]")}>
                       <TableCell className="pl-3">
-                        {r.item.oneOff ? (
-                          <span className="text-[15px] font-semibold">{r.item.name}</span>
-                        ) : (
-                          <button type="button" className="text-left text-[15px] font-semibold hover:underline" onClick={() => navigate({ name: "list", item: r.item.id })}>
-                            {r.item.name}
-                          </button>
-                        )}
+                        <span className="flex items-center gap-2">
+                          {r.item.oneOff ? (
+                            <span className="text-[15px] font-semibold">{r.item.name}</span>
+                          ) : (
+                            <button type="button" className="text-left text-[15px] font-semibold hover:underline" onClick={() => navigate({ name: "list", item: r.item.id })}>
+                              {r.item.name}
+                            </button>
+                          )}
+                        </span>
+                      </TableCell>
+                      <TableCell className="w-20 text-center [&:has([role=checkbox])]:pr-3">
+                        <Checkbox
+                          className="mx-auto"
+                          checked={!!r.item.ordered}
+                          onCheckedChange={(c) => actions.setOrdered(r.item.id, !!c)}
+                          aria-label={`${r.item.name} ordered`}
+                        />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -214,7 +227,7 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
           </Table>
         )}
         {rows.length > 0 && shown.length === 0 && (
-          <p className="text-sm text-muted-foreground">Nothing here is {stock === "out" ? "out of stock" : "low"}.</p>
+          <p className="text-sm text-muted-foreground">Nothing here is {stock === "out" ? "out of stock" : stock === "ordered" ? "ordered" : "low"}.</p>
         )}
       </div>
 

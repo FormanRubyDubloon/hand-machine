@@ -44,6 +44,7 @@ export type Row = {
   no_expiry?: boolean
   open_counts?: boolean
   one_off: boolean
+  ordered?: boolean
   needs_review?: boolean
   uses: number
   list_entries: ListEntryRow[] | null
@@ -82,6 +83,7 @@ export function toItem(r: Row): SharedItem {
     noExpiry: r.no_expiry || undefined,
     openCounts: r.open_counts || undefined,
     oneOff: r.one_off || undefined,
+    ordered: r.ordered || undefined,
     review: r.needs_review || undefined,
     uses: r.uses || undefined,
     entries: r.list_entries?.length ? [...r.list_entries].sort((a, b) => a.position - b.position).map(toEntry) : undefined,
@@ -170,6 +172,7 @@ export function toRow(i: SharedItem, knownCategories: Set<string>) {
     open_counts: !!i.openCounts,
     opened_at: (i.openedAt ?? []).filter((d): d is string => !!d),
     one_off: !!i.oneOff,
+    ordered: !!i.ordered,
     needs_review: !!i.review,
     uses: i.uses ?? 0,
     edited_at: i.editedAt ?? new Date().toISOString(),

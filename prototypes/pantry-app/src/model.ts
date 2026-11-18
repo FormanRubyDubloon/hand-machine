@@ -140,8 +140,8 @@ export function normalise(i: Item): Item {
   while (dates.length < want) dates.push(null)
   const opened = [...(i.openedAt ?? [])].slice(0, open ?? 0)
   while (opened.length < (open ?? 0)) opened.push(null)
-  // New (made from a recipe, not bought yet) until some arrives.
-  return { ...i, open, useBy: dates, openedAt: isBulk(i) ? opened : undefined, review: i.review && i.inStock <= 0 ? true : undefined }
+  // New (made from a recipe, not bought yet) until some arrives. Ordered until it's off the list.
+  return { ...i, open, useBy: dates, openedAt: isBulk(i) ? opened : undefined, review: i.review && i.inStock <= 0 ? true : undefined, ordered: i.ordered && needOf(i) > 0 ? true : undefined }
 }
 
 /** Sets stock. Using takes the soonest date first; buying adds an undated unit at the end. */

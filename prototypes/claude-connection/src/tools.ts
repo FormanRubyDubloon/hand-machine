@@ -453,14 +453,14 @@ export const tools: Tool[] = [
     name: "get_shopping_list",
     title: "Get the shopping list",
     description:
-      "What's on the shopping list and why: Staples below their minimum, things for recipes the user wants to cook, and things added by hand or by Claude. Give a store to get it in that store's aisle order, with anything the store doesn't sell listed apart. Each line has its cost (price each times how many), and the list starts with an estimated total: it leaves out lines with no price and says how many there are, and it's approximate when any line is unpriced or uses an estimated price.",
+      "What's on the shopping list and why: Staples below their minimum, things for recipes the user wants to cook, and things added by hand or by Claude. Lines marked ORDERED are already ordered (online, say), so not to buy in a shop; they stay on the list until they arrive. Give a store to get it in that store's aisle order, with anything the store doesn't sell listed apart. Each line has its cost (price each times how many), and the list starts with an estimated total: it leaves out lines with no price and says how many there are, and it's approximate when any line is unpriced or uses an estimated price.",
     inputSchema: { type: "object", properties: { store: { type: "string", description: "A store's name or id (get_categories_and_stores)." } } },
     annotations: { readOnlyHint: true },
     async run(args, { data }) {
       const rows = listRows(data.items)
       if (!rows.length) return "The shopping list is empty."
       const cost = (r: (typeof rows)[number]) => (r.item.price ? `${money(r.item.price * r.qty)}${r.item.priceEstimate ? " (estimate)" : ""}` : "no price")
-      const line = (r: (typeof rows)[number]) => `- ${r.item.oneOff ? r.item.name : amountOf(r.item, r.qty)} [id: ${r.item.id}] · ${r.reasons.map((x) => reasonText(x, r.item)).join("; ")} · ${cost(r)}`
+      const line = (r: (typeof rows)[number]) => `- ${r.item.oneOff ? r.item.name : amountOf(r.item, r.qty)} [id: ${r.item.id}]${r.item.ordered ? " · ORDERED" : ""} · ${r.reasons.map((x) => reasonText(x, r.item)).join("; ")} · ${cost(r)}`
       const store = findStore(data, args.store)
       const out: string[] = []
       if (store) {
@@ -897,7 +897,7 @@ export const tools: Tool[] = [
     name: "update_item",
     title: "Change a pantry item",
     description:
-      "Changes any property of an item: name, type, minimum, stock, open packs, unit, pack size, category, location, use-by (best before) dates, when packs were opened, other names, brand, price and notes. Set a property to null to clear it. Use-by dates are numbered soonest first, undated last, as search_pantry lists them; change one with use_by_one, or replace them all with use_by. An edit: ask the user first, then call with confirmed: true. To record something used, use record_used instead (no asking needed).",
+      "Changes any property of an item: name, type, minimum, stock, open packs, unit, pack size, category, location, use-by (best before) dates, when packs were opened, other names, brand, price, notes, and whether it's been ordered (only for something on the shopping list). Set a property to null to clear it. Use-by dates are numbered soonest first, undated last, as search_pantry lists them; change one with use_by_one, or replace them all with use_by. An edit: ask the user first, then call with confirmed: true. To record something used, use record_used instead (no asking needed).",
     inputSchema: {
       type: "object",
       properties: {
@@ -932,6 +932,7 @@ export const tools: Tool[] = [
             price_pence: { type: ["number", "null"], description: "Price each, in pence. Setting it clears the estimate mark unless price_is_estimate is true." },
             price_is_estimate: { type: "boolean", description: "true when the price is your guess, not one the user gave (from a receipt or the shelf, say)." },
             notes: { type: ["string", "null"] },
+            ordered: { type: "boolean", description: "true when the user has ordered it (online, say), so it isn't bought in a shop. It stays on the shopping list, marked, and clears by itself once it's no longer needed. Only for something on the list." },
           },
         },
         confirmed,
@@ -1022,6 +1023,11 @@ export const tools: Tool[] = [
         said.push(c.price_is_estimate ? "price marked as an estimate" : "price no longer an estimate")
       }
       if (has("notes")) { next.notes = str(c.notes); said.push(next.notes ? "notes" : "notes cleared") }
+      if (typeof c.ordered === "boolean" && c.ordered !== !!i.ordered) {
+        if (c.ordered && needOf(next) <= 0) throw new ToolError(`${next.name} isn't on the shopping list, so it can't be marked as ordered.`)
+        next.ordered = c.ordered || undefined
+        said.push(c.ordered ? "marked as ordered" : "no longer marked as ordered")
+      }
       if (next.type !== "bulk") { next.open = undefined; next.packSize = undefined; next.openedAt = undefined }
       if (!said.length) return "Nothing to change."
       await commit(ctx, { items: [next], title: `Changed ${next.name}`, detail: cap(said.join(", ")), itemIds: [i.id] })

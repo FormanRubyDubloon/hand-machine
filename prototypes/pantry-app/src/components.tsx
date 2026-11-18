@@ -90,7 +90,7 @@ export function EstimateMark({ tip, size = "sm", className }: { tip: string; siz
 }
 
 /** What the Status column means, for a tooltip. */
-export const statusHelp = "Out: none in stock. Low: half the minimum or fewer. A Staple under its minimum but above half goes on the shopping list without a status. To buy: not a Staple, and on the shopping list."
+export const statusHelp = "Out: none in stock. Low: half the minimum or fewer. A Staple under its minimum but above half goes on the shopping list without a status. To buy: not a Staple, and on the shopping list. Ordered: on the shopping list and already ordered."
 
 /** Out (solid) or Low (outlined), from the stock. Nothing when it's fine. The tooltip says why. */
 export function StockPill({ item }: { item: Item }) {
@@ -106,6 +106,22 @@ export function StockPill({ item }: { item: Item }) {
           </span>
         </TooltipTrigger>
         <TooltipContent>{tip}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+/** Ordered: on the shopping list and already ordered, so not to buy in a shop. In the Pantry's Status column; the shopping list shows it by its ticked Ordered box. */
+export function OrderedPill() {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-flex outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+            <TagPill className="gap-1"><CheckIcon aria-hidden="true" strokeWidth={2.5} />Ordered</TagPill>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>On your shopping list and already ordered. Clears once it's no longer needed.</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   )
