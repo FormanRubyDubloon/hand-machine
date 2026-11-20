@@ -452,11 +452,12 @@ export const whoLabel: Record<Who, string> = { you: "You", claude: "Claude", pho
 /** Where a History entry points: its title's link, and links to each item when there are several. */
 export type HistoryLinks = { href?: string; items?: { href: string; label: string }[]; more?: number }
 
-export function HistoryRow({ entry, onUndo, compact, links }: { entry: HistoryEntry; onUndo?: () => void; compact?: boolean; links?: HistoryLinks }) {
+export function HistoryRow({ entry, onUndo, onRevert, compact, links }: { entry: HistoryEntry; onUndo?: () => void; onRevert?: () => void; compact?: boolean; links?: HistoryLinks }) {
   const titleClass = cn("leading-snug font-semibold", compact ? "text-[13px]" : "text-sm", entry.undone && "line-through")
   return (
-    <div className={cn("flex items-start gap-3 border-b border-border", compact ? "py-2.5" : "py-3", entry.undone && "opacity-50")}>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+    <div className={cn("flex items-start gap-3 border-b border-border", compact ? "py-2.5" : "py-3")}>
+      {/* An undone change is faded; its Revert button isn't. */}
+      <div className={cn("flex min-w-0 flex-1 flex-col gap-0.5", entry.undone && "opacity-50")}>
         <Eyebrow className="text-foreground">{whoLabel[entry.who]}</Eyebrow>
         {links?.href ? (
           <a href={links.href} className={cn(titleClass, "self-start underline-offset-2 hover:underline")}>{entry.title}</a>
@@ -476,9 +477,15 @@ export function HistoryRow({ entry, onUndo, compact, links }: { entry: HistoryEn
           </span>
         ) : null}
       </div>
-      {/* When it happened, and Undo under it, both against the right edge. */}
+      {/* When it happened, and Undo under it, both against the right edge. Undone today: Revert instead. */}
       <div className="flex shrink-0 flex-col items-end gap-1.5">
-        <span className="text-xs text-muted-foreground">{entry.undone ? "Undone" : whenText(entry.at)}</span>
+        {onRevert ? (
+          <Button variant="outline" size="xs" aria-label={`Revert the undo: ${entry.title}`} title="Put this change back" onClick={onRevert}>
+            Revert
+          </Button>
+        ) : (
+          <span className={cn("text-xs text-muted-foreground", entry.undone && "opacity-50")}>{entry.undone ? "Undone" : whenText(entry.at)}</span>
+        )}
         {onUndo && (
           <Button variant="outline" size="icon-xs" aria-label={`Undo: ${entry.title}`} title="Undo" onClick={onUndo}>
             <Undo2Icon />

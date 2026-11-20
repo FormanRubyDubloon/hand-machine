@@ -313,7 +313,7 @@ export async function syncRecipes(local: Recipe[], base: Recipe[] | undefined, i
 export function historyFingerprint(h: HistoryEntry | undefined): string {
   if (!h) return ""
   return JSON.stringify([
-    iso(h.at), h.who, h.title, h.detail ?? "", h.itemIds ?? [], h.recipeId ?? "", !!h.undone, h.key ?? "", sortKeys(h.undo ?? null),
+    iso(h.at), h.who, h.title, h.detail ?? "", h.itemIds ?? [], h.recipeId ?? "", !!h.undone, h.key ?? "", sortKeys(h.undo ?? null), sortKeys(h.redo ?? null),
   ])
 }
 
@@ -324,12 +324,13 @@ const toHistory = (r: HistoryRow): HistoryEntry => ({
   recipeId: r.recipe_id ?? undefined,
   undo: (r.undo as HistoryEntry["undo"]) ?? undefined,
   undone: r.undone || undefined,
+  redo: (r.redo as HistoryEntry["redo"]) ?? undefined,
   key: r.key ?? undefined,
 })
 
 const toHistoryRow = (h: HistoryEntry): HistoryRow => ({
   id: h.id, at: h.at, who: h.who, title: h.title, detail: h.detail ?? null, item_ids: h.itemIds ?? [],
-  recipe_id: h.recipeId ?? null, undo: h.undo ?? null, undone: !!h.undone, key: h.key ?? null,
+  recipe_id: h.recipeId ?? null, undo: h.undo ?? null, undone: !!h.undone, redo: h.redo ?? null, key: h.key ?? null,
 })
 
 /** The History entries that differ from the last sync. `base` maps entry id to its fingerprint then. */
@@ -342,8 +343,8 @@ export type HistorySync = { history: HistoryEntry[]; base: Record<string, string
 
 /**
  * Merges History by id. New entries go up, entries only Supabase has come down. An entry that
- * changed here (a merged stepper tap, or undone) is sent; one changed only in Supabase is taken.
- * Undone wins either way, so an undo is never lost. Entries removed in Supabase since the last
+ * changed here (a merged stepper tap, undone or reverted) is sent; one changed only in Supabase is
+ * taken. If both sides changed it, undone wins, so an undo is never lost. Entries removed in Supabase since the last
  * sync are dropped here. Only the newest 500 come back.
  */
 export async function syncHistory(local: HistoryEntry[], base: Record<string, string> | undefined): Promise<HistorySync> {
@@ -360,8 +361,11 @@ export async function syncHistory(local: HistoryEntry[], base: Record<string, st
       else if (base && base[id] === historyFingerprint(l)) {
         merged[id] = r
         pulled++
+      } else if (base && base[id] === historyFingerprint(r)) {
+        merged[id] = l
+        push.push(l)
       } else {
-        merged[id] = { ...l, undone: l.undone || r.undone || undefined }
+        merged[id] = { ...l, undone: l.undone || r.undone || undefined, redo: l.redo ?? r.redo }
         push.push(merged[id])
       }
     } else if (l) {

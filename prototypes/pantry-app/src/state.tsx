@@ -45,6 +45,38 @@ function seedDb(items: Items): Db {
 
 const normaliseAll = (items: Items) => Object.fromEntries(Object.entries(items).map(([id, i]) => [id, normalise(i)]))
 
+// ---------- undo and revert ----------
+
+/** The items and recipes a snapshot names, as they are now (null for ones that don't exist), plus the
+ *  categories and stores when it has them. Saved before an undo so Revert can reverse it. */
+function snapshotOf(s: S, snap: Snapshot): Snapshot {
+  const out: Snapshot = {}
+  if (snap.items) out.items = Object.fromEntries(Object.keys(snap.items).map((id) => [id, s.items[id] ?? null]))
+  if (snap.recipes) out.recipes = Object.fromEntries(Object.keys(snap.recipes).map((id) => [id, s.db.recipes.find((r) => r.id === id) ?? null]))
+  if (snap.categories) {
+    out.categories = s.db.categories
+    out.stores = s.db.stores
+  }
+  return out
+}
+
+/** Puts a snapshot's items and recipes back: null removes one, anything else replaces or restores it. */
+function putBack(s: S, snap: Snapshot): { items: Items; recipes: Recipe[] } {
+  const items = { ...s.items }
+  for (const [id, before] of Object.entries(snap.items ?? {})) {
+    if (before) items[id] = before
+    else delete items[id]
+  }
+  let recipes = [...s.db.recipes]
+  for (const [id, before] of Object.entries(snap.recipes ?? {})) {
+    const index = recipes.findIndex((r) => r.id === id)
+    if (!before) recipes = recipes.filter((r) => r.id !== id)
+    else if (index >= 0) recipes[index] = before
+    else recipes.push(before)
+  }
+  return { items, recipes }
+}
+
 // ---------- phone syncs ----------
 
 /** A History entry for what the phone changed, or null if nothing did. */
@@ -826,18 +858,8 @@ function usePantryState() {
       setState((s) => {
         const entry = s.db.history.find((h) => h.id === entryId)
         if (!entry?.undo || entry.undone) return s
-        const items = { ...s.items }
-        for (const [id, before] of Object.entries(entry.undo.items ?? {})) {
-          if (before) items[id] = before
-          else delete items[id]
-        }
-        let recipes = [...s.db.recipes]
-        for (const [id, before] of Object.entries(entry.undo.recipes ?? {})) {
-          const index = recipes.findIndex((r) => r.id === id)
-          if (!before) recipes = recipes.filter((r) => r.id !== id)
-          else if (index >= 0) recipes[index] = before
-          else recipes.push(before)
-        }
+        const redo = snapshotOf(s, entry.undo)
+        const { items, recipes } = putBack(s, entry.undo)
         // A removed category comes back in its old place, with its old aisle numbers. Categories
         // added or renamed since stay as they are now.
         let { categories, stores } = s.db
@@ -851,10 +873,34 @@ function usePantryState() {
             return { ...x, aisles: { ...x.aisles, ...back } }
           })
         }
-        const history = s.db.history.map((h) => (h.id === entryId ? { ...h, undone: true } : h))
+        const history = s.db.history.map((h) => (h.id === entryId ? { ...h, undone: true, redo } : h))
         return { items, db: { ...s.db, recipes, categories, stores, history } }
       })
       toast("Undone")
+    },
+
+    /** Reverses an undo: puts back what the undo overwrote, and the entry counts again. */
+    revert(entryId: string) {
+      setState((s) => {
+        const entry = s.db.history.find((h) => h.id === entryId)
+        if (!entry?.redo || !entry.undone) return s
+        const { items, recipes } = putBack(s, entry.redo)
+        // Categories the undo brought back go again, with the aisle numbers it brought back.
+        let { categories, stores } = s.db
+        if (entry.redo.categories && entry.undo?.categories) {
+          const kept = new Set(entry.redo.categories.map((c) => c.id))
+          const restored = new Set(entry.undo.categories.map((c) => c.id).filter((id) => !kept.has(id)))
+          categories = categories.filter((c) => !restored.has(c.id))
+          const had = byId(entry.redo.stores ?? [])
+          stores = stores.map((x) => ({
+            ...x,
+            aisles: Object.fromEntries(Object.entries(x.aisles).filter(([k]) => !restored.has(k) || k in (had[x.id]?.aisles ?? {}))),
+          }))
+        }
+        const history = s.db.history.map((h) => (h.id === entryId ? { ...h, undone: undefined, redo: undefined } : h))
+        return { items, db: { ...s.db, recipes, categories, stores, history } }
+      })
+      toast("Reverted")
     },
   }
 
@@ -884,3 +930,6 @@ export function PantryProvider({ children }: { children: React.ReactNode }) {
 
 /** Undo is offered for today's changes that carry a snapshot. */
 export const canUndo = (h: HistoryEntry) => !!h.undo && !h.undone && isToday(h.at)
+
+/** Revert is offered for today's undone changes whose undo saved what it overwrote. */
+export const canRevert = (h: HistoryEntry) => !!h.redo && !!h.undone && isToday(h.at)
