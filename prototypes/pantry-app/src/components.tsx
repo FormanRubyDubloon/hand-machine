@@ -457,10 +457,7 @@ export function HistoryRow({ entry, onUndo, compact, links }: { entry: HistoryEn
   return (
     <div className={cn("flex items-start gap-3 border-b border-border", compact ? "py-2.5" : "py-3", entry.undone && "opacity-50")}>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex items-baseline justify-between gap-2">
-          <Eyebrow className="text-foreground">{whoLabel[entry.who]}</Eyebrow>
-          <span className="shrink-0 text-xs text-muted-foreground">{entry.undone ? "Undone" : whenText(entry.at)}</span>
-        </div>
+        <Eyebrow className="text-foreground">{whoLabel[entry.who]}</Eyebrow>
         {links?.href ? (
           <a href={links.href} className={cn(titleClass, "self-start underline-offset-2 hover:underline")}>{entry.title}</a>
         ) : (
@@ -479,11 +476,15 @@ export function HistoryRow({ entry, onUndo, compact, links }: { entry: HistoryEn
           </span>
         ) : null}
       </div>
-      {onUndo && (
-        <Button variant="outline" size="icon-xs" className="mt-4 shrink-0" aria-label={`Undo: ${entry.title}`} title="Undo" onClick={onUndo}>
-          <Undo2Icon />
-        </Button>
-      )}
+      {/* When it happened, and Undo under it, both against the right edge. */}
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <span className="text-xs text-muted-foreground">{entry.undone ? "Undone" : whenText(entry.at)}</span>
+        {onUndo && (
+          <Button variant="outline" size="icon-xs" aria-label={`Undo: ${entry.title}`} title="Undo" onClick={onUndo}>
+            <Undo2Icon />
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

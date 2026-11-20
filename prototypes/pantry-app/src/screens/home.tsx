@@ -256,6 +256,14 @@ export function Home({ item, recipe }: { item?: string; recipe?: string }) {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
 
+  // Home is for recording what you used, so the field is ready to type into. Not when Home opens with a
+  // side panel: the panel takes the focus.
+  React.useEffect(() => {
+    if (!item && !recipe) inputRef.current?.focus({ preventScroll: true })
+    // Only on arriving at Home.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const all = Object.values(items).filter((i) => !i.oneOff)
   const often = all.filter((i) => i.inStock > 0).sort((a, b) => (b.uses ?? 0) - (a.uses ?? 0)).slice(0, 12)
   const byLocation = (l: Location) => all.filter((i) => i.location === l && i.inStock > 0).sort((a, b) => a.name.localeCompare(b.name))
@@ -267,7 +275,7 @@ export function Home({ item, recipe }: { item?: string; recipe?: string }) {
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-8 py-8">
-        <label className="flex h-16 items-center gap-4 border border-primary px-5 focus-within:ring-1 focus-within:ring-inset focus-within:ring-primary">
+        <label className="flex shrink-0 items-center gap-4 border border-primary px-5 py-5 focus-within:ring-1 focus-within:ring-inset focus-within:ring-primary">
           <SearchIcon className="size-5 shrink-0" aria-hidden="true" />
           <input
             ref={inputRef}
