@@ -57,8 +57,14 @@ export function SignIn() {
     <div className="grid min-h-dvh grid-cols-[1.1fr_1fr] bg-background">
       <div className="flex flex-col justify-between bg-primary p-12 text-primary-foreground">
         <span className="text-base font-semibold tracking-[0.12em] uppercase">Pantry</span>
-        <div className="flex max-w-lg flex-col gap-4">
-          <h1 className="text-[40px] leading-[1.05] font-semibold tracking-[0.02em] uppercase">What you have, what to cook, what to buy</h1>
+        <div className="flex max-w-xl flex-col gap-4">
+          {/* One phrase per line, so the breaks follow the sense. 56px on a wide window, smaller on a narrow
+              one, so the longest phrase ("What you have,") always fits the panel. */}
+          <h1 className="font-serif text-[clamp(36px,4.2vw,56px)] leading-none font-bold tracking-[0.02em] uppercase">
+            <span className="block whitespace-nowrap">What you have,</span>
+            <span className="block whitespace-nowrap">what to cook,</span>
+            <span className="block whitespace-nowrap">what to buy</span>
+          </h1>
           <p className="text-primary-foreground/70">
             Know what's in the cupboard, cook from what you have, and shop for what's missing. On your computer, your phone and in Claude.
           </p>
