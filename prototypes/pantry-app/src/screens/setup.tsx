@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { markSetupDone } from "../../../shared/src/auth"
-import type { Item } from "../model"
+import { todayIso, type Item } from "../model"
 import { navigate } from "../router"
 import { usePantry } from "../state"
 import { Eyebrow } from "../components"
@@ -22,7 +22,8 @@ const shopChoices: { id: string; name: string; kind: string }[] = [
   { id: "fishmonger", name: "Fishmonger", kind: "Fishmonger" },
 ]
 
-type Staple = { name: string; categoryId: string; location: NonNullable<Item["location"]>; type?: Item["type"]; unit?: [string, string]; noExpiry?: boolean }
+/** dueToday: its use-by is the day the account is set up, so Home's Use today (and the tour's step for it) has something to show. */
+type Staple = { name: string; categoryId: string; location: NonNullable<Item["location"]>; type?: Item["type"]; unit?: [string, string]; noExpiry?: boolean; dueToday?: boolean }
 
 /** What most kitchens keep. Each starts at 1 in stock with a minimum of 1, so it's a Staple. */
 const staples: Staple[] = [
@@ -31,7 +32,7 @@ const staples: Staple[] = [
   { name: "Lemons", categoryId: "fruit-and-veg", location: "fridge" },
   { name: "Eggs", categoryId: "dairy-and-chilled", location: "fridge" },
   { name: "Butter", categoryId: "dairy-and-chilled", location: "fridge", unit: ["pack", "packs"] },
-  { name: "Milk", categoryId: "dairy-and-chilled", location: "fridge", unit: ["bottle", "bottles"] },
+  { name: "Milk", categoryId: "dairy-and-chilled", location: "fridge", unit: ["bottle", "bottles"], dueToday: true },
   { name: "Bread", categoryId: "bread-and-crackers", location: "cupboard", unit: ["loaf", "loaves"] },
   { name: "Rice", categoryId: "grains-and-pulses", location: "cupboard", type: "bulk", unit: ["bag", "bags"] },
   { name: "Pasta", categoryId: "grains-and-pulses", location: "cupboard", type: "bulk", unit: ["bag", "bags"] },
@@ -53,7 +54,7 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(
 function stapleItem(s: Staple): Item {
   return {
     id: slug(s.name), name: s.name, type: s.type ?? "counted", target: 1, inStock: 1, categoryId: s.categoryId, where: [],
-    location: s.location, ...(s.unit && { unit: s.unit }), ...(s.noExpiry ? { noExpiry: true, useBy: [] } : { useBy: [null] }),
+    location: s.location, ...(s.unit && { unit: s.unit }), ...(s.noExpiry ? { noExpiry: true, useBy: [] } : { useBy: [s.dueToday ? todayIso() : null] }),
   } as Item
 }
 
@@ -130,7 +131,7 @@ export function Setup({ onDone }: { onDone: () => void }) {
               </div>
               <div role="radiogroup" aria-label="How to start" className="flex flex-col gap-2">
                 {([
-                  ["staples", "Add common staples", `${staples.length} things most kitchens keep, like eggs, onions, rice and olive oil. Each starts at 1 in stock with a minimum of 1. Remove or recount them in the Pantry.`],
+                  ["staples", "Add common staples", `${staples.length} things most kitchens keep, like eggs, onions, rice and olive oil. Each starts at 1 in stock with a minimum of 1, and the milk is due today, so you can see how use-by dates work. Remove or recount them in the Pantry.`],
                   ["import", "Import a list", "Paste a list or upload a spreadsheet of what you have."],
                   ["empty", "Start empty", "Add things as you go."],
                 ] as [Start, string, string][]).map(([value, title, sub]) => (
