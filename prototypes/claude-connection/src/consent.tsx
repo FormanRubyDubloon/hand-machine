@@ -36,7 +36,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh justify-center bg-background px-4 py-10 text-foreground sm:items-center">
       <div className="flex w-full max-w-md flex-col gap-8">
-        <span className="text-base font-semibold tracking-[0.12em] uppercase">Pantry</span>
+        <span className="text-base font-semibold tracking-[0.12em] uppercase">Collca</span>
         {children}
       </div>
     </div>

@@ -57,7 +57,7 @@ export function SignIn() {
   return (
     <div className="grid min-h-dvh grid-cols-[1.1fr_1fr] bg-background">
       <div className="flex flex-col justify-between bg-primary p-12 text-primary-foreground">
-        <span className="text-base font-semibold tracking-[0.12em] uppercase">Pantry</span>
+        <span className="text-base font-semibold tracking-[0.12em] uppercase">Collca</span>
         {/* The emblem says it visually; the heading and line stay for screen readers. */}
         <div className="flex flex-1 items-center justify-center py-8">
           <h1 className="sr-only">What you have, what to cook, what to buy</h1>

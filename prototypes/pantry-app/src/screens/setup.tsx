@@ -88,7 +88,7 @@ export function Setup({ onDone }: { onDone: () => void }) {
   return (
     <div className="grid min-h-dvh grid-cols-[1.1fr_1fr] bg-background">
       <div className="flex flex-col justify-between bg-primary p-12 text-primary-foreground">
-        <span className="text-base font-semibold tracking-[0.12em] uppercase">Pantry</span>
+        <span className="text-base font-semibold tracking-[0.12em] uppercase">Collca</span>
         <div className="flex max-w-xl flex-col gap-4">
           <h1 className="font-serif text-[clamp(36px,4.2vw,56px)] leading-none font-bold tracking-[0.02em] text-balance uppercase">Two things before you start</h1>
           <p className="text-primary-foreground/70">Which shops you use sets the order of your shopping list. Then choose how to fill the pantry. You can change both later.</p>

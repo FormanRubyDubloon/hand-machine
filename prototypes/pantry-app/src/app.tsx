@@ -51,7 +51,7 @@ function Header({ route }: { route: Route }) {
     <header className="grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-10 border-b border-border px-8">
       <div className="flex items-center gap-10 self-stretch">
         <a href="#/" className="text-base font-semibold tracking-[0.12em] uppercase">
-          Pantry
+          Collca
         </a>
         <nav aria-label="Main" className="flex flex-1 gap-7 self-stretch">
           {nav.map((n) => {

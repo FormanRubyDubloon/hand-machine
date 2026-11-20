@@ -35,7 +35,7 @@ export function SignIn() {
 
   return (
     <div className="flex h-dvh flex-col bg-background px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.75rem,env(safe-area-inset-bottom))]">
-      <span className="text-xs font-semibold tracking-[0.2em] uppercase">Pantry</span>
+      <span className="text-xs font-semibold tracking-[0.2em] uppercase">Collca</span>
       <AnimatePresence mode="wait" initial={false}>
         {sentTo ? (
           <motion.div key="sent" className="flex flex-1 flex-col" {...enter}>

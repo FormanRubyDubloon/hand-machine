@@ -1,4 +1,4 @@
-// The splash page's emblem: an old-fashioned pantry label, one colour, drawn in SVG. "Pantry" arches over a
+// The splash page's emblem: an old-fashioned pantry label, one colour, drawn in SVG. "Collca" arches over a
 // window with a jar between two sprigs on a dotted mound; the three phrases sit below like label copy.
 // Everything is currentColor, except the dots and the jar's label, which are cut out in the panel colour
 // (--primary), so it follows the theme. Original drawing; the reference was only for the genre.
@@ -67,9 +67,9 @@ export function SplashEmblem({ className }: { className?: string }) {
         <path id="emblem-smile-text" d="M118 452 Q 200 492 282 452" />
       </defs>
 
-      {/* "Pantry", arched over the window. */}
+      {/* "Collca", the app's name, arched over the window. */}
       <text className="font-serif" fontSize={80} fontWeight={700} letterSpacing={2} fill="currentColor">
-        <textPath href="#emblem-arch-text" startOffset="50%" textAnchor="middle">PANTRY</textPath>
+        <textPath href="#emblem-arch-text" startOffset="50%" textAnchor="middle">COLLCA</textPath>
       </text>
 
       {/* The window. */}
