@@ -40,7 +40,47 @@ npm run typecheck
 npm test
 ```
 
-Everything the app uses ships with Expo Go (SDK 58), so you don't need your own build to try it. TestFlight needs an EAS build (`npx eas-cli@latest build --platform ios`) and an Apple Developer account. The bundle id (and Android package) is `com.isaacforman.collca`, set in `app.json`. It can't change once the app is uploaded to App Store Connect.
+Everything the app uses ships with Expo Go (SDK 58), so you don't need your own build to try it. The bundle id (and Android package) is `com.isaacforman.collca`, set in `app.json`. It can't change once the app is uploaded to App Store Connect.
+
+## Building for TestFlight
+
+Builds run on Expo's servers (EAS), set up in `eas.json`. You need an Expo account and a paid Apple Developer account. Run these from this folder.
+
+**Once, before the first build.** Sign in, and link this folder to a new EAS project (it adds the project id to `app.json`; commit that):
+
+```bash
+npx eas-cli@latest login
+```
+
+```bash
+npx eas-cli@latest init
+```
+
+`.env.local` isn't uploaded (git ignores it), so the build needs the Supabase address and publishable key as EAS environment variables, for the `production` and `preview` environments. Use the same values as `.env.local`, and never the service-role key:
+
+```bash
+npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_URL --value https://bgwlqmpyjfqsvoqgpdtn.supabase.co --environment production --environment preview --visibility plaintext
+```
+
+```bash
+npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_ANON_KEY --environment production --environment preview --visibility sensitive
+```
+
+(The second one asks for the key.)
+
+**Each build.** Build, then send it to App Store Connect, where it shows in TestFlight once Apple has processed it:
+
+```bash
+npx eas-cli@latest build --platform ios --profile production
+```
+
+```bash
+npx eas-cli@latest submit --platform ios --latest
+```
+
+The first build asks to sign in to Apple and offers to create the App ID, certificate and provisioning profile; let it. The first submit creates the app in App Store Connect. EAS keeps the build number and adds one to it on every production build (`appVersionSource: remote`, `autoIncrement`); change `version` in `app.json` for a new release.
+
+The `preview` profile builds for the iOS Simulator instead, to try a real build without TestFlight.
 
 This folder uses **npm**, not pnpm, and has its own `package-lock.json`. Expo works best with npm, and keeping it apart means the web app's build and Netlify aren't affected.
 
