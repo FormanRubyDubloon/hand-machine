@@ -145,8 +145,14 @@ export function rowsOf(state: Pick<PhoneState, "items" | "shop">): Row[] {
 export const sortRows = (rows: Row[]) =>
   [...rows].sort((a, b) => Number(a.done) - Number(b.done) || Number(a.ordered) - Number(b.ordered) || a.item.name.localeCompare(b.item.name))
 
-/** Rows still to get (ordered ones don't count: they're coming). */
-export const leftOf = (rows: Row[]) => rows.filter((r) => !r.done && !r.ordered).length
+/**
+ * Things still to pick up: the numbers in the rows' boxes added together, so the count drops with every tap,
+ * not only when a row is finished. Ordered ones don't count: they're coming.
+ */
+export const leftOf = (rows: Row[]) => rows.reduce((n, r) => n + (r.ordered ? 0 : r.left), 0)
+
+/** Everything to pick up in these rows, got or not (ordered ones aside). */
+export const totalOf = (rows: Row[]) => rows.reduce((n, r) => n + (r.ordered ? 0 : r.need), 0)
 
 export type AisleView = Aisle & { rows: Row[]; left: number; total: number }
 
@@ -158,7 +164,7 @@ export function shopAisles(state: Pick<PhoneState, "items" | "shop" | "stores" |
     .map((a) => {
       const mine = sortRows(rows.filter((r) => aisleKeyOf(r.item, store, state.categories) === a.key))
       const used = a.categories.filter((c) => mine.some((r) => r.item.categoryId === c.id || (c.id === "" && !state.categories.some((k) => k.id === r.item.categoryId))))
-      return { ...a, categories: used, rows: mine, left: leftOf(mine), total: mine.length }
+      return { ...a, categories: used, rows: mine, left: leftOf(mine), total: totalOf(mine) }
     })
     .filter((a) => a.rows.length > 0)
 }

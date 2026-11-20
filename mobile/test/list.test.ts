@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { demoState } from "../src/data/demo"
 import { clearShop, removeFromList, restoreTicks, tickAll, tickOne, untick, addNew, setToGet } from "../src/logic/actions"
-import { aislesOf, refreshShop, rowsOf, shopAisles, tickedText, type Row } from "../src/logic/list"
+import { aislesOf, leftOf, refreshShop, rowsOf, shopAisles, tickedText, type Row } from "../src/logic/list"
 import type { PhoneState } from "../src/data/state"
 
 const start = (): PhoneState => {
@@ -110,5 +110,17 @@ describe("the toast after a tick", () => {
   it("says got all on the last one", () => {
     expect(tickedText(row({}, 6, 5), 6)).toBe("Got all 6 eggs.")
     expect(tickedText(row({}, 1), 1)).toBe("Got eggs.")
+  })
+})
+
+describe("the aisle counts", () => {
+  it("drop with every tap, not only when a row is done", () => {
+    const s = start()
+    const aisle = (st: PhoneState) => shopAisles(st).find((a) => a.rows.some((r) => r.id === "sardines"))!
+    const before = aisle(s)
+    const after = aisle(tickOne(s, "sardines"))
+    expect(after.left).toBe(before.left - 1)
+    expect(after.total).toBe(before.total)
+    expect(leftOf(rowsOf(tickOne(s, "sardines")))).toBe(leftOf(rowsOf(s)) - 1)
   })
 })
