@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Toaster } from "@/components/ui/sonner"
 import { isToday, timeText, shortDate } from "./model"
-import { useAuthSession } from "../../shared/src/auth"
+import { markSetupDone, setupDone, useAuthSession } from "../../shared/src/auth"
+import { hasRemotePantry } from "../../shared/src/pantry-remote"
 import { navigate, useRoute, type Route } from "./router"
 import { PantryProvider, usePantry } from "./state"
 import { Search } from "./search"
@@ -18,6 +19,7 @@ import { RecipesScreen } from "./screens/recipes"
 import { Settings } from "./screens/settings"
 import { isDark, subscribeTheme } from "./theme"
 import { SignIn } from "./screens/signin"
+import { Setup } from "./screens/setup"
 
 const nav: { label: string; route: Route; match: Route["name"][] }[] = [
   { label: "Home", route: { name: "home" }, match: ["home"] },
@@ -118,14 +120,32 @@ function Screen({ route }: { route: Route }) {
 function Shell() {
   const { db, actions } = usePantry()
   const { signedIn, session } = useAuthSession()
+  // A new account goes through Setup first. One that already has a pantry (made before Setup existed)
+  // is marked done instead of being asked. Without a live session there's nothing to ask, so carry on.
+  const [setup, setSetup] = React.useState<"checking" | "show" | "done">("checking")
+  const userId = session?.user.id
+  React.useEffect(() => {
+    if (!session) return
+    if (setupDone(session)) return setSetup("done")
+    let live = true
+    void hasRemotePantry().then((has) => {
+      if (!live) return
+      if (has) void markSetupDone()
+      setSetup(has ? "done" : "show")
+    })
+    return () => { live = false }
+    // Only when the account changes, not on every token refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
+  const ready = !session || setup === "done"
   // Sync once on opening, so changes made elsewhere (Claude, the phone) show without pressing Sync.
-  // It waits for a live session: a stored token alone can't reach Supabase.
+  // It waits for a live session (a stored token alone can't reach Supabase) and for Setup.
   const opened = React.useRef(false)
   React.useEffect(() => {
-    if (!session || opened.current) return
+    if (!session || !ready || opened.current) return
     opened.current = true
     void actions.syncNow({ quiet: true })
-  }, [session, actions])
+  }, [session, ready, actions])
   const route = useRoute()
   const [conflicts, setConflicts] = React.useState(false)
   // PAN-19 opens by itself when a sync brings conflicts in.
@@ -138,6 +158,8 @@ function Shell() {
 
   if (signedIn === undefined) return null
   if (!signedIn) return <SignIn />
+  if (session && setup === "checking") return null
+  if (session && setup === "show") return <Setup onDone={() => setSetup("done")} />
   return (
     <div className="flex h-dvh min-w-[1180px] flex-col bg-background">
       <Header route={route} />

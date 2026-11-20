@@ -11,3 +11,6 @@ storybook-static
 
 # Netlify link state
 .netlify
+
+# Database backups (live data, never commit)
+backups/
