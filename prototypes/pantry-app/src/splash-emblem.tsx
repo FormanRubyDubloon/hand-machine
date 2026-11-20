@@ -133,6 +133,9 @@ export function SplashEmblem({ className }: { className?: string }) {
  * thing Collca does. A jar (what you have), a pot (what to cook) and a basket (what to buy). Drawn in
  * currentColor on the panel colour, like the splash.
  */
+/** How far the outer arches move out from their first spacing, to give the rosettes room either side. */
+const SPREAD = 22
+
 export function IntroIllustration({ className }: { className?: string }) {
   const cut = "var(--primary)"
   const arch = (cx: number) => `M${cx - 50} 182 V 112 A 50 50 0 0 1 ${cx + 50} 112 V 182`
@@ -140,19 +143,17 @@ export function IntroIllustration({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 480 224" className={className} aria-hidden="true" focusable="false">
       {/* The shelf. */}
-      <line x1={36} y1={182} x2={444} y2={182} stroke="currentColor" strokeWidth={3} strokeLinecap="round" />
-      <path d="M70 182 V 194 H 84" fill="none" stroke="currentColor" strokeWidth={2.5} />
-      <path d="M410 182 V 194 H 396" fill="none" stroke="currentColor" strokeWidth={2.5} />
+      <line x1={22} y1={182} x2={458} y2={182} stroke="currentColor" strokeWidth={3} strokeLinecap="round" />
 
-      {[110, 240, 370].map((cx) => (
+      {[110 - SPREAD, 240, 370 + SPREAD].map((cx) => (
         <path key={cx} d={arch(cx)} fill="none" stroke="currentColor" strokeWidth={2.5} />
       ))}
-      <Rosette x={175} y={128} />
-      <Rosette x={305} y={128} />
-      <Sparkle x={110} y={86} r={6} />
-      <Sparkle x={370} y={86} r={6} />
+      <Rosette x={175 - SPREAD / 2} y={128} />
+      <Rosette x={305 + SPREAD / 2} y={128} />
 
       {/* What you have: a jar. */}
+      <g transform={`translate(${-SPREAD} 0)`}>
+      <Sparkle x={110} y={86} r={6} />
       <g stroke="currentColor" strokeWidth={2.2} strokeLinejoin="round">
         <rect x={94} y={112} width={32} height={9} rx={1.5} fill="currentColor" />
         <path d="M97 121 V 126 Q 88 128 88 137 V 172 Q 88 178 94 178 H 126 Q 132 178 132 172 V 137 Q 132 128 123 126 V 121" fill={cut} />
@@ -161,6 +162,7 @@ export function IntroIllustration({ className }: { className?: string }) {
       {Array.from({ length: 3 }, (_, r) => Array.from({ length: 4 }, (_, c) => (
         <circle key={`${r}-${c}`} cx={96 + c * 9 + (r % 2) * 4} cy={160 + r * 6} r={1.9} fill="currentColor" />
       )))}
+      </g>
 
       {/* What to cook: a pot with its lid, steaming. */}
       {potSteam.map((x) => (
@@ -174,6 +176,8 @@ export function IntroIllustration({ className }: { className?: string }) {
       <line x1={214} y1={164} x2={266} y2={164} stroke={cut} strokeWidth={1.5} strokeDasharray="2 4" />
 
       {/* What to buy: a basket, with greens and a loaf. */}
+      <g transform={`translate(${SPREAD} 0)`}>
+      <Sparkle x={370} y={86} r={6} />
       <path d="M346 150 A 24 24 0 0 1 394 150" fill="none" stroke="currentColor" strokeWidth={2.5} />
       <path d={LEAF} transform="translate(356 150) rotate(-110)" fill="currentColor" />
       <path d={LEAF} transform="translate(360 150) rotate(-70)" fill="currentColor" />
@@ -185,11 +189,12 @@ export function IntroIllustration({ className }: { className?: string }) {
       {[356, 370, 384].map((x) => (
         <line key={x} x1={x} y1={151} x2={x - (x - 370) * 0.12} y2={177} stroke={cut} strokeWidth={1.4} />
       ))}
+      </g>
 
       <g fontSize={13} fontWeight={700} letterSpacing={4} textAnchor="middle" fill="currentColor">
-        <text x={110} y={214}>HAVE</text>
+        <text x={110 - SPREAD} y={214}>HAVE</text>
         <text x={240} y={214}>COOK</text>
-        <text x={370} y={214}>BUY</text>
+        <text x={370 + SPREAD} y={214}>BUY</text>
       </g>
     </svg>
   )
