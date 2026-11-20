@@ -73,8 +73,10 @@ export default function ListScreen() {
     : all
       ? `${totalLeft} left · A to Z`
       : aisle
-        ? `${aisleLabel(aisle)} · ${aisle.left ? `${aisle.left} of ${aisle.total} left` : `all ${aisle.total} in your basket`}`
+        ? `${aisle.left ? `${aisle.left} of ${aisle.total} left` : `all ${aisle.total} in your basket`}`
         : ""
+  // The aisle number leads the line, bold and in ink, so it can be found at a glance in the shop.
+  const aisleName = !empty && !all && aisle ? aisleLabel(aisle) : null
 
   // ----- moving between aisles -----
   const count = aisles.length
@@ -111,7 +113,7 @@ export default function ListScreen() {
                 </View>
               ))}
             </Press>
-            <Caption style={{ fontSize: 15 }}>{meta}</Caption>
+            <Caption style={{ fontSize: 15 }}>{aisleName && <><Text style={{ fontFamily: font.bold, color: c.ink }}>{aisleName}</Text> · </>}{meta}</Caption>
           </View>
           <IconButton label="Add to the list" onPress={() => router.push("/add")}>
             <AddItemIcon colour={c.ink} />
