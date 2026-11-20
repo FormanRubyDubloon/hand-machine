@@ -127,3 +127,70 @@ export function SplashEmblem({ className }: { className?: string }) {
     </svg>
   )
 }
+
+/**
+ * The intro's illustration, in the same style as the emblem: three arched windows on a shelf, one for each
+ * thing Collca does. A jar (what you have), a pot (what to cook) and a basket (what to buy). Drawn in
+ * currentColor on the panel colour, like the splash.
+ */
+export function IntroIllustration({ className }: { className?: string }) {
+  const cut = "var(--primary)"
+  const arch = (cx: number) => `M${cx - 50} 182 V 112 A 50 50 0 0 1 ${cx + 50} 112 V 182`
+  const potSteam = [228, 240, 252]
+  return (
+    <svg viewBox="0 0 480 224" className={className} aria-hidden="true" focusable="false">
+      {/* The shelf. */}
+      <line x1={36} y1={182} x2={444} y2={182} stroke="currentColor" strokeWidth={3} strokeLinecap="round" />
+      <path d="M70 182 V 194 H 84" fill="none" stroke="currentColor" strokeWidth={2.5} />
+      <path d="M410 182 V 194 H 396" fill="none" stroke="currentColor" strokeWidth={2.5} />
+
+      {[110, 240, 370].map((cx) => (
+        <path key={cx} d={arch(cx)} fill="none" stroke="currentColor" strokeWidth={2.5} />
+      ))}
+      <Rosette x={175} y={128} />
+      <Rosette x={305} y={128} />
+      <Sparkle x={110} y={86} r={6} />
+      <Sparkle x={370} y={86} r={6} />
+
+      {/* What you have: a jar. */}
+      <g stroke="currentColor" strokeWidth={2.2} strokeLinejoin="round">
+        <rect x={94} y={112} width={32} height={9} rx={1.5} fill="currentColor" />
+        <path d="M97 121 V 126 Q 88 128 88 137 V 172 Q 88 178 94 178 H 126 Q 132 178 132 172 V 137 Q 132 128 123 126 V 121" fill={cut} />
+      </g>
+      <rect x={95} y={138} width={30} height={14} fill="currentColor" />
+      {Array.from({ length: 3 }, (_, r) => Array.from({ length: 4 }, (_, c) => (
+        <circle key={`${r}-${c}`} cx={96 + c * 9 + (r % 2) * 4} cy={160 + r * 6} r={1.9} fill="currentColor" />
+      )))}
+
+      {/* What to cook: a pot with its lid, steaming. */}
+      {potSteam.map((x) => (
+        <path key={x} d={`M${x} 128 q -6 -7 0 -14 q 6 -7 0 -14`} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+      ))}
+      <path d="M212 152 Q 240 132 268 152 Z" fill="currentColor" />
+      <circle cx={240} cy={138} r={3.5} fill="currentColor" />
+      <line x1={204} y1={153} x2={276} y2={153} stroke="currentColor" strokeWidth={3} strokeLinecap="round" />
+      <path d="M208 156 H 272 V 168 Q 272 178 262 178 H 218 Q 208 178 208 168 Z" fill="currentColor" />
+      <path d="M208 160 H 200 M272 160 H 280" stroke="currentColor" strokeWidth={3} strokeLinecap="round" />
+      <line x1={214} y1={164} x2={266} y2={164} stroke={cut} strokeWidth={1.5} strokeDasharray="2 4" />
+
+      {/* What to buy: a basket, with greens and a loaf. */}
+      <path d="M346 150 A 24 24 0 0 1 394 150" fill="none" stroke="currentColor" strokeWidth={2.5} />
+      <path d={LEAF} transform="translate(356 150) rotate(-110)" fill="currentColor" />
+      <path d={LEAF} transform="translate(360 150) rotate(-70)" fill="currentColor" />
+      <rect x={371} y={128} width={11} height={26} rx={5.5} transform="rotate(18 376 141)" fill="currentColor" />
+      <path d="M336 150 H 404 L 396 178 H 344 Z" fill="currentColor" />
+      {[0, 1].map((r) => (
+        <line key={r} x1={340 - r * -2} y1={159 + r * 9} x2={400 - r * 2} y2={159 + r * 9} stroke={cut} strokeWidth={1.4} />
+      ))}
+      {[356, 370, 384].map((x) => (
+        <line key={x} x1={x} y1={151} x2={x - (x - 370) * 0.12} y2={177} stroke={cut} strokeWidth={1.4} />
+      ))}
+
+      <g fontSize={13} fontWeight={700} letterSpacing={4} textAnchor="middle" fill="currentColor">
+        <text x={110} y={214}>HAVE</text>
+        <text x={240} y={214}>COOK</text>
+        <text x={370} y={214}>BUY</text>
+      </g>
+    </svg>
+  )
+}

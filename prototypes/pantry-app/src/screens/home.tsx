@@ -87,7 +87,7 @@ function History() {
   const [shown, setShown] = React.useState(6)
   const entries = db.history.filter((h) => who === "all" || h.who === who)
   return (
-    <section aria-label="History" className="flex flex-col gap-3">
+    <section aria-label="History" data-tour="history" className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold tracking-widest uppercase">History</h2>
         <span className="text-xs text-muted-foreground">Undo works for today's changes</span>
@@ -228,7 +228,7 @@ function UseToday({ all }: { all: Item[] }) {
     .sort((a, b) => a.date.localeCompare(b.date) || a.item.name.localeCompare(b.item.name))
   if (!due.length) return null
   return (
-    <section aria-labelledby="use-today" className="flex flex-col gap-3">
+    <section aria-labelledby="use-today" data-tour="use-today" className="flex flex-col gap-3">
       <div className="flex items-baseline gap-4">
         <h2 id="use-today"><Eyebrow className="text-foreground">Use today · {due.length}</Eyebrow></h2>
         <span className="text-[13px] text-muted-foreground">At or past the use-by date, with recipes that use them</span>
@@ -267,7 +267,7 @@ export function Home({ item, recipe }: { item?: string; recipe?: string }) {
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-8 py-8">
-        <label className="flex h-16 items-center gap-4 border border-primary px-5 focus-within:ring-1 focus-within:ring-inset focus-within:ring-primary">
+        <label data-tour="use-field" className="flex h-16 items-center gap-4 border border-primary px-5 focus-within:ring-1 focus-within:ring-inset focus-within:ring-primary">
           <SearchIcon className="size-5 shrink-0" aria-hidden="true" />
           <input
             ref={inputRef}
