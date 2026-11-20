@@ -6,7 +6,7 @@ import { ScrollView, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { isBulk, isStaple } from "../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../data/store"
-import { removeFromList, restoreTicks, setCategory, setListNote, setToGet, tickAll, untick } from "../../logic/actions"
+import { removeFromList, removeQuestion, restoreTicks, setCategory, setListNote, setToGet, tickAll, untick } from "../../logic/actions"
 import { aislesOf, tickedText, rowsOf } from "../../logic/list"
 import { minText, phrase } from "../../logic/phrases"
 import { AislePicker, Button, Field, Press, Stepper } from "../../ui/kit"
@@ -19,6 +19,7 @@ export default function ListItemSheet() {
   const row = rowsOf(state).find((r) => r.id === id)
   const item = state.items[id]
   const [note, setNote] = React.useState(item?.notes ?? "")
+  const [asking, setAsking] = React.useState(false)
 
   if (!item || !row) {
     return (
@@ -98,17 +99,30 @@ export default function ListItemSheet() {
       </ScrollView>
       <View style={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 16, gap: 8 }}>
         <Button kind="gold" height={64} label={row.done ? "Not got it" : `Got all (${row.need})`} onPress={gotAll} />
-        <Press
-          fade
-          onPress={() => {
-            change((s) => removeFromList(s, id), { title: `Took ${item.name} off the shopping list` })
-            router.back()
-            say(`Took ${item.name.toLowerCase()} off the list.`)
-          }}
-          style={{ minHeight: 48, alignItems: "center", justifyContent: "center" }}
-        >
-          <Text style={{ fontFamily: font.semibold, fontSize: 15, letterSpacing: 0.9, textTransform: "uppercase", color: focus.danger }}>Remove from list</Text>
-        </Press>
+        {asking ? (
+          // Asks first, in place: says what removing will do, then Remove or Keep it.
+          <View accessibilityLiveRegion="polite" style={{ gap: 12, paddingTop: 4 }}>
+            <Text style={{ fontFamily: font.regular, fontSize: 16, lineHeight: 22, color: focus.ink }}>{removeQuestion(state, id)}</Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Button kind="goldOutline" label="Keep it" style={{ flex: 1 }} onPress={() => setAsking(false)} />
+              <Press
+                onPress={() => {
+                  change((s) => removeFromList(s, id), { title: `Took ${item.name} off the shopping list` })
+                  router.back()
+                  say(`Took ${item.name.toLowerCase()} off the list.`)
+                }}
+                tint={focus.press}
+                style={{ flex: 1, minHeight: 56, borderRadius: radius.base, backgroundColor: focus.danger, alignItems: "center", justifyContent: "center" }}
+              >
+                <Text style={{ fontFamily: font.semibold, fontSize: 15, letterSpacing: 0.9, textTransform: "uppercase", color: focus.onGold }}>Remove</Text>
+              </Press>
+            </View>
+          </View>
+        ) : (
+          <Press fade onPress={() => setAsking(true)} style={{ minHeight: 48, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ fontFamily: font.semibold, fontSize: 15, letterSpacing: 0.9, textTransform: "uppercase", color: focus.danger }}>Remove from list</Text>
+          </Press>
+        )}
       </View>
     </View>
   )

@@ -126,6 +126,20 @@ export function removeFromList(s: PhoneState, id: string): PhoneState {
   return { ...next, shop: next.shop ? { ...next.shop, rows } : null }
 }
 
+/**
+ * The question before Remove from list, saying what removing will really do. Worked out by running
+ * removeFromList, so it can't drift from it.
+ */
+export function removeQuestion(s: PhoneState, id: string): string {
+  const before = s.items[id]
+  if (!before) return ""
+  const name = before.name.toLowerCase()
+  const after = removeFromList(s, id).items[id]
+  if (!after) return `Take ${name} off the list? It isn't in your pantry, so it goes altogether.`
+  if (after.target < before.target) return `Take ${name} off the list? It's a Staple, so its minimum drops from ${before.target} to ${after.target}, or it would come straight back.`
+  return `Take ${name} off the list?`
+}
+
 /** Puts one more of a pantry item on the list, added by hand. */
 export function addToList(s: PhoneState, id: string, qty = 1): PhoneState {
   const next = edit(s, id, (x) => ({ ...x, entries: [...(x.entries ?? []), { source: { kind: "hand" }, qty, at: now() }] }))

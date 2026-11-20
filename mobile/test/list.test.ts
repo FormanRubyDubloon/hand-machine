@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { demoState } from "../src/data/demo"
-import { clearShop, removeFromList, restoreTicks, tickAll, tickOne, untick, addNew, setToGet } from "../src/logic/actions"
+import { clearShop, removeFromList, removeQuestion, restoreTicks, tickAll, tickOne, untick, addNew, setToGet } from "../src/logic/actions"
 import { aislesOf, leftOf, refreshShop, rowsOf, shopAisles, tickedText, type Row } from "../src/logic/list"
 import type { PhoneState } from "../src/data/state"
 
@@ -122,5 +122,15 @@ describe("the aisle counts", () => {
     expect(after.left).toBe(before.left - 1)
     expect(after.total).toBe(before.total)
     expect(leftOf(rowsOf(tickOne(s, "sardines")))).toBe(leftOf(rowsOf(s)) - 1)
+  })
+})
+
+describe("asking before Remove from list", () => {
+  it("says a Staple's minimum will drop", () => {
+    expect(removeQuestion(start(), "sardines")).toBe("Take sardines off the list? It's a Staple, so its minimum drops from 2 to 0, or it would come straight back.")
+  })
+  it("says something never bought goes altogether", () => {
+    const { state, id } = addNew(start(), "Birthday candles", "household")
+    expect(removeQuestion(state, id)).toBe("Take birthday candles off the list? It isn't in your pantry, so it goes altogether.")
   })
 })
