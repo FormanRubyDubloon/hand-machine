@@ -71,7 +71,7 @@ export default function ListScreen() {
   const meta = empty
     ? "All done"
     : all
-      ? `${totalLeft} left · A to Z`
+      ? `${totalLeft} left`
       : aisle
         ? `${aisle.left ? `${aisle.left} of ${aisle.total} left` : `all ${aisle.total} in your basket`}`
         : ""
