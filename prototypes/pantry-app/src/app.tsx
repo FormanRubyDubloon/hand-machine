@@ -1,9 +1,9 @@
 import * as React from "react"
-import { CloudIcon, PlusIcon, SettingsIcon } from "lucide-react"
+import { CloudAlertIcon, CloudOffIcon, PlusIcon, SettingsIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Toaster } from "@/components/ui/sonner"
-import { isToday, timeText, shortDate } from "./model"
+import { isToday, plural, timeText, shortDate } from "./model"
 import { markSetupDone, setupDone, useAuthSession } from "../../shared/src/auth"
 import { hasRemotePantry } from "../../shared/src/pantry-remote"
 import { navigate, useRoute, type Route } from "./router"
@@ -30,25 +30,31 @@ const nav: { label: string; route: Route; match: Route["name"][] }[] = [
   { label: "Shopping list", route: { name: "list" }, match: ["list"] },
 ]
 
-/** Sends this computer's changes to Supabase and brings back what changed there. */
-function SyncButton() {
-  const { db, actions, syncing, pending } = usePantry()
+/**
+ * Collca syncs by itself (live-sync.ts), so there's no Sync button. This shows only when it isn't in
+ * step: offline with changes waiting, or a sync that didn't go through (press it to try now and see why).
+ */
+function SyncNote({ online }: { online: boolean }) {
+  const { db, actions, syncing, syncError, pending } = usePantry()
+  const last = db.syncedAt ? `Last synced ${isToday(db.syncedAt) ? "today" : shortDate(db.syncedAt)}, ${timeText(db.syncedAt)}.` : "Not synced yet."
+  if (!online) {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground" title={last} role="status">
+        <CloudOffIcon className="size-4" />
+        {pending ? `Offline · ${plural(pending, "change")} waiting` : "Offline"}
+      </span>
+    )
+  }
+  if (!syncError) return null
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      data-tour="sync"
-      disabled={syncing}
-      onClick={() => void actions.syncNow()}
-      title={db.syncedAt ? `Last synced ${isToday(db.syncedAt) ? "today" : shortDate(db.syncedAt)}, ${timeText(db.syncedAt)}` : "Not synced yet"}
-    >
-      <CloudIcon className={cn(syncing && "animate-pulse")} />
-      {syncing ? "Syncing" : pending ? `Sync · ${pending}` : "Sync"}
+    <Button variant="ghost" size="sm" className="text-muted-foreground" disabled={syncing} title={`${syncError} ${last}`} onClick={() => void actions.syncNow()}>
+      <CloudAlertIcon className={cn(syncing && "animate-pulse")} />
+      {syncing ? "Trying again" : "Couldn't sync · Try again"}
     </Button>
   )
 }
 
-function Header({ route }: { route: Route }) {
+function Header({ route, online }: { route: Route; online: boolean }) {
   return (
     // Three columns: logo and nav, search in the centre of the header, buttons on the right.
     <header className="grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-10 border-b border-border px-8">
@@ -78,7 +84,7 @@ function Header({ route }: { route: Route }) {
       </div>
       <Search />
       <div className="flex shrink-0 items-center justify-end gap-2">
-        <SyncButton />
+        <SyncNote online={online} />
         <Button variant="outline" size="icon" aria-label="Settings" title="Settings" data-tour="settings" onClick={() => navigate({ name: "settings", tab: "general" })}>
           <SettingsIcon className="size-4.5" />
         </Button>
@@ -142,16 +148,17 @@ function Shell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
   const ready = !session || setup === "done"
-  // Sync once on opening, so changes made elsewhere (Claude, the phone) show without pressing Sync.
+  // Sync once on opening, so changes made elsewhere (Claude, the phone) show straight away.
   // It waits for a live session (a stored token alone can't reach Supabase) and for Setup.
   const opened = React.useRef(false)
   React.useEffect(() => {
     if (!session || !ready || opened.current) return
     opened.current = true
-    void actions.syncNow({ quiet: true })
+    void actions.syncNow({ quiet: true, background: true })
   }, [session, ready, actions])
-  // After that, Claude's changes come in by themselves, and coming back to the tab syncs (live-sync.ts).
-  useLiveSync(!!session && ready, userId)
+  // After that it syncs by itself: after changes here, when Claude or the phone changes something,
+  // on coming back to the tab or online, and every two minutes (live-sync.ts).
+  const { online } = useLiveSync(!!session && ready, userId)
   // The welcome, then the optional tour (intro.tsx). Only for a new account: it opens when Setup finishes,
   // so existing accounts never see it.
   const [intro, setIntro] = React.useState(false)
@@ -178,7 +185,7 @@ function Shell() {
   if (session && setup === "show") return <Setup onDone={() => { setSetup("done"); setIntro(true) }} />
   return (
     <div className="flex h-dvh min-w-[1180px] flex-col bg-background">
-      <Header route={route} />
+      <Header route={route} online={online} />
       <ConflictBanner onReview={() => setConflicts(true)} />
       <main className="flex min-h-0 flex-1">
         <Screen route={route} />
