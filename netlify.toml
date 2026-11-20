@@ -7,11 +7,12 @@
   [build.environment]
     NODE_VERSION = "22"
 
-# The app is the prototype, so the site root goes straight to it.
+# The site root goes straight to Collca (the pantry app), so a shared link opens it. The phone shopping
+# list, the fallback until the iPhone app, stays at /prototypes/shopping-list/.
 # The repo root page is the component showcase, which isn't part of the deployed app.
 [[redirects]]
   from = "/"
-  to = "/prototypes/shopping-list/"
+  to = "/prototypes/pantry-app/"
   status = 302
   # The showcase index.html exists at /, and a redirect only wins over a real file when forced.
   force = true
