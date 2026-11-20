@@ -1,12 +1,10 @@
 import * as React from "react"
-import { ChevronDownIcon, CloudIcon, PlusIcon, SettingsIcon, SmartphoneIcon } from "lucide-react"
+import { CloudIcon, PlusIcon, SettingsIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
 import { Toaster } from "@/components/ui/sonner"
 import { isToday, timeText, shortDate } from "./model"
-import { signOutOfSupabase, useAuthSession } from "../../shared/src/auth"
+import { useAuthSession } from "../../shared/src/auth"
 import { navigate, useRoute, type Route } from "./router"
 import { PantryProvider, usePantry } from "./state"
 import { Search } from "./search"
@@ -28,55 +26,6 @@ const nav: { label: string; route: Route; match: Route["name"][] }[] = [
   { label: "Shopping list", route: { name: "list" }, match: ["list"] },
 ]
 
-const syncText = (iso: string) => `Phone synced ${isToday(iso) ? "today" : shortDate(iso)}, ${timeText(iso)}`
-
-/** Demo controls: things a real backend would do. Kept out of the way, top right. */
-function DemoMenu() {
-  const { actions } = usePantry()
-  const [open, setOpen] = React.useState(false)
-  const run = (fn: () => void) => () => {
-    fn()
-    setOpen(false)
-  }
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="px-2 text-muted-foreground">
-          Demo
-          <ChevronDownIcon />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 gap-1 p-2">
-        <p className="px-2 pt-1 pb-2 text-xs text-muted-foreground">Fakes for the prototype. Shares its data with the shopping app.</p>
-        <Button variant="ghost" className="h-auto justify-start py-2 text-left normal-case tracking-normal" onClick={run(actions.simulatePhoneSync)}>
-          <span className="flex flex-col items-start gap-0.5">
-            <span className="text-sm font-semibold">Simulate a phone sync</span>
-            <span className="text-xs font-normal text-muted-foreground">A shop comes in. Eggs and lemons changed in both places.</span>
-          </span>
-        </Button>
-        <Button variant="ghost" className="h-auto justify-start py-2 text-left normal-case tracking-normal" asChild>
-          <a href="/prototypes/shopping-list/" target="_blank" rel="noreferrer">
-            <span className="flex flex-col items-start gap-0.5">
-              <span className="text-sm font-semibold">Open the shopping app</span>
-              <span className="text-xs font-normal text-muted-foreground">In a new tab. Its syncs show up here.</span>
-            </span>
-          </a>
-        </Button>
-        <Separator className="my-1" />
-        <Button variant="ghost" className="h-auto justify-start py-2 text-left normal-case tracking-normal" onClick={run(() => actions.resetDemo())}>
-          <span className="flex flex-col items-start gap-0.5">
-            <span className="text-sm font-semibold">Reset demo data</span>
-            <span className="text-xs font-normal text-muted-foreground">Both apps go back to the seed.</span>
-          </span>
-        </Button>
-        <Button variant="ghost" className="h-auto justify-start py-2 text-left normal-case tracking-normal" onClick={run(() => void signOutOfSupabase())}>
-          <span className="text-sm font-semibold">Sign out</span>
-        </Button>
-      </PopoverContent>
-    </Popover>
-  )
-}
-
 /** Sends this computer's changes to Supabase and brings back what changed there. */
 function SyncButton() {
   const { db, actions, syncing, pending } = usePantry()
@@ -95,38 +44,35 @@ function SyncButton() {
 }
 
 function Header({ route }: { route: Route }) {
-  const { phoneSyncedAt } = usePantry()
   return (
-    <header className="flex h-16 shrink-0 items-center gap-10 border-b border-border px-8">
-      <a href="#/" className="text-base font-semibold tracking-[0.12em] uppercase">
-        Pantry
-      </a>
-      <nav aria-label="Main" className="flex flex-1 gap-7 self-stretch">
-        {nav.map((n) => {
-          const current = n.match.includes(route.name)
-          return (
-            <a
-              key={n.label}
-              href={`#/${n.route.name === "home" ? "" : n.route.name === "recipes" ? "recipes/cook" : n.route.name}`}
-              aria-current={current ? "page" : undefined}
-              className={cn(
-                "flex items-center border-b-2 pt-0.5 text-xs font-semibold tracking-widest uppercase transition-colors",
-                current ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {n.label}
-            </a>
-          )
-        })}
-      </nav>
+    // Three columns: logo and nav, search in the centre of the header, buttons on the right.
+    <header className="grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-10 border-b border-border px-8">
+      <div className="flex items-center gap-10 self-stretch">
+        <a href="#/" className="text-base font-semibold tracking-[0.12em] uppercase">
+          Pantry
+        </a>
+        <nav aria-label="Main" className="flex flex-1 gap-7 self-stretch">
+          {nav.map((n) => {
+            const current = n.match.includes(route.name)
+            return (
+              <a
+                key={n.label}
+                href={`#/${n.route.name === "home" ? "" : n.route.name === "recipes" ? "recipes/cook" : n.route.name}`}
+                aria-current={current ? "page" : undefined}
+                className={cn(
+                  "flex items-center border-b-2 pt-0.5 text-xs font-semibold tracking-widest uppercase transition-colors",
+                  current ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {n.label}
+              </a>
+            )
+          })}
+        </nav>
+      </div>
       <Search />
-      <span className="flex shrink-0 items-center gap-1.5 text-[13px] text-muted-foreground" title="When the shopping app last synced with the pantry">
-        <SmartphoneIcon className="size-3.5" aria-hidden="true" />
-        {syncText(phoneSyncedAt)}
-      </span>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center justify-end gap-2">
         <SyncButton />
-        <DemoMenu />
         <Button variant="outline" size="icon" aria-label="Settings" title="Settings" onClick={() => navigate({ name: "settings", tab: "general" })}>
           <SettingsIcon className="size-4.5" />
         </Button>
