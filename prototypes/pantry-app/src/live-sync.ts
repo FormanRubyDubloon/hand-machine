@@ -35,7 +35,7 @@ export function useLiveSync(enabled: boolean, userId: string | undefined) {
       const titles = heard
       heard = []
       lastSync = Date.now()
-      await latest.current.actions.syncNow({ quiet: true })
+      await latest.current.actions.syncNow({ quiet: true, background: true })
       if (!titles.length) return
       toast(titles.length === 1 ? `Claude: ${titles[0]}` : `Claude made ${titles.length} changes`, {
         description: titles.length > 1 ? titles.slice(0, 3).join(" · ") + (titles.length > 3 ? " …" : "") : undefined,

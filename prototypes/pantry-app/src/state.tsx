@@ -674,7 +674,11 @@ function usePantryState() {
      * point at them), recipes after the items (so ingredients can link to new ones), and removed
      * categories are deleted last (once their items have moved). Which store is the default stays here.
      */
-    async syncNow(opts: { quiet?: boolean } = {}) {
+    /**
+     * quiet: no "Already up to date". background: no counts either, only warnings (the live sync says
+     * what Claude did itself). Errors always show.
+     */
+    async syncNow(opts: { quiet?: boolean; background?: boolean } = {}) {
       if (syncing) return
       setSyncing(true)
       const started = ref.current
@@ -736,7 +740,7 @@ function usePantryState() {
           kept.length ? `${nameList(kept.map((c) => c.name))} stayed in Supabase: items there still use ${kept.length === 1 ? "it" : "them"}. Sync tries again next time.` : "",
         ].filter(Boolean)
         // The sync on opening the app stays quiet unless something came or went.
-        if (!opts.quiet || parts.length || notes.length) {
+        if (opts.background ? notes.length : !opts.quiet || parts.length || notes.length) {
           toast(parts.length ? `Synced · ${parts.join(", ")}` : "Already up to date", { description: notes.join(" ") || undefined })
         }
       } catch (e) {
