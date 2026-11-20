@@ -21,7 +21,7 @@ import { isDark, subscribeTheme } from "./theme"
 import { SignIn } from "./screens/signin"
 import { Setup } from "./screens/setup"
 import { useLiveSync } from "./live-sync"
-import { goHomeForTour, IntroDialog, shouldShowIntro, Tour } from "./intro"
+import { goHomeForTour, IntroDialog, Tour } from "./intro"
 
 const nav: { label: string; route: Route; match: Route["name"][] }[] = [
   { label: "Home", route: { name: "home" }, match: ["home"] },
@@ -152,8 +152,9 @@ function Shell() {
   }, [session, ready, actions])
   // After that, Claude's changes come in by themselves, and coming back to the tab syncs (live-sync.ts).
   useLiveSync(!!session && ready, userId)
-  // The welcome, then the optional tour (intro.tsx). Shown once the app is ready, after Setup.
-  const [intro, setIntro] = React.useState(shouldShowIntro)
+  // The welcome, then the optional tour (intro.tsx). Only for a new account: it opens when Setup finishes,
+  // so existing accounts never see it.
+  const [intro, setIntro] = React.useState(false)
   const [tour, setTour] = React.useState(false)
   const startTour = () => {
     setIntro(false)
@@ -174,7 +175,7 @@ function Shell() {
   if (signedIn === undefined) return null
   if (!signedIn) return <SignIn />
   if (session && setup === "checking") return null
-  if (session && setup === "show") return <Setup onDone={() => setSetup("done")} />
+  if (session && setup === "show") return <Setup onDone={() => { setSetup("done"); setIntro(true) }} />
   return (
     <div className="flex h-dvh min-w-[1180px] flex-col bg-background">
       <Header route={route} />

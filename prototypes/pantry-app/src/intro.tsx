@@ -1,34 +1,11 @@
 // First-run welcome: one screen saying what Collca does, then an optional tour of coach marks that points
-// at the few things that matter. The tour finds its targets by data-tour attributes on the page.
+// at the few things that matter. Shown once, to a new account, when Setup finishes (app.tsx). The tour
+// finds its targets by data-tour attributes on the page.
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { navigate } from "./router"
 import { IntroIllustration } from "./splash-emblem"
-
-/**
- * While testing, the intro shows every time the app opens, for every account. Set to false to show it once
- * per browser (remembered under SEEN_KEY).
- */
-export const SHOW_INTRO_TO_EVERYONE = true
-const SEEN_KEY = "hm-pantry:intro-seen"
-
-export function shouldShowIntro(): boolean {
-  if (SHOW_INTRO_TO_EVERYONE) return true
-  try {
-    return localStorage.getItem(SEEN_KEY) === null
-  } catch {
-    return false
-  }
-}
-
-function markIntroSeen() {
-  try {
-    localStorage.setItem(SEEN_KEY, new Date().toISOString())
-  } catch {
-    // Private mode: it shows again next time, which is harmless.
-  }
-}
 
 const points: [string, string][] = [
   ["What you have", "Record what you use in a couple of clicks and Collca keeps count, with use-by dates."],
@@ -37,12 +14,8 @@ const points: [string, string][] = [
 ]
 
 export function IntroDialog({ open, onSkip, onTour }: { open: boolean; onSkip: () => void; onTour: () => void }) {
-  const finish = (then: () => void) => () => {
-    markIntroSeen()
-    then()
-  }
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && finish(onSkip)()}>
+    <Dialog open={open} onOpenChange={(o) => !o && onSkip()}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[560px]" showCloseButton={false}>
         <div className="bg-primary px-10 pt-9 pb-7 text-primary-foreground">
           <IntroIllustration className="mx-auto h-auto w-full max-w-[420px]" />
@@ -62,8 +35,8 @@ export function IntroDialog({ open, onSkip, onTour }: { open: boolean; onSkip: (
           </dl>
           <p className="text-sm text-muted-foreground">Ask Claude to add a recipe, update your stock or plan a shop. Its changes show up here by themselves.</p>
           <div className="flex justify-between gap-3">
-            <Button variant="outline" size="lg" onClick={finish(onSkip)}>Skip for now</Button>
-            <Button size="lg" autoFocus onClick={finish(onTour)}>Show me around</Button>
+            <Button variant="outline" size="lg" onClick={onSkip}>Skip for now</Button>
+            <Button size="lg" autoFocus onClick={onTour}>Show me around</Button>
           </div>
         </div>
       </DialogContent>
