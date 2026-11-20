@@ -115,10 +115,10 @@ export function SplashEmblem({ className }: { className?: string }) {
         <ellipse cx={338} cy={462} rx={36} ry={22} />
       </g>
       <g fontSize={11} fontWeight={700} letterSpacing={1.5} textAnchor="middle" fill="currentColor">
-        <text x={62} y={459}>WASTE</text>
-        <text x={62} y={472}>LESS</text>
-        <text x={338} y={459}>COOK</text>
-        <text x={338} y={472}>MORE</text>
+        <text x={62} y={459}>COOK</text>
+        <text x={62} y={472}>MORE</text>
+        <text x={338} y={459}>WASTE</text>
+        <text x={338} y={472}>LESS</text>
       </g>
 
       <text x={200} y={512} textAnchor="middle" fontSize={11} fontWeight={700} letterSpacing={3} fill="currentColor">
