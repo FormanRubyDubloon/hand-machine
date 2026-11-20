@@ -175,7 +175,7 @@ export function Consent() {
       </div>
       <Rules title="Claude can, without asking" rows={CAN} />
       <Rules title="Claude asks you first, in the chat" rows={ASKS} />
-      <p className="text-xs text-muted-foreground">Every change shows in the pantry app's History, marked Claude, and can be undone there the same day. You can disconnect in the pantry app's Settings.</p>
+      <p className="text-xs text-muted-foreground">Every change shows in Collca's History, marked Claude, and can be undone there the same day. You can disconnect in Collca's Settings.</p>
       <div className="flex flex-col gap-3">
         <Button size="lg" disabled={busy} onClick={() => void decide(true)}>Allow</Button>
         <Button size="lg" variant="outline" disabled={busy} onClick={() => void decide(false)}>Cancel</Button>

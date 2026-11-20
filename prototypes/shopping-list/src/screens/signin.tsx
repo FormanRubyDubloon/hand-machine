@@ -64,7 +64,7 @@ export function SignIn() {
             <div className="mt-[22dvh] flex flex-col gap-3">
               <h1 className="text-3xl leading-none font-semibold tracking-[0.04em] uppercase">Sign in</h1>
               <p className="text-sm leading-5 text-muted-foreground">
-                The same account as the pantry app. You only do this once on this phone.
+                The same account as Collca on your computer. You only do this once on this phone.
               </p>
               <div className="mt-2 flex flex-col gap-3">
                 <div className="flex flex-col gap-1">

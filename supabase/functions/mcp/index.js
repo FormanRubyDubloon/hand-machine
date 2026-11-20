@@ -919,7 +919,7 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
   {
     name: "get_history",
     title: "Get History",
-    description: "Recent changes to the pantry, newest first, and who made them: you (the pantry app), phone (the shopping app) or claude.",
+    description: "Recent changes to the pantry, newest first, and who made them: you (Collca on the web), phone (the shopping app) or claude.",
     inputSchema: {
       type: "object",
       properties: { limit: { type: "number", description: "Default 20, at most 100." }, who: { type: "string", enum: ["you", "phone", "claude"] } }
@@ -1296,7 +1296,7 @@ ${recipeLine(recipe, ctx.data.items)}`;
       const name = str(c.name);
       if (name && name !== i.name) {
         const clash = Object.values(ctx.data.items).find((x) => x.id !== i.id && matchesName(x, name));
-        if (clash) throw new ToolError(`${clash.name} [id: ${clash.id}] already has that name. The user can merge the two in the pantry app.`);
+        if (clash) throw new ToolError(`${clash.name} [id: ${clash.id}] already has that name. The user can merge the two in Collca.`);
         next.name = cap(name);
         said.push(`renamed from ${i.name}`);
       }
@@ -1418,7 +1418,7 @@ ${recipeLine(recipe, ctx.data.items)}`;
   {
     name: "set_prices",
     title: "Set prices for several items",
-    description: "Sets the price each of several pantry items at once, for example from a receipt, or your own estimates for items with no price (search_pantry with filter no_price finds them). Say whether these are estimates: estimated prices are marked, and totals that use them show as approximate. An edit: list every item with its old and new price, ask the user once, then call with confirmed: true. One History entry covers the lot, so the pantry app can undo it in one go the same day.",
+    description: "Sets the price each of several pantry items at once, for example from a receipt, or your own estimates for items with no price (search_pantry with filter no_price finds them). Say whether these are estimates: estimated prices are marked, and totals that use them show as approximate. An edit: list every item with its old and new price, ask the user once, then call with confirmed: true. One History entry covers the lot, so it can be undone in Collca in one go the same day.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1465,7 +1465,7 @@ Shopping list: ${lower(totalText(total))}`;
   {
     name: "delete_item",
     title: "Delete a pantry item",
-    description: "Deletes an item. Recipes that use it keep their wording but lose the link, and it comes off the shopping list. A delete: ask the user first, naming those recipes, then call with confirmed: true. It can be undone from History in the pantry app the same day.",
+    description: "Deletes an item. Recipes that use it keep their wording but lose the link, and it comes off the shopping list. A delete: ask the user first, naming those recipes, then call with confirmed: true. It can be undone from History in Collca the same day.",
     inputSchema: { type: "object", properties: { item: itemRef, confirmed }, required: ["item", "confirmed"] },
     annotations: { readOnlyHint: false, destructiveHint: true },
     async run(args, ctx) {
@@ -1651,17 +1651,17 @@ async function callTool(name, args, ctx) {
 
 // prototypes/claude-connection/src/server.ts
 var PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"];
-var INSTRUCTIONS = `This is Isaac's pantry: stock, the shopping list and recipes, shared with his pantry app (desktop) and shopping app (phone). Write in British English.
+var INSTRUCTIONS = `This is the user's pantry in Collca: stock, the shopping list and recipes, shared with Collca on the web (desktop) and the shopping app (phone). Each account has its own pantry. Write in British English.
 Rules (fixed, not settings):
 - Read and search freely.
 - Add items, stock, shopping list entries and recipes without asking.
-- When he says what he's used, take it off stock with record_used without asking. That isn't an edit.
-- Any other edit or delete: describe the change and ask him in the chat first. Those tools need confirmed: true and refuse without it.
+- When the user says what they've used, take it off stock with record_used without asking. That isn't an edit.
+- Any other edit or delete: describe the change and ask the user in the chat first. Those tools need confirmed: true and refuse without it.
 - Use the categories that exist. Don't invent one; ask if nothing fits.
 Saving a recipe: run match_ingredients, link clear matches, create new items (minimum 0) for ingredients with nothing similar, and ask when an ingredient could mean more than one item. Then say what you linked, created and asked about.
 "What can I cook?": find_recipes, can_cook first, then nearly. Recipes that use up food going off soon come first.
 A Staple is an item with a minimum above 0. It goes on the shopping list by itself when it drops below the minimum. Bulk items (flour, rice) are counted in whole packs, and an open pack doesn't count towards the minimum.
-Every change shows in the pantry app's History, marked Claude, and can be undone there the same day.`;
+Every change shows in Collca's History, marked Claude, and can be undone there the same day.`;
 var json = (body, status = 200, headers = {}) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...CORS, ...headers } });
 var CORS = {
   "Access-Control-Allow-Origin": "*",

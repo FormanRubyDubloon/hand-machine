@@ -563,7 +563,7 @@ export const tools: Tool[] = [
   {
     name: "get_history",
     title: "Get History",
-    description: "Recent changes to the pantry, newest first, and who made them: you (the pantry app), phone (the shopping app) or claude.",
+    description: "Recent changes to the pantry, newest first, and who made them: you (Collca on the web), phone (the shopping app) or claude.",
     inputSchema: {
       type: "object",
       properties: { limit: { type: "number", description: "Default 20, at most 100." }, who: { type: "string", enum: ["you", "phone", "claude"] } },
@@ -949,7 +949,7 @@ export const tools: Tool[] = [
       const name = str(c.name)
       if (name && name !== i.name) {
         const clash = Object.values(ctx.data.items).find((x) => x.id !== i.id && matchesName(x, name))
-        if (clash) throw new ToolError(`${clash.name} [id: ${clash.id}] already has that name. The user can merge the two in the pantry app.`)
+        if (clash) throw new ToolError(`${clash.name} [id: ${clash.id}] already has that name. The user can merge the two in Collca.`)
         next.name = cap(name)
         said.push(`renamed from ${i.name}`)
       }
@@ -1038,7 +1038,7 @@ export const tools: Tool[] = [
     name: "set_prices",
     title: "Set prices for several items",
     description:
-      "Sets the price each of several pantry items at once, for example from a receipt, or your own estimates for items with no price (search_pantry with filter no_price finds them). Say whether these are estimates: estimated prices are marked, and totals that use them show as approximate. An edit: list every item with its old and new price, ask the user once, then call with confirmed: true. One History entry covers the lot, so the pantry app can undo it in one go the same day.",
+      "Sets the price each of several pantry items at once, for example from a receipt, or your own estimates for items with no price (search_pantry with filter no_price finds them). Say whether these are estimates: estimated prices are marked, and totals that use them show as approximate. An edit: list every item with its old and new price, ask the user once, then call with confirmed: true. One History entry covers the lot, so it can be undone in Collca in one go the same day.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1080,7 +1080,7 @@ export const tools: Tool[] = [
   {
     name: "delete_item",
     title: "Delete a pantry item",
-    description: "Deletes an item. Recipes that use it keep their wording but lose the link, and it comes off the shopping list. A delete: ask the user first, naming those recipes, then call with confirmed: true. It can be undone from History in the pantry app the same day.",
+    description: "Deletes an item. Recipes that use it keep their wording but lose the link, and it comes off the shopping list. A delete: ask the user first, naming those recipes, then call with confirmed: true. It can be undone from History in Collca the same day.",
     inputSchema: { type: "object", properties: { item: itemRef, confirmed }, required: ["item", "confirmed"] },
     annotations: { readOnlyHint: false, destructiveHint: true },
     async run(args, ctx) {

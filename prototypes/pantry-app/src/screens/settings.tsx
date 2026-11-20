@@ -554,7 +554,7 @@ function General() {
         <Eyebrow className="pb-1 text-foreground">Appearance</Eyebrow>
         {row(
           "Theme",
-          "Auto follows this computer's light or dark setting. Only the pantry app changes; the shopping app follows its own device.",
+          "Auto follows this computer's light or dark setting. Only Collca on this computer changes; the shopping app follows its own device.",
           <Segmented
             label="Theme"
             className="w-60"
