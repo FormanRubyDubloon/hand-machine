@@ -161,6 +161,8 @@ function usePantryState() {
   const [state, setState] = React.useState<S>(load)
   const [phoneSyncedAt, setPhoneSyncedAt] = React.useState(readPhoneSync)
   const [syncing, setSyncing] = React.useState(false)
+  // Why the last sync failed, or null when it went through. Shown in the header (app.tsx).
+  const [syncError, setSyncError] = React.useState<string | null>(null)
   const ref = React.useRef(state)
   React.useLayoutEffect(() => {
     ref.current = state
@@ -708,10 +710,11 @@ function usePantryState() {
      */
     /**
      * quiet: no "Already up to date". background: no counts either, only warnings (the live sync says
-     * what Claude did itself). Errors always show.
+     * what Claude did itself), and no error toast: the header says the sync didn't go through, and the
+     * next automatic sync tries again. Returns whether it went through.
      */
-    async syncNow(opts: { quiet?: boolean; background?: boolean } = {}) {
-      if (syncing) return
+    async syncNow(opts: { quiet?: boolean; background?: boolean } = {}): Promise<boolean> {
+      if (syncing) return false
       setSyncing(true)
       const started = ref.current
       try {
@@ -775,11 +778,14 @@ function usePantryState() {
         if (opts.background ? notes.length : !opts.quiet || parts.length || notes.length) {
           toast(parts.length ? `Synced · ${parts.join(", ")}` : "Already up to date", { description: notes.join(" ") || undefined })
         }
+        setSyncError(null)
+        return true
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e)
-        toast.error("Couldn't sync", {
-          description: /row-level security/i.test(message) ? "Supabase refused the write. Are you signed in, and have all the migrations in supabase/migrations been applied?" : message,
-        })
+        const description = /row-level security/i.test(message) ? "Supabase refused the write. Are you signed in, and have all the migrations in supabase/migrations been applied?" : message
+        setSyncError(description)
+        if (!opts.background) toast.error("Couldn't sync", { description })
+        return false
       } finally {
         setSyncing(false)
       }
@@ -911,7 +917,7 @@ function usePantryState() {
     pendingStoreIds(state.db.stores, state.db.syncedStores).length +
     pendingRecipeIds(state.db.recipes, state.db.syncedRecipes).length +
     pendingHistoryIds(state.db.history, state.db.syncedHistory).length
-  return { state, items: state.items, db: state.db, actions, phoneSyncedAt, store, syncing, pending }
+  return { state, items: state.items, db: state.db, actions, phoneSyncedAt, store, syncing, syncError, pending }
 }
 
 type Ctx = ReturnType<typeof usePantryState>
