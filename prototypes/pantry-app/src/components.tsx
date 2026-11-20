@@ -480,9 +480,9 @@ export function HistoryRow({ entry, onUndo, onRevert, compact, links }: { entry:
       {/* When it happened, and Undo under it, both against the right edge. Undone today: Revert instead. */}
       <div className="flex shrink-0 flex-col items-end gap-1.5">
         {onRevert ? (
-          <Button variant="outline" size="xs" aria-label={`Revert the undo: ${entry.title}`} title="Put this change back" onClick={onRevert}>
+          <button type="button" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground" aria-label={`Revert the undo: ${entry.title}`} title="Put this change back" onClick={onRevert}>
             Revert
-          </Button>
+          </button>
         ) : (
           <span className={cn("text-xs text-muted-foreground", entry.undone && "opacity-50")}>{entry.undone ? "Undone" : whenText(entry.at)}</span>
         )}
