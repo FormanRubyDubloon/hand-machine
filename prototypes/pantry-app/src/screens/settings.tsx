@@ -554,7 +554,7 @@ function General() {
         <Eyebrow className="pb-1 text-foreground">Appearance</Eyebrow>
         {row(
           "Theme",
-          "Auto follows this computer's light or dark setting. Only the pantry app changes; the shopping app follows its own device.",
+          "Auto follows this computer's light or dark setting. Only Collca on this computer changes; the shopping app follows its own device.",
           <Segmented
             label="Theme"
             className="w-60"
@@ -599,7 +599,7 @@ function Account() {
       </section>
       <section className="flex flex-col">
         <Eyebrow className="pb-1 text-foreground">Where you're signed in</Eyebrow>
-        {row("This computer", "Pantry app · now")}
+        {row("This computer", "Collca on the web · now")}
         {row("iPhone", `Shopping app · last synced ${isToday(phoneSyncedAt) ? "today" : shortDate(phoneSyncedAt)}, ${timeText(phoneSyncedAt)}`, <Button variant="link" size="xs" className="text-xs" onClick={() => toast("Not in the prototype")}>Sign out</Button>)}
         <Button variant="outline" className="mt-3 self-start" onClick={() => toast("Not in the prototype")}>Sign out everywhere</Button>
       </section>
@@ -672,7 +672,7 @@ const tabs: { tab: SettingsTab; title: string; sub: string; intro: string }[] = 
   { tab: "stores", title: "Stores and aisles", sub: "Aisle order for each shop", intro: "The aisle order sets the order of the shopping list in each shop. You can change it here or in the shopping app." },
   { tab: "categories", title: "Categories", sub: "Groups for items and aisles", intro: "Every item has one. Each store gives a category an aisle number, so the shopping list follows your walk round the shop." },
   { tab: "claude", title: "Claude connection", sub: "What Claude can read and change", intro: "Lets Claude use your pantry from the Claude phone app, desktop or web." },
-  { tab: "account", title: "Account", sub: "Sign-in, devices and your data", intro: "One account for the pantry, kitchen and shopping apps." },
+  { tab: "account", title: "Account", sub: "Sign-in, devices and your data", intro: "One account for the pantry, your phone and Claude." },
   { tab: "demo", title: "Demo", sub: "Fakes for the prototype", intro: "Things a real backend would do, for trying the prototype. Shares its data with the shopping app." },
 ]
 

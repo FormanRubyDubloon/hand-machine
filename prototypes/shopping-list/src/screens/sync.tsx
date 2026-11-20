@@ -172,7 +172,7 @@ function ConflictChoice({ id }: { id: string }) {
       }
     >
       <Note className="border-b border-border">
-        You bought {bought} here, and the stock was also changed in the pantry app since your last sync. Which change do you want to keep?
+        You bought {bought} here, and the stock was also changed on your computer, in Collca, since your last sync. Which change do you want to keep?
       </Note>
       <div role="radiogroup" aria-label="Which change do you want to keep?">
         <ChoiceRow
@@ -183,9 +183,9 @@ function ConflictChoice({ id }: { id: string }) {
           onClick={() => setChoice("phone")}
         />
         <ChoiceRow
-          label="Pantry app"
+          label="On your computer"
           value={`${values.pantry} in stock`}
-          description={remote.editedAt ? `Changed in the pantry app today, ${formatTime(remote.editedAt)}` : "Changed in the pantry app"}
+          description={remote.editedAt ? `Changed in Collca today, ${formatTime(remote.editedAt)}` : "Changed in Collca"}
           selected={choice === "pantry"}
           onClick={() => setChoice("pantry")}
         />
