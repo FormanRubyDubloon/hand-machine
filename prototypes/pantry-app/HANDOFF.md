@@ -331,7 +331,7 @@ Decisions taken with Isaac before building:
 - Every change can be undone from History on the same day, not only merges and deletes. The intent still says merges and deletes; update it.
 - "Skip this time" is out of LIST-01 for now.
 - Recipes can be edited here as well as through Claude. The edit panel wasn't drawn; the code has a plain first take for review.
-- The top bar says "Phone synced 10:02".
+- "Phone synced 10:02" sits at the bottom of the History panel on Home (moved from the top bar, 20 November 2026).
 - One shared seed for both prototypes, with real store names (Sainsbury's, Stoke Newington). Sardine linguine and Fennel and orange salad are both Want to cook.
 - Aisles reorder by drag (dnd-kit).
 
@@ -339,7 +339,7 @@ What the build added or changed from the screens:
 
 - shadcn `table`, `sheet`, `command`, `popover` (and `input-group`, which `command` needs) are now in `src/components/ui`, stock radix-sera, each with a story. The handoff's "new" pieces live in `src/components.tsx`.
 - A "Demo" menu in the top bar: simulate a phone sync, open the shopping app, reset both apps' data, sign out. Not a real feature.
-- PAN-19 only appears from the Demo menu. The phone already settles conflicts on its own screen before it writes back, so a real conflict never reaches this app. Which device asks first is an open question for the intent.
+- PAN-19 only appears from Settings → Demo (the Demo menu moved there from the top bar, 20 November 2026). The phone already settles conflicts on its own screen before it writes back, so a real conflict never reaches this app. Which device asks first is an open question for the intent.
 - Ingredients gained a "part-used" flag (a clove of garlic, some milk). Cooked it shows "Finished it" for those instead of a count, which is what REC-11 does with linguine and garlic.
 - "On the list" on a recipe takes its items off the list when clicked. The screens don't say what pressing it again does.
 - The shop picker on LIST-01 only changes this list's aisle order. "Sets the aisle order on your phone" would mean the desktop choosing the phone's store, which the phone does itself.

@@ -16,7 +16,7 @@ import {
 } from "../model"
 import { href, navigate, type RecipesTab } from "../router"
 import { usePantry } from "../state"
-import { Eyebrow, ExpiryAlert, Field, Stepper } from "../components"
+import { Eyebrow, ExpiryAlert, Field, Stepper, ZigZag } from "../components"
 import { RecipeEditor } from "./recipe-edit"
 import { ItemSearch, useLikelyItems } from "../link-picker"
 import { ItemPanel, pluralise } from "./item-panel"
@@ -683,7 +683,8 @@ export function RecipeFull({ id, tab = "cook", item, serves: initial }: { id: st
             </Button>
           </div>
         </div>
-        <div className="grid gap-x-14 gap-y-10 border-t border-border pt-6 @min-[976px]:grid-cols-[560px_minmax(360px,1fr)] @min-[976px]:items-start">
+        <ZigZag />
+        <div className="grid gap-x-14 gap-y-10 @min-[976px]:grid-cols-[560px_minmax(360px,1fr)] @min-[976px]:items-start">
           <Ingredients recipe={recipe} tab={tab} serves={serves} setServes={setServes} />
           <Method recipe={recipe} />
         </div>

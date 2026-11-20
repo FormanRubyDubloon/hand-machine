@@ -32,6 +32,25 @@ export function PageTitle({ title, subtitle, children }: { title: React.ReactNod
   )
 }
 
+// One 12 × 7 tile of the zig-zag, drawn past both edges so the valleys where tiles meet get a proper join.
+const zigZagTile = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="7" viewBox="0 0 12 7"><polyline points="-6,0.5 0,6.5 6,0.5 12,6.5 18,0.5" fill="none" stroke="black" stroke-width="1"/></svg>',
+)}")`
+
+/**
+ * A zig-zag rule under a page header, in place of a straight stroke. The tile is a mask, so the colour is the
+ * background (bg-border by default; pass another bg-* to change it) and it follows dark mode.
+ */
+export function ZigZag({ className }: { className?: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={cn("h-[7px] w-full shrink-0 bg-border", className)}
+      style={{ maskImage: zigZagTile, WebkitMaskImage: zigZagTile, maskRepeat: "repeat-x", WebkitMaskRepeat: "repeat-x", maskSize: "12px 7px", WebkitMaskSize: "12px 7px" }}
+    />
+  )
+}
+
 export function SectionTitle({ children, className }: { children: React.ReactNode; className?: string }) {
   return <h2 className={cn("text-[22px] leading-tight font-semibold", className)}>{children}</h2>
 }

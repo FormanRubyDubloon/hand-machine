@@ -17,6 +17,8 @@ import { usePantry } from "../state"
 import { Eyebrow, ExpiryAlert, FilterGroup, FilterSidebar, PageTitle, SortSelect } from "../components"
 import { ClaudeExamples } from "./claude"
 import { CookedDialog, RecipePanel, WantButton } from "./recipe"
+import { tagPhoto } from "../tag-photos"
+import { CheckIcon } from "lucide-react"
 
 type Quick = "all" | "dinner" | "quick" | "want"
 const quickTest: Record<Quick, (r: Recipe) => boolean> = {
@@ -203,18 +205,24 @@ const sorts: Record<Sort, { label: string; compare: (a: Ranked, b: Ranked) => nu
   added: { label: "Date added", compare: newest((r) => r.addedAt) },
   edited: { label: "Date edited", compare: newest((r) => r.editedAt) },
 }
+// The Recipe column stays put while the rest of the table scrolls sideways under it. Sticky cells need a solid
+// background (each row state is matched below) and a line on the right edge so the scrolled columns tuck under it.
+const frozen = "sticky left-0 z-10 shadow-[inset_-1px_0_0_var(--border)]"
+
 function AllRecipes({ ranked, selected }: { ranked: Ranked[]; selected?: string }) {
   const [show, setShow] = React.useState<Show | null>(null)
   const [meal, setMeal] = React.useState<string | null>(null)
   const [time, setTime] = React.useState<string | null>(null)
   const [sort, setSort] = React.useState<Sort>("name")
+  const [tags, setTags] = React.useState<string[]>([])
   const showTest: Record<Show, (r: Ranked) => boolean> = {
     can: (r) => r.info.canCook,
     nearly: (r) => !r.info.canCook && r.info.short.length <= 2,
     want: (r) => r.recipe.wantToCook,
   }
   const pass = (r: Ranked, skip?: string) =>
-    (skip === "show" || !show || showTest[show](r)) && (skip === "meal" || !meal || r.recipe.meal === meal) && (skip === "time" || !time || minutesBand(r.recipe.minutes) === time)
+    (skip === "show" || !show || showTest[show](r)) && (skip === "meal" || !meal || r.recipe.meal === meal) && (skip === "time" || !time || minutesBand(r.recipe.minutes) === time) &&
+    (skip === "tags" || !tags.length || (r.recipe.tags ?? []).some((t) => tags.includes(t.toLowerCase())))
   const rows = ranked.filter((r) => pass(r)).sort(sorts[sort].compare)
   const count = (skip: string, test: (r: Ranked) => boolean) => ranked.filter((r) => pass(r, skip) && test(r)).length
   return (
@@ -248,14 +256,25 @@ function AllRecipes({ ranked, selected }: { ranked: Ranked[]; selected?: string 
         />
       </FilterSidebar>
       <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-8 py-6">
-        <div className="flex justify-end">
-          <SortSelect value={sort} onChange={setSort} options={(Object.keys(sorts) as Sort[]).map((k) => ({ value: k, label: sorts[k].label }))} />
+        {/* Pills and sort share a row: the pills wrap onto more lines if they don't fit, the sort stays top right. */}
+        <div className="flex shrink-0 items-start gap-6">
+          <TagPills
+            tags={commonTags(ranked.map((r) => r.recipe), 10)}
+            value={tags}
+            onChange={setTags}
+            count={(tag) => count("tags", (r) => (r.recipe.tags ?? []).some((t) => t.toLowerCase() === tag))}
+          />
+          <div className="ml-auto shrink-0 py-2">
+            <SortSelect value={sort} onChange={setSort} options={(Object.keys(sorts) as Sort[]).map((k) => ({ value: k, label: sorts[k].label }))} />
+          </div>
         </div>
-        <Table>
+        {/* The table scrolls sideways under the frozen Recipe column with no scroll bar showing (trackpad or
+            Shift + wheel). overflow-x makes the box scroll vertically too, so that's switched off. */}
+        <Table containerClassName="overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              {["Recipe", "Stock", "Short of", "Uses up", "Time", "Serves", "Tags", ""].map((h) => (
-                <TableHead key={h} className="h-10 text-[10px] font-semibold tracking-widest">{h}</TableHead>
+              {["Recipe", "Stock", "Short of", "Uses up", "Time", "Serves", "Tags", ""].map((h, k) => (
+                <TableHead key={h} className={cn("h-10 text-[10px] font-semibold tracking-widest", k === 0 && cn(frozen, "bg-background pl-3"))}>{h}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
@@ -266,11 +285,17 @@ function AllRecipes({ ranked, selected }: { ranked: Ranked[]; selected?: string 
                 tabIndex={0}
                 aria-label={`${recipe.name}: open in the side panel`}
                 data-state={selected === recipe.id ? "selected" : undefined}
-                className={cn("h-12 cursor-pointer outline-none focus-visible:bg-muted", selected === recipe.id && "shadow-[inset_2px_0_0_var(--primary)]")}
+                className="group h-12 cursor-pointer outline-none focus-visible:bg-muted"
                 onClick={(e) => opensPanel(e) && navigate({ name: "recipes", tab: "all", recipe: recipe.id })}
                 onKeyDown={(e) => panelKey(e, () => navigate({ name: "recipes", tab: "all", recipe: recipe.id }))}
               >
-                <TableCell className="pl-3">
+                <TableCell
+                  className={cn(
+                    frozen,
+                    "min-w-56 max-w-80 bg-background pl-3 whitespace-normal group-hover:bg-[color-mix(in_oklch,var(--muted)_50%,var(--background))] group-focus-visible:bg-muted group-data-[state=selected]:bg-muted",
+                    selected === recipe.id && "shadow-[inset_2px_0_0_var(--primary),inset_-1px_0_0_var(--border)]",
+                  )}
+                >
                   <RecipeName recipe={recipe} tab="all" />
                 </TableCell>
                 <TableCell>
@@ -293,6 +318,52 @@ function AllRecipes({ ranked, selected }: { ranked: Ranked[]; selected?: string 
         </Table>
         {rows.length === 0 && <p className="py-6 text-sm text-muted-foreground">No recipes match these filters.</p>}
       </div>
+    </div>
+  )
+}
+
+/** The recipes' tags, most used first (ties A to Z), lower case. Meals have their own filter, so they're left out. */
+function commonTags(recipes: Recipe[], n: number) {
+  const counts = new Map<string, number>()
+  for (const r of recipes) for (const t of new Set((r.tags ?? []).map((t) => t.toLowerCase()))) counts.set(t, (counts.get(t) ?? 0) + 1)
+  return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, n).map(([t]) => t)
+}
+
+/**
+ * The most common tags as photo pills above the All recipes table. Tick several to see recipes with any of them;
+ * the count is how many recipes each would show with the other filters. A tag with no photo gets a plain pill.
+ */
+function TagPills({ tags, value, onChange, count }: { tags: string[]; value: string[]; onChange: (v: string[]) => void; count: (tag: string) => number }) {
+  if (!tags.length) return null
+  return (
+    <div role="group" aria-label="Tags" className="-mx-1 flex min-w-0 flex-1 flex-wrap gap-3 px-1 py-1">
+      {tags.map((tag) => {
+        const on = value.includes(tag)
+        const photo = tagPhoto(tag)
+        return (
+          <button
+            key={tag}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(on ? value.filter((t) => t !== tag) : [...value, tag])}
+            className={cn(
+              "relative flex h-12 min-w-36 shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full px-6 outline-none",
+              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              photo ? "bg-muted-foreground" : "bg-muted",
+              on && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+            )}
+          >
+            {photo && <img src={photo} alt="" loading="lazy" className="absolute inset-0 size-full object-cover" />}
+            {/* A dark wash so the white label reads on any photo; deeper when picked. */}
+            {photo && <span className={cn("absolute inset-0 transition-colors", on ? "bg-black/55" : "bg-black/35 hover:bg-black/25")} />}
+            <span className={cn("relative flex items-center gap-1.5 text-sm font-semibold capitalize", photo ? "text-white" : "text-foreground")}>
+              {on && <CheckIcon className="size-4" strokeWidth={2.5} aria-hidden="true" />}
+              {tag}
+              <span className={cn("text-xs font-semibold tabular-nums", photo ? "text-white/90" : "text-muted-foreground")}>{count(tag)}</span>
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -322,7 +393,7 @@ export function RecipesScreen({ route }: { route: Extract<Route, { name: "recipe
   const ranked = db.recipes.map((recipe) => ({ recipe, info: recipeInfo(recipe, items) })).sort(byUseFirst)
   const canCook = ranked.filter((r) => r.info.canCook).length
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-col gap-4 px-8 pt-7">
         <PageTitle title="Recipes" subtitle={`${plural(ranked.length, "recipe")} · ${canCook} you can cook now${route.tab === "cook" ? " · what needs using first is at the top" : ""}`} />
         <Tabs value={route.tab} onValueChange={(tab) => navigate({ name: "recipes", tab: tab as "cook" | "all" })}>

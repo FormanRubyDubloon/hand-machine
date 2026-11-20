@@ -102,7 +102,7 @@ export function Search() {
         />
       </label>
       {open && q && (
-        <div className="absolute top-full right-0 z-50 mt-2 w-[460px] bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/10">
+        <div className="absolute top-full left-1/2 z-50 mt-2 w-[460px] -translate-x-1/2 bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/10">
           <CommandList className="max-h-[70vh]">
             {total > 0 ? (
               <>

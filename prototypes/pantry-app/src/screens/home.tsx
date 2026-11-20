@@ -1,13 +1,13 @@
 // PAN-09: quick use. Record what you used in a couple of clicks, see History, and what to cook first.
 import * as React from "react"
-import { CopyIcon, SearchIcon } from "lucide-react"
+import { CopyIcon, SearchIcon, SmartphoneIcon } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { FilterChips } from "@/components/ui/filter-chips"
 import {
-  byUseFirst, containsText, dateText, daysUntil, haveText, inStockText, lower, recipesUsing, soonest, isBulk, locationLabel, namesOf, recipeInfo, usesUpText, type Db, type HistoryEntry, type Item, type Items, type Location, type Who,
+  byUseFirst, containsText, dateText, daysUntil, haveText, inStockText, isToday, lower, recipesUsing, shortDate, soonest, isBulk, locationLabel, namesOf, recipeInfo, timeText, usesUpText, type Db, type HistoryEntry, type Item, type Items, type Location, type Who,
 } from "../model"
 import { href, navigate } from "../router"
 import { canUndo, usePantry } from "../state"
@@ -82,7 +82,7 @@ function linksFor(entry: HistoryEntry, db: Db, items: Items): HistoryLinks | und
 }
 
 function History() {
-  const { db, items, actions } = usePantry()
+  const { db, items, actions, phoneSyncedAt } = usePantry()
   const [who, setWho] = React.useState<"all" | Who>("all")
   const [shown, setShown] = React.useState(6)
   const entries = db.history.filter((h) => who === "all" || h.who === who)
@@ -118,6 +118,10 @@ function History() {
           Show older
         </Button>
       )}
+      <span className="flex items-center gap-1.5 border-t border-border pt-3 text-xs text-muted-foreground" title="When the shopping app last synced with the pantry">
+        <SmartphoneIcon className="size-3.5" aria-hidden="true" />
+        Phone synced {isToday(phoneSyncedAt) ? "today" : shortDate(phoneSyncedAt)}, {timeText(phoneSyncedAt)}
+      </span>
     </section>
   )
 }

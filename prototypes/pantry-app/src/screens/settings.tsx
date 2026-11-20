@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { aisleOrder, categoriesAtoZ, isStaple, isToday, nameList, numberedAisles, plural, shortDate, timeText, whenText, type Category, type Store } from "../model"
 import { navigate, type SettingsTab } from "../router"
 import { usePantry } from "../state"
+import { signOutOfSupabase } from "../../../shared/src/auth"
 import { getTheme, setTheme, type ThemeChoice } from "../theme"
 import { Eyebrow, Field, NavRow, PageTitle, Segmented } from "../components"
 import { CategoryLookPicker, CategoryMark } from "../category-look"
@@ -611,7 +612,7 @@ function Account() {
         {row("Export", "Pantry, shopping list and recipes as a file", <Button variant="outline" size="sm" onClick={exportData}>Export</Button>)}
         {row("Delete account", "Deletes everything. This can't be undone.", <Button variant="destructive" size="sm" onClick={() => setConfirm(true)}>Delete</Button>)}
       </section>
-      <Button variant="outline" className="self-start" onClick={actions.signOut}>Sign out</Button>
+      <Button variant="outline" className="self-start" onClick={() => void signOutOfSupabase()}>Sign out</Button>
 
       <Dialog open={confirm} onOpenChange={setConfirm}>
         <DialogContent className="gap-5 p-8 sm:max-w-[480px]">
@@ -629,6 +630,41 @@ function Account() {
   )
 }
 
+// ---------- demo ----------
+
+/** What used to be the Demo menu in the header: a fake phone sync, the shopping app, and a reset. */
+function Demo() {
+  const { actions } = usePantry()
+  const row = (title: string, sub: string, action: React.ReactNode) => (
+    <div className="flex items-center justify-between gap-6 border-b border-border py-4">
+      <span className="flex flex-col">
+        <span className="text-sm font-semibold">{title}</span>
+        <span className="max-w-md text-xs text-muted-foreground">{sub}</span>
+      </span>
+      {action}
+    </div>
+  )
+  return (
+    <div className="flex max-w-2xl flex-col">
+      {row(
+        "Simulate a phone sync",
+        "A shop comes in. Eggs and lemons changed in both places.",
+        <Button variant="outline" size="sm" onClick={() => { actions.simulatePhoneSync(); toast("Phone sync simulated") }}>Simulate</Button>,
+      )}
+      {row(
+        "Open the shopping app",
+        "In a new tab. Its syncs show up here.",
+        <Button variant="outline" size="sm" asChild><a href="/prototypes/shopping-list/" target="_blank" rel="noreferrer">Open</a></Button>,
+      )}
+      {row(
+        "Reset demo data",
+        "Both apps go back to the seed.",
+        <Button variant="outline" size="sm" onClick={() => { actions.resetDemo(); toast("Demo data reset") }}>Reset</Button>,
+      )}
+    </div>
+  )
+}
+
 // ---------- shell ----------
 
 const tabs: { tab: SettingsTab; title: string; sub: string; intro: string }[] = [
@@ -637,6 +673,7 @@ const tabs: { tab: SettingsTab; title: string; sub: string; intro: string }[] = 
   { tab: "categories", title: "Categories", sub: "Groups for items and aisles", intro: "Every item has one. Each store gives a category an aisle number, so the shopping list follows your walk round the shop." },
   { tab: "claude", title: "Claude connection", sub: "What Claude can read and change", intro: "Lets Claude use your pantry from the Claude phone app, desktop or web." },
   { tab: "account", title: "Account", sub: "Sign-in, devices and your data", intro: "One account for the pantry, kitchen and shopping apps." },
+  { tab: "demo", title: "Demo", sub: "Fakes for the prototype", intro: "Things a real backend would do, for trying the prototype. Shares its data with the shopping app." },
 ]
 
 export function Settings({ tab, store }: { tab: SettingsTab; store?: string }) {
@@ -655,7 +692,7 @@ export function Settings({ tab, store }: { tab: SettingsTab; store?: string }) {
         ) : (
           <>
             <PageTitle title={current.title} subtitle={current.intro} />
-            {tab === "general" ? <General /> : tab === "stores" ? <StoresAndAisles key={store} initialStore={store} /> : tab === "claude" ? <ClaudeConnection /> : <Account />}
+            {tab === "general" ? <General /> : tab === "stores" ? <StoresAndAisles key={store} initialStore={store} /> : tab === "claude" ? <ClaudeConnection /> : tab === "demo" ? <Demo /> : <Account />}
           </>
         )}
       </div>
