@@ -20,6 +20,7 @@ import { Settings } from "./screens/settings"
 import { isDark, subscribeTheme } from "./theme"
 import { SignIn } from "./screens/signin"
 import { Setup } from "./screens/setup"
+import { useLiveSync } from "./live-sync"
 
 const nav: { label: string; route: Route; match: Route["name"][] }[] = [
   { label: "Home", route: { name: "home" }, match: ["home"] },
@@ -146,6 +147,8 @@ function Shell() {
     opened.current = true
     void actions.syncNow({ quiet: true })
   }, [session, ready, actions])
+  // After that, Claude's changes come in by themselves, and coming back to the tab syncs (live-sync.ts).
+  useLiveSync(!!session && ready, userId)
   const route = useRoute()
   const [conflicts, setConflicts] = React.useState(false)
   // PAN-19 opens by itself when a sync brings conflicts in.

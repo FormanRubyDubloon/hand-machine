@@ -1,6 +1,6 @@
 # Intent: pantry, recipes and shopping list app, with Claude access
 
-Author: Isaac Forman · Date: 14 Nov 2026 · Updated: 18 Nov 2026 · Status: draft, awaiting review
+Author: Isaac Forman · Date: 14 Nov 2026 · Updated: 20 Nov 2026 · Status: draft, awaiting review
 
 ## Problem
 
@@ -74,6 +74,7 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - Check-offs from the shopping list update stock when I sync, not on each tap.
 - Changes I make in the phone's Pantry section (recording what I've used, editing an item) also wait for a sync.
 - Manual sync is for now. Eventually I want to remove it everywhere, so changes go through by themselves.
+- The first step (20 Nov 2026): the desktop app picks up Claude's changes by itself within a few seconds, with a short note saying what Claude changed. It also syncs when I come back to it. The phone still syncs by hand.
 - If I finish a shop and haven't synced, the app reminds me.
 - If the same item has changed in two places since the last sync (for example, I changed it in the admin app while I was out shopping), the app asks me which change to keep.
 - Until I choose, that item keeps the value from the app I'm using. The rest of the sync still goes through.
