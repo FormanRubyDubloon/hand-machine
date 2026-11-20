@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { markSetupDone } from "../../../shared/src/auth"
-import type { Item } from "../model"
+import { todayIso, type Item, type Recipe } from "../model"
 import { navigate } from "../router"
 import { usePantry } from "../state"
 import { Eyebrow } from "../components"
@@ -22,7 +22,8 @@ const shopChoices: { id: string; name: string; kind: string }[] = [
   { id: "fishmonger", name: "Fishmonger", kind: "Fishmonger" },
 ]
 
-type Staple = { name: string; categoryId: string; location: NonNullable<Item["location"]>; type?: Item["type"]; unit?: [string, string]; noExpiry?: boolean }
+/** dueToday: its use-by is the day the account is set up, so Home's Use today (and the tour's step for it) has something to show. */
+type Staple = { name: string; categoryId: string; location: NonNullable<Item["location"]>; type?: Item["type"]; unit?: [string, string]; noExpiry?: boolean; dueToday?: boolean }
 
 /** What most kitchens keep. Each starts at 1 in stock with a minimum of 1, so it's a Staple. */
 const staples: Staple[] = [
@@ -31,7 +32,7 @@ const staples: Staple[] = [
   { name: "Lemons", categoryId: "fruit-and-veg", location: "fridge" },
   { name: "Eggs", categoryId: "dairy-and-chilled", location: "fridge" },
   { name: "Butter", categoryId: "dairy-and-chilled", location: "fridge", unit: ["pack", "packs"] },
-  { name: "Milk", categoryId: "dairy-and-chilled", location: "fridge", unit: ["bottle", "bottles"] },
+  { name: "Milk", categoryId: "dairy-and-chilled", location: "fridge", unit: ["bottle", "bottles"], dueToday: true },
   { name: "Bread", categoryId: "bread-and-crackers", location: "cupboard", unit: ["loaf", "loaves"] },
   { name: "Rice", categoryId: "grains-and-pulses", location: "cupboard", type: "bulk", unit: ["bag", "bags"] },
   { name: "Pasta", categoryId: "grains-and-pulses", location: "cupboard", type: "bulk", unit: ["bag", "bags"] },
@@ -53,8 +54,61 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(
 function stapleItem(s: Staple): Item {
   return {
     id: slug(s.name), name: s.name, type: s.type ?? "counted", target: 1, inStock: 1, categoryId: s.categoryId, where: [],
-    location: s.location, ...(s.unit && { unit: s.unit }), ...(s.noExpiry ? { noExpiry: true, useBy: [] } : { useBy: [null] }),
+    location: s.location, ...(s.unit && { unit: s.unit }), ...(s.noExpiry ? { noExpiry: true, useBy: [] } : { useBy: [s.dueToday ? todayIso() : null] }),
   } as Item
+}
+
+// ---------- the example recipe ----------
+
+const VINDALOO = "Lamb Vindaloo"
+
+/** The lamb for the example recipe: not a Staple (minimum 0), none in stock, on the list for the recipe. */
+function lambItem(): Item {
+  return {
+    id: "lamb-shoulder", name: "Lamb shoulder", type: "counted", target: 0, inStock: 0, categoryId: "meat-and-fish", where: [],
+    location: "fridge", unit: ["pack", "packs"], useBy: [],
+    entries: [{ source: { kind: "recipe", recipe: VINDALOO }, qty: 1, at: new Date().toISOString() }],
+  } as Item
+}
+
+/**
+ * An example recipe, so Recipes isn't empty on day one and there's something to cook. Added by Collca, today.
+ * Lines link to the starter staples only when they'll exist (not after Import a list); the rest stay as
+ * wording, like any recipe with ingredients the pantry doesn't have.
+ */
+function vindaloo(have: Set<string>): Recipe {
+  const line = (text: string, itemId = "", more: Partial<Recipe["ingredients"][number]> = {}) => ({
+    text, itemId: have.has(itemId) ? itemId : "", need: 1, buy: 1, ...more,
+  })
+  const now = new Date().toISOString()
+  return {
+    id: "lamb-vindaloo", name: VINDALOO, minutes: 120, prep: 20, cook: 100, serves: 4, wantToCook: true,
+    meal: "Dinner", tags: ["curry", "indian", "lamb"], addedBy: "collca", addedAt: now, lastCooked: null,
+    notes: "An example to show how recipes work: the lamb is on your shopping list for it. Change it or delete it whenever you like.",
+    ingredients: [
+      line("800 g lamb shoulder, diced", "lamb-shoulder"),
+      line("2 onions, finely sliced", "onions", { need: 2, buy: 2 }),
+      line("6 cloves of garlic, crushed", "garlic", { partial: true }),
+      line("A thumb of ginger, grated"),
+      line("2 tsp Kashmiri chilli powder"),
+      line("1 tsp ground cumin"),
+      line("1 tsp ground coriander"),
+      line("½ tsp ground cinnamon"),
+      line("3 tbsp red wine vinegar"),
+      line("1 tin of chopped tomatoes", "chopped-tomatoes"),
+      line("2 tbsp oil", "olive-oil", { partial: true }),
+      line("1 tsp sugar", "sugar", { partial: true }),
+      line("Salt", "salt", { partial: true }),
+      line("Rice, to serve", "rice", { partial: true }),
+    ],
+    method: [
+      "Mix the chilli powder, cumin, coriander, cinnamon, vinegar, ginger and half the garlic into a paste. Rub it into the lamb with a good pinch of salt and leave for at least 30 minutes, or overnight in the fridge.",
+      "Heat the oil in a heavy pan and cook the onions over a medium heat for about 15 minutes, until deep golden.",
+      "Add the rest of the garlic and cook for a minute, then add the lamb and its marinade and fry for 5 minutes.",
+      "Stir in the tomatoes, sugar and 200 ml water. Cover and simmer gently for about 1½ hours, until the lamb is tender. Add a splash of water if it catches.",
+      "Taste, adjust the salt and vinegar, and serve with rice.",
+    ],
+  }
 }
 
 type Start = "empty" | "staples" | "import"
@@ -78,7 +132,12 @@ export function Setup({ onDone }: { onDone: () => void }) {
       else actions.deleteStore(s.id)
     }
     if (kept[0]) actions.setDefaultStore(kept[0].id)
-    if (start === "staples") actions.importItems(staples.map((s) => ({ item: stapleItem(s) })))
+    // Every start except Start empty gets the example recipe, with its lamb on the shopping list.
+    if (start !== "empty") {
+      const items = [...(start === "staples" ? staples.map(stapleItem) : []), lambItem()]
+      actions.importItems(items.map((item) => ({ item })))
+      actions.saveRecipe(vindaloo(new Set(items.map((i) => i.id))), true)
+    }
     await markSetupDone()
     setBusy(false)
     onDone()
@@ -126,13 +185,13 @@ export function Setup({ onDone }: { onDone: () => void }) {
             <>
               <div className="flex flex-col gap-2">
                 <h2 className="text-[22px] font-semibold tracking-[0.04em] uppercase">Start your pantry</h2>
-                <p className="text-sm text-muted-foreground">Recipes come later, from Claude or by hand.</p>
+                <p className="text-sm text-muted-foreground">The first two come with an example recipe, Lamb Vindaloo, and put its lamb on your shopping list. Add your own recipes later, through Claude or by hand.</p>
               </div>
               <div role="radiogroup" aria-label="How to start" className="flex flex-col gap-2">
                 {([
-                  ["staples", "Add common staples", `${staples.length} things most kitchens keep, like eggs, onions, rice and olive oil. Each starts at 1 in stock with a minimum of 1. Remove or recount them in the Pantry.`],
+                  ["staples", "Add common staples", `${staples.length} things most kitchens keep, like eggs, onions, rice and olive oil. Each starts at 1 in stock with a minimum of 1, and the milk is due today, so you can see how use-by dates work. Remove or recount them in the Pantry.`],
                   ["import", "Import a list", "Paste a list or upload a spreadsheet of what you have."],
-                  ["empty", "Start empty", "Add things as you go."],
+                  ["empty", "Start empty", "Nothing in the pantry and no example recipe. Add things as you go."],
                 ] as [Start, string, string][]).map(([value, title, sub]) => (
                   <button
                     key={value}

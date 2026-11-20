@@ -109,7 +109,7 @@ export type RecipeRow = {
   want_to_cook: boolean
   soon: string | null
   last_cooked: string | null
-  added_by: "claude" | "you"
+  added_by: "claude" | "you" | "collca"
   added_at: string
   edited_at?: string
   recipe_ingredients: { position: number; text: string; group_name?: string | null; item_id: string | null; need: number; buy: number; partial: boolean; optional?: boolean; uses: number | null }[]

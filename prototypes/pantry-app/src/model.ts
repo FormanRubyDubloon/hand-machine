@@ -214,6 +214,11 @@ export const isToday = (iso: string) => startOf(new Date(iso)) === startOf(new D
 export const timeText = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
 export const shortDate = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
 
+/** Who added a recipe, as it reads in a sentence. */
+export const addedByName = (by: Recipe["addedBy"]) => (by === "claude" ? "Claude" : by === "collca" ? "Collca" : "you")
+/** When a recipe was added: "today", or a short date. */
+export const addedWhen = (iso: string) => (isToday(iso) ? "today" : shortDate(iso))
+
 // ---------- text ----------
 
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`

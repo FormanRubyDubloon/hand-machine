@@ -21,6 +21,7 @@ import { isDark, subscribeTheme } from "./theme"
 import { SignIn } from "./screens/signin"
 import { Setup } from "./screens/setup"
 import { useLiveSync } from "./live-sync"
+import { goHomeForTour, IntroDialog, Tour } from "./intro"
 
 const nav: { label: string; route: Route; match: Route["name"][] }[] = [
   { label: "Home", route: { name: "home" }, match: ["home"] },
@@ -36,6 +37,7 @@ function SyncButton() {
     <Button
       variant="outline"
       size="sm"
+      data-tour="sync"
       disabled={syncing}
       onClick={() => void actions.syncNow()}
       title={db.syncedAt ? `Last synced ${isToday(db.syncedAt) ? "today" : shortDate(db.syncedAt)}, ${timeText(db.syncedAt)}` : "Not synced yet"}
@@ -60,6 +62,7 @@ function Header({ route }: { route: Route }) {
             return (
               <a
                 key={n.label}
+                data-tour={`nav-${n.route.name}`}
                 href={`#/${n.route.name === "home" ? "" : n.route.name === "recipes" ? "recipes/cook" : n.route.name}`}
                 aria-current={current ? "page" : undefined}
                 className={cn(
@@ -76,10 +79,10 @@ function Header({ route }: { route: Route }) {
       <Search />
       <div className="flex shrink-0 items-center justify-end gap-2">
         <SyncButton />
-        <Button variant="outline" size="icon" aria-label="Settings" title="Settings" onClick={() => navigate({ name: "settings", tab: "general" })}>
+        <Button variant="outline" size="icon" aria-label="Settings" title="Settings" data-tour="settings" onClick={() => navigate({ name: "settings", tab: "general" })}>
           <SettingsIcon className="size-4.5" />
         </Button>
-        <Button onClick={() => navigate({ name: "pantry", item: "new" })}>
+        <Button data-tour="add-item" onClick={() => navigate({ name: "pantry", item: "new" })}>
           <PlusIcon />
           Add item
         </Button>
@@ -149,6 +152,16 @@ function Shell() {
   }, [session, ready, actions])
   // After that, Claude's changes come in by themselves, and coming back to the tab syncs (live-sync.ts).
   useLiveSync(!!session && ready, userId)
+  // The welcome, then the optional tour (intro.tsx). Only for a new account: it opens when Setup finishes,
+  // so existing accounts never see it.
+  const [intro, setIntro] = React.useState(false)
+  const [tour, setTour] = React.useState(false)
+  const startTour = () => {
+    setIntro(false)
+    goHomeForTour()
+    // Let Home draw before the tour looks for its targets.
+    setTimeout(() => setTour(true), 250)
+  }
   const route = useRoute()
   const [conflicts, setConflicts] = React.useState(false)
   // PAN-19 opens by itself when a sync brings conflicts in.
@@ -162,7 +175,7 @@ function Shell() {
   if (signedIn === undefined) return null
   if (!signedIn) return <SignIn />
   if (session && setup === "checking") return null
-  if (session && setup === "show") return <Setup onDone={() => setSetup("done")} />
+  if (session && setup === "show") return <Setup onDone={() => { setSetup("done"); setIntro(true) }} />
   return (
     <div className="flex h-dvh min-w-[1180px] flex-col bg-background">
       <Header route={route} />
@@ -171,6 +184,8 @@ function Shell() {
         <Screen route={route} />
       </main>
       <ConflictsDialog open={conflicts && count > 0} onOpenChange={setConflicts} />
+      <IntroDialog open={intro && ready} onSkip={() => setIntro(false)} onTour={startTour} />
+      {tour && <Tour onDone={() => setTour(false)} />}
     </div>
   )
 }
