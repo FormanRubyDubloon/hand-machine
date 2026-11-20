@@ -59,11 +59,11 @@ npx eas-cli@latest init
 `.env.local` isn't uploaded (git ignores it), so the build needs the Supabase address and publishable key as EAS environment variables, for the `production` and `preview` environments. Use the same values as `.env.local`, and never the service-role key:
 
 ```bash
-npx eas-cli@latest env:create --name EXPO_PUBLIC_SUPABASE_URL --value https://bgwlqmpyjfqsvoqgpdtn.supabase.co --environment production --environment preview --visibility plaintext
+npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_URL --value https://bgwlqmpyjfqsvoqgpdtn.supabase.co --environment production --environment preview --visibility plaintext
 ```
 
 ```bash
-npx eas-cli@latest env:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --environment production --environment preview --visibility sensitive
+npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_ANON_KEY --environment production --environment preview --visibility sensitive
 ```
 
 (The second one asks for the key.)
