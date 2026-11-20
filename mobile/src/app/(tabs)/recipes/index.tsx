@@ -14,7 +14,7 @@ import { font, space, useColours } from "../../../ui/theme"
 type Show = "all" | "shop"
 
 export default function Recipes() {
-  const { state, status, syncNow } = useStore()
+  const { state, status, pulling, pullToSync } = useStore()
   const c = useColours()
   const [q, setQ] = React.useState("")
   const [show, setShow] = React.useState<Show>("all")
@@ -45,7 +45,7 @@ export default function Recipes() {
         keyExtractor={(x) => x.r.id}
         contentContainerStyle={{ paddingHorizontal: space.screen, paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={status === "syncing"} onRefresh={() => void syncNow()} tintColor={c.muted} />}
+        refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void pullToSync()} tintColor={c.muted} />}
         renderItem={({ item: { r, short, onList } }) => {
           const sub = show === "shop" ? plural(onList, "thing") + " on the list" : [minutesText(r.minutes), `serves ${r.serves}`, r.wantToCook ? "want to cook" : ""].filter(Boolean).join(" · ")
           const status = short ? `Short of ${short}` : "Can cook now"

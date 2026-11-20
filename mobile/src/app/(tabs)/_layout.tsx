@@ -5,7 +5,7 @@ import { router, usePathname } from "expo-router"
 import { TabList, TabSlot, TabTrigger, Tabs, type TabTriggerSlotProps } from "expo-router/ui"
 import { BookOpen, CloudOff, List, Menu, Package, type LucideIcon } from "lucide-react-native"
 import * as React from "react"
-import { Text, View } from "react-native"
+import { ActivityIndicator, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useStore } from "../../data/store"
 import { Press } from "../../ui/kit"
@@ -30,6 +30,7 @@ export default function TabsLayout() {
           </TabTrigger>
         ))}
         <View style={{ flex: 1 }} />
+        <SyncSpinner />
         <Press fade accessibilityLabel="Settings" onPress={() => router.push("/settings")} style={{ width: 40, height: 48, alignItems: "flex-end", justifyContent: "center" }}>
           <Menu size={24} color={c.ink} strokeWidth={2} />
         </Press>
@@ -78,5 +79,20 @@ function SyncNote() {
       <CloudOff size={16} color={c.ink} />
       <Text style={{ flex: 1, fontFamily: font.regular, fontSize: 13, lineHeight: 18, color: c.ink }}>{text}</Text>
     </Press>
+  )
+}
+
+/**
+ * A small spinner beside the menu while the app syncs by itself. Hidden while a pulled-down list shows its own
+ * spinner, so there's only ever one.
+ */
+function SyncSpinner() {
+  const c = useColours()
+  const { status, pulling } = useStore()
+  if (status !== "syncing" || pulling) return null
+  return (
+    <View accessibilityLabel="Syncing" accessibilityLiveRegion="polite" style={{ height: 48, justifyContent: "center" }}>
+      <ActivityIndicator size="small" color={c.muted} />
+    </View>
   )
 }
