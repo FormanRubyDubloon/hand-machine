@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
-  categoriesAtoZ, dateText, haveText, locations, guessPlace, ingredientName, inStockText, isBulk, lower, measureText, needOf, plural, recipeInfo, recipeQty, shortDate, unitText,
+  addedByName, addedWhen, categoriesAtoZ, dateText, haveText, locations, guessPlace, ingredientName, inStockText, isBulk, lower, measureText, needOf, plural, recipeInfo, recipeQty, shortDate, unitText,
   type IngredientRow, type Item, type Recipe,
 } from "../model"
 import { href, navigate, type RecipesTab } from "../router"
@@ -590,7 +590,7 @@ function MetaLine({ recipe }: { recipe: Recipe }) {
     recipe.cook ? `Cook ${recipe.cook} min` : null,
     recipe.lastCooked ? `Cooked ${dateText(recipe.lastCooked) === "Today" ? "today" : shortDate(recipe.lastCooked)}` : "Never cooked",
   ]
-  const added = recipe.addedBy ? `added by ${recipe.addedBy === "claude" ? "Claude" : "you"}${recipe.addedAt ? ` ${shortDate(recipe.addedAt)}` : ""}` : null
+  const added = recipe.addedBy ? `added by ${addedByName(recipe.addedBy)}${recipe.addedAt ? ` ${addedWhen(recipe.addedAt)}` : ""}` : null
   if (recipe.source) {
     const isLink = /^https?:\/\//.test(recipe.source)
     parts.push(

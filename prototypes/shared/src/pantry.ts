@@ -108,7 +108,8 @@ export type SharedRecipe = {
   source?: string
   notes?: string
   lastCooked?: string | null
-  addedBy?: "claude" | "you"
+  /** collca: an example the app added itself (Setup's Lamb Vindaloo). */
+  addedBy?: "claude" | "you" | "collca"
   addedAt?: string
   /** When the recipe was last changed (not when it was cooked or marked want-to-cook). */
   editedAt?: string

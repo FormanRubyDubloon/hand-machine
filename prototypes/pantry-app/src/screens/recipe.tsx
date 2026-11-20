@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-  dateText, guessPlace, haveText, inStockText, ingredientName, isBulk, locations, lower, measureText, nameList, plural, shortfall, recipeInfo, recipesUsing, recipeTags, shortDate, unitText, unitWord,
+  addedByName, addedWhen, dateText, guessPlace, haveText, inStockText, ingredientName, isBulk, locations, lower, measureText, nameList, plural, shortfall, recipeInfo, recipesUsing, recipeTags, shortDate, unitText, unitWord,
   withStock, isListedItem, recipeQty, toSortOut, type IngredientRow, type Item, type Recipe, categoriesAtoZ,
 } from "../model"
 import { href, navigate, type RecipesTab } from "../router"
@@ -186,7 +186,7 @@ const metaLine = (r: Recipe) =>
     r.prep !== undefined ? `Prep ${r.prep} min` : null,
     r.cook ? `Cook ${r.cook} min` : null,
     r.lastCooked ? `Cooked ${dateText(r.lastCooked) === "Today" ? "today" : shortDate(r.lastCooked)}` : "Never cooked",
-    r.addedBy ? `Added by ${r.addedBy === "claude" ? "Claude" : "you"}${r.addedAt ? `, ${shortDate(r.addedAt)}` : ""}` : null,
+    r.addedBy ? `Added by ${addedByName(r.addedBy)}${r.addedAt ? `, ${addedWhen(r.addedAt)}` : ""}` : null,
   ]
     .filter(Boolean)
     .join(" · ")
