@@ -106,4 +106,8 @@ export async function markSetupDone(): Promise<void> {
   await supabase.auth.updateUser({ data: { setup_done: true } })
 }
 
-export const signOutOfSupabase = () => supabase.auth.signOut()
+/**
+ * Signs out this browser only. Supabase's default signs out every session the account has, which would
+ * also cut off the Claude connection and the phone.
+ */
+export const signOutOfSupabase = () => supabase.auth.signOut({ scope: "local" })
