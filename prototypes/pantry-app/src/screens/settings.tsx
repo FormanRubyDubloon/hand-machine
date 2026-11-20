@@ -672,7 +672,7 @@ const tabs: { tab: SettingsTab; title: string; sub: string; intro: string }[] = 
   { tab: "stores", title: "Stores and aisles", sub: "Aisle order for each shop", intro: "The aisle order sets the order of the shopping list in each shop. You can change it here or in the shopping app." },
   { tab: "categories", title: "Categories", sub: "Groups for items and aisles", intro: "Every item has one. Each store gives a category an aisle number, so the shopping list follows your walk round the shop." },
   { tab: "claude", title: "Claude connection", sub: "What Claude can read and change", intro: "Lets Claude use your pantry from the Claude phone app, desktop or web." },
-  { tab: "account", title: "Account", sub: "Sign-in, devices and your data", intro: "One account for the pantry, kitchen and shopping apps." },
+  { tab: "account", title: "Account", sub: "Sign-in, devices and your data", intro: "One account for the pantry, your phone and Claude." },
   { tab: "demo", title: "Demo", sub: "Fakes for the prototype", intro: "Things a real backend would do, for trying the prototype. Shares its data with the shopping app." },
 ]
 

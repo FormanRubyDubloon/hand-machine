@@ -60,7 +60,7 @@ export function SignIn() {
         <div className="flex max-w-lg flex-col gap-4">
           <h1 className="text-[40px] leading-[1.05] font-semibold tracking-[0.02em] uppercase">What you have, what to cook, what to buy</h1>
           <p className="text-primary-foreground/70">
-            Your pantry, recipes and shopping list in one place, kept in step with the shopping app, the kitchen app and Claude.
+            Know what's in the cupboard, cook from what you have, and shop for what's missing. On your computer, your phone and in Claude.
           </p>
         </div>
         <span className="text-xs tracking-widest text-primary-foreground/70 uppercase">Private to you</span>
@@ -105,7 +105,7 @@ export function SignIn() {
             <>
               <div className="flex flex-col gap-2">
                 <h2 className="text-[22px] font-semibold tracking-[0.04em] uppercase">Sign in</h2>
-                <p className="text-sm text-muted-foreground">One account for the pantry, kitchen and shopping apps.</p>
+                <p className="text-sm text-muted-foreground">One account for the pantry, your phone and Claude.</p>
               </div>
               <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (valid && password && !busy) void signIn() }}>
                 <Field label="Email">
