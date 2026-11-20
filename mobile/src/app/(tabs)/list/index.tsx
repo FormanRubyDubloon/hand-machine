@@ -97,6 +97,7 @@ export default function ListScreen() {
 
   const nextWithItems = !all && aisle && aisle.left === 0 ? aisles.findIndex((a, k) => k > at && a.left > 0) : -1
   const offline = !online || status === "offline"
+  const hint = !empty && count > 1 && nextWithItems < 0
 
   return (
     <View style={{ flex: 1 }}>
@@ -125,7 +126,7 @@ export default function ListScreen() {
 
       <ScrollView
         {...swipe.panHandlers}
-        contentContainerStyle={{ paddingHorizontal: space.screen, paddingBottom: 40, flexGrow: 1 }}
+        contentContainerStyle={{ paddingHorizontal: space.screen, paddingBottom: hint ? 0 : 40, flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={status === "syncing"} onRefresh={() => void syncNow()} tintColor={c.muted} />}
       >
         {shopDone && (
@@ -173,11 +174,15 @@ export default function ListScreen() {
             )}
           </View>
         )}
+        {/* The swipe hint: the spacer pushes it to the foot of the screen when the list is short; when the list is
+            longer than the screen, it follows the last row. */}
+        {hint && (
+          <>
+            <View style={{ flex: 1 }} />
+            <Caption style={{ textAlign: "center", paddingTop: 24, paddingBottom: insets.bottom + 8 }}>Swipe left or right to change aisle</Caption>
+          </>
+        )}
       </ScrollView>
-      {/* The swipe hint sits at the foot of the screen, under the list, whenever there's another aisle to swipe to. */}
-      {!empty && count > 1 && nextWithItems < 0 && (
-        <Caption style={{ textAlign: "center", paddingTop: 8, paddingBottom: insets.bottom + 8 }}>Swipe left or right to change aisle</Caption>
-      )}
     </View>
   )
 }
