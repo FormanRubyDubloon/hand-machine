@@ -6,9 +6,9 @@ import { router } from "expo-router"
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react-native"
 import * as React from "react"
 import { Animated, PanResponder, Platform, RefreshControl, ScrollView, Text, View, useWindowDimensions } from "react-native"
-import { useStore } from "../../../data/store"
+import { TOAST_UNDO_MS, useStore } from "../../../data/store"
 import { restoreTicks, tickAll, tickOne, untick, clearShop } from "../../../logic/actions"
-import { aisleLabel, gotAllText, leftOf, refreshShop, rowsOf, shopAisles, sortRows, type AisleView, type Row } from "../../../logic/list"
+import { aisleLabel, leftOf, refreshShop, rowsOf, shopAisles, sortRows, tickedText, type AisleView, type Row } from "../../../logic/list"
 import { Body, Button, Caption, Display, IconButton, Label, Press } from "../../../ui/kit"
 import { focus, font, radius, space, useColours, useReduceMotion } from "../../../ui/theme"
 
@@ -35,20 +35,34 @@ export default function ListScreen() {
   const go = React.useCallback((i: number | "all") => local((s) => ({ ...s, aisle: i })), [local])
 
   // ----- ticking -----
+  // Every tick shows a toast with Undo. Taps in a row on one item while its toast is up share the toast, and
+  // Undo puts back all of them (the same run is one History entry too).
+  const run = React.useRef<{ id: string; before: number; at: number } | null>(null)
+  const ticked = (r: Row, got: number) => {
+    const last = run.current
+    const before = last && last.id === r.id && Date.now() - last.at < TOAST_UNDO_MS ? last.before : r.got
+    run.current = { id: r.id, before, at: Date.now() }
+    const title = `Took ${r.item.name.toLowerCase()} off what you got`
+    say(tickedText({ ...r, got: before }, got), () => {
+      run.current = null
+      change((s) => restoreTicks(s, r.id, before), { title, key: `shop:${r.id}` })
+    })
+  }
   const tick = (r: Row) => {
     if (r.done) {
+      run.current = null
       change((s) => untick(s, r.id), { title: `Took ${r.item.name.toLowerCase()} off what you got`, key: `shop:${r.id}` })
       return
     }
     void Haptics.selectionAsync().catch(() => {})
     change((s) => tickOne(s, r.id), { title: `Got ${r.item.name.toLowerCase()} on the phone`, key: `shop:${r.id}` })
+    ticked(r, r.got + 1)
   }
   const tickRest = (r: Row) => {
     if (r.done) return
-    const before = r.got
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
     change((s) => tickAll(s, r.id), { title: `Got ${r.item.name.toLowerCase()} on the phone`, key: `shop:${r.id}` })
-    if (r.need - before > 1) say(gotAllText(r), () => change((s) => restoreTicks(s, r.id, before), { title: `Took ${r.item.name.toLowerCase()} off what you got`, key: `shop:${r.id}` }))
+    ticked(r, r.need)
   }
 
   // ----- the heading -----

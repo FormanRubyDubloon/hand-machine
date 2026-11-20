@@ -171,3 +171,14 @@ export const categoryName = (c: Category) => c.name
 
 /** "Got all 6 eggs." */
 export const gotAllText = (r: Row) => `Got all ${count(r.item, r.need)}${r.item.unit ? ` of ${r.item.name.toLowerCase()}` : ` ${r.item.name.toLowerCase()}`}.`
+
+/**
+ * The toast after ticking a row up to `got` (`r` is the row as it was before): "Eggs: got 1, 2 to get.",
+ * "Got all 6 eggs." or, when only one was needed, "Got eggs."
+ */
+export const tickedText = (r: Row, got: number) => {
+  const name = r.item.name.toLowerCase()
+  if (got >= r.need) return r.need === 1 ? `Got ${name}.` : gotAllText(r)
+  const now = got - r.got
+  return `${r.item.name}: got ${count(r.item, now)}, ${count(r.item, r.need - got)} to get.`
+}

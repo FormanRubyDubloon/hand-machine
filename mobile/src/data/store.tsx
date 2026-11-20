@@ -23,6 +23,8 @@ const AFTER_CHANGE_MS = 1200
 const HEARD_MS = 800
 const EVERY_MS = 120_000
 const FRONT_GAP_MS = 20_000
+/** How long a toast with Undo stays up. */
+export const TOAST_UNDO_MS = 5000
 
 export type SyncStatus = "idle" | "syncing" | "offline" | "error"
 export type Toast = { id: number; message: string; undo?: () => void }
@@ -218,7 +220,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const say = React.useCallback((message: string, undo?: () => void) => {
     clearTimeout(toastTimer.current)
     setToast({ id: Date.now(), message, undo })
-    toastTimer.current = setTimeout(() => setToast(null), undo ? 5000 : 3200)
+    toastTimer.current = setTimeout(() => setToast(null), undo ? TOAST_UNDO_MS : 3200)
   }, [])
   const dismissToast = React.useCallback(() => {
     clearTimeout(toastTimer.current)

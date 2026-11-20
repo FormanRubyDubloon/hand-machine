@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { demoState } from "../src/data/demo"
 import { clearShop, removeFromList, restoreTicks, tickAll, tickOne, untick, addNew, setToGet } from "../src/logic/actions"
-import { aislesOf, refreshShop, rowsOf, shopAisles } from "../src/logic/list"
+import { aislesOf, refreshShop, rowsOf, shopAisles, tickedText, type Row } from "../src/logic/list"
 import type { PhoneState } from "../src/data/state"
 
 const start = (): PhoneState => {
@@ -93,5 +93,22 @@ describe("the list", () => {
     const aisles = aislesOf({ id: "x", name: "Corner shop", aisles: {} }, s.categories)
     expect(aisles).toHaveLength(1)
     expect(aisles[0].number).toBeNull()
+  })
+})
+
+describe("the toast after a tick", () => {
+  const row = (over: Partial<Row["item"]>, need: number, got = 0) =>
+    ({ id: "x", item: { id: "x", name: "Eggs", unit: null, ...over }, need, got, left: need - got, done: got >= need }) as unknown as Row
+
+  it("counts what this run of taps got, and what's left", () => {
+    expect(tickedText(row({}, 6), 1)).toBe("Eggs: got 1, 5 to get.")
+    expect(tickedText(row({}, 6, 1), 3)).toBe("Eggs: got 2, 3 to get.")
+  })
+  it("uses the unit when the item has one", () => {
+    expect(tickedText(row({ name: "Flour", unit: ["bag", "bags"] }, 3), 1)).toMatch(/^Flour: got 1 bag, 2 bags to get\.$/)
+  })
+  it("says got all on the last one", () => {
+    expect(tickedText(row({}, 6, 5), 6)).toBe("Got all 6 eggs.")
+    expect(tickedText(row({}, 1), 1)).toBe("Got eggs.")
   })
 })

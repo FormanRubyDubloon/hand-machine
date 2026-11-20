@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { isBulk, isStaple } from "../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../data/store"
 import { removeFromList, restoreTicks, setCategory, setListNote, setToGet, tickAll, untick } from "../../logic/actions"
-import { aislesOf, gotAllText, rowsOf } from "../../logic/list"
+import { aislesOf, tickedText, rowsOf } from "../../logic/list"
 import { minText, phrase } from "../../logic/phrases"
 import { AislePicker, Button, Field, Press, Stepper } from "../../ui/kit"
 import { focus, font, radius } from "../../ui/theme"
@@ -52,7 +52,7 @@ export default function ListItemSheet() {
     const before = row.got
     change((s) => tickAll(s, id), { title: `Got ${item.name.toLowerCase()} on the phone`, key: `shop:${id}` })
     router.back()
-    if (row.need - before > 1) say(gotAllText(row), () => change((s) => restoreTicks(s, id, before), { title: `Took ${item.name.toLowerCase()} off what you got`, key: `shop:${id}` }))
+    say(tickedText(row, row.need), () => change((s) => restoreTicks(s, id, before), { title: `Took ${item.name.toLowerCase()} off what you got`, key: `shop:${id}` }))
   }
 
   return (
