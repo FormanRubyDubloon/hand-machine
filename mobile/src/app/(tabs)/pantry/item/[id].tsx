@@ -1,6 +1,6 @@
 // A pantry item: its stock said plainly, the quick actions (about three taps to record one used), then its
 // use-by date, minimum, location, aisle and notes, and the recipes it's in.
-import DateTimePicker from "@react-native-community/datetimepicker"
+import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { router, useLocalSearchParams } from "expo-router"
 import * as React from "react"
 import { Platform, ScrollView, Text, View } from "react-native"
@@ -81,23 +81,11 @@ export default function PantryItem() {
           ))}
         </View>
 
-        <View style={{ gap: 6 }}>
-          <Label>Use by</Label>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}>
-            {Platform.OS === "web" ? (
-              <Field value={date ?? ""} placeholder="YYYY-MM-DD" accessibilityLabel="Use by" onChangeText={(t) => /^\d{4}-\d{2}-\d{2}$/.test(t) && change((s) => setUseBy(s, id, t), note(`Changed the use-by date of ${name}`))} style={{ flex: 1 }} />
-            ) : (
-              <DateTimePicker
-                value={date ? new Date(`${date}T12:00:00`) : new Date()}
-                mode="date"
-                display={Platform.OS === "ios" ? "compact" : "default"}
-                accessibilityLabel="Use by"
-                onChange={(_, d) => d && change((s) => setUseBy(s, id, d.toISOString().slice(0, 10)), note(`Changed the use-by date of ${name}`, `useby:${id}`))}
-              />
-            )}
-            <Caption style={{ flex: 1 }}>{date ? expiryText(date) : item.noExpiry ? "Doesn't go off" : "No date"}</Caption>
-          </View>
-        </View>
+        <UseBy
+          date={date}
+          caption={date ? expiryText(date) : item.noExpiry ? "Doesn't go off" : "No date"}
+          onPick={(iso) => change((s) => setUseBy(s, id, iso), note(iso ? `Changed the use-by date of ${name}` : `Cleared the use-by date of ${name}`, `useby:${id}`))}
+        />
 
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <View style={{ flex: 1 }}>
@@ -140,6 +128,69 @@ export default function PantryItem() {
         )}
         <Caption>Changes here go to your pantry by themselves.</Caption>
       </ScrollView>
+    </View>
+  )
+}
+
+/** A date as the local day, "2026-11-20". toISOString would give the UTC day, a day out around midnight. */
+const dayOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+
+/**
+ * The use-by date. With no date there's no picker showing today (which read as a date that wasn't set, and
+ * couldn't save today): "Add a date" opens the calendar; pick a day and Save. A set date shows as the
+ * compact picker, with Clear beside it.
+ */
+function UseBy({ date, caption, onPick }: { date: string | null; caption: string; onPick: (iso: string | null) => void }) {
+  const c = useColours()
+  const [picking, setPicking] = React.useState(false)
+  const [draft, setDraft] = React.useState(() => new Date())
+  const value = date ? new Date(`${date}T12:00:00`) : new Date()
+  const pickAndroid = () =>
+    DateTimePickerAndroid.open({ value, mode: "date", onChange: (e, d) => e.type === "set" && d && onPick(dayOf(d)) })
+  const link = (label: string, onPress: () => void) => (
+    <Press fade onPress={onPress} style={{ minHeight: 44, justifyContent: "center" }}>
+      <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.olive }}>{label}</Text>
+    </Press>
+  )
+
+  if (Platform.OS === "web") {
+    return (
+      <View style={{ gap: 6 }}>
+        <Label>Use by</Label>
+        <Field value={date ?? ""} placeholder="YYYY-MM-DD" accessibilityLabel="Use by" onChangeText={(t) => /^\d{4}-\d{2}-\d{2}$/.test(t) && onPick(t)} />
+      </View>
+    )
+  }
+
+  return (
+    <View style={{ gap: 6 }}>
+      <Label>Use by</Label>
+      {date ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}>
+          {Platform.OS === "ios" ? (
+            <DateTimePicker value={value} mode="date" display="compact" accentColor={c.olive} themeVariant={c.isDark ? "dark" : "light"} accessibilityLabel="Use by" onChange={(_, d) => d && onPick(dayOf(d))} style={{ marginLeft: -10 }} />
+          ) : (
+            link(new Date(`${date}T12:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }), pickAndroid)
+          )}
+          <Caption style={{ flex: 1 }}>{caption}</Caption>
+          {link("Clear", () => onPick(null))}
+        </View>
+      ) : picking && Platform.OS === "ios" ? (
+        // Picking a day only selects it (iOS sends no change for the day already selected, so today could never
+        // be saved by tapping); Save keeps it.
+        <View>
+          <DateTimePicker value={draft} mode="date" display="inline" accentColor={c.olive} themeVariant={c.isDark ? "dark" : "light"} accessibilityLabel="Use by" onChange={(_, d) => d && setDraft(d)} />
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 20 }}>
+            {link("Cancel", () => setPicking(false))}
+            <Button height={44} label={`Save ${draft.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`} onPress={() => { setPicking(false); onPick(dayOf(draft)) }} style={{ paddingHorizontal: 18 }} />
+          </View>
+        </View>
+      ) : (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}>
+          <Button kind="secondary" height={44} label="Add a date" onPress={() => { if (Platform.OS === "ios") { setDraft(new Date()); setPicking(true) } else pickAndroid() }} style={{ paddingHorizontal: 16 }} />
+          <Caption style={{ flex: 1 }}>{caption}</Caption>
+        </View>
+      )}
     </View>
   )
 }
