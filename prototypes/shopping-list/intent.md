@@ -13,7 +13,7 @@ My recipes aren't connected to any of this. I can't see which recipes I can cook
 One system I own, made of three parts, that replaces Notion completely:
 
 1. **Mobile app (native iPhone app).** One app with three sections:
-   - **Shopping list.** I use it in shops. It shows what I need to buy and roughly what it will cost, and it works without signal. Pantry stock updates when I choose to sync, for example at the end of a shop.
+   - **Shopping list.** I use it in shops. It shows what I need to buy and roughly what it will cost, and it works without signal. Pantry stock updates as I tick things off, and goes to the pantry by itself whenever there's signal.
    - **Recipes.** All my recipes. A recipe's detail page is where I cook from: it shows what I have and what I'm short of, and has a step-by-step cooking view.
    - **Pantry.** A cut-down version of the pantry for the phone. I can record what I've used, add stock, mark a pack as open, search and view stock, edit an item's details, and review New items.
 2. **Pantry admin app (desktop web).** I use it at my desk to manage pantry items, stock, recipes and categories. It does everything the phone's Pantry section does, plus the jobs that stay on the desktop, such as managing categories and merging items.
@@ -60,7 +60,7 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - The list can hold things that aren't in the pantry yet, such as a recipe ingredient I've never bought. These stay on the list only and don't appear in the pantry while I'm shopping.
 - When I check one of these off and sync, it becomes a pantry item with the amount I bought and a minimum of 0. The app guesses its category and location, and I can change them. It is linked to the recipe ingredient it came from.
 - A new item made this way is marked "New" until I've reviewed and saved it, because its category and location are guesses. I can review it in the admin app or in the phone's Pantry section.
-- If I undo the check-off on the phone, the item doesn't go into the pantry.
+- If I undo the check-off on the phone, the item comes off stock again (and doesn't go into the pantry if it was new).
 - Items that are already in the pantry stay there while they're on the list. If I have none, they show as Out.
 - I can mark an item on the list as Ordered (for example, when I've ordered it online), so I don't also buy it in a shop. It stays on the list, marked Ordered, until it arrives and is no longer needed; then the mark clears by itself. I mark it in the admin app's shopping list or by telling Claude, and the mobile app's shopping list shows it.
 
@@ -71,11 +71,11 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - When any item on the list has no price or an estimated price, the total shows as approximate.
 
 **Syncing**
-- Check-offs from the shopping list update stock when I sync, not on each tap.
-- Changes I make in the phone's Pantry section (recording what I've used, editing an item) also wait for a sync.
-- Manual sync is for now. Eventually I want to remove it everywhere, so changes go through by themselves.
-- The first step (20 Nov 2026): the desktop app picks up Claude's changes by itself within a few seconds, with a short note saying what Claude changed. It also syncs when I come back to it. The phone still syncs by hand.
-- If I finish a shop and haven't synced, the app reminds me.
+- There's no manual sync anywhere (decided 20 Nov 2026). Changes go through by themselves.
+- The desktop app picks up Claude's changes by itself within a few seconds, with a short note saying what Claude changed. It also syncs when I come back to it.
+- On the phone, a check-off updates stock straight away, and so does anything I do in the Pantry section. Each change is saved on the phone and sent to the pantry by itself shortly after, whenever there's signal. With no signal it waits on the phone and goes as soon as signal returns. The phone also picks up changes from the desktop app and Claude by itself.
+- Ticked items stay on the phone's list, struck through, until I start a new list, so I can see what I've got during a shop.
+- When the phone has changes waiting and no signal, it says so. Signing out with changes waiting warns me first.
 - If the same item has changed in two places since the last sync (for example, I changed it in the admin app while I was out shopping), the app asks me which change to keep.
 - Until I choose, that item keeps the value from the app I'm using. The rest of the sync still goes through.
 
@@ -116,7 +116,7 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - A new category appears in every store's aisle order. It starts with no aisle number until I set one.
 - I can't remove a category that still has items in it. The app tells me how many, and offers to move them to another category first.
 - Categories reach the mobile app when it syncs, like stores and aisles.
-- In a shop I can change a store's aisle numbers, and add or edit a store, on the phone. These changes go to the pantry when I sync, so the admin app and Claude see them. If the same store was changed in both places, the phone's version wins. I can't add, rename or remove categories on the phone; that stays in the admin app.
+- In a shop I can change a store's aisle numbers, add or edit a store, and add an aisle (a new category), on the phone. These changes go to the pantry by themselves, so the admin app and Claude see them. If the same store was changed in both places, the phone's version wins. Renaming and removing categories stays in the admin app.
 
 **Undo**
 - I can undo any change from History on the same day, including a merge, a delete and removing a category. Changes Claude makes can be undone the same way.
@@ -169,6 +169,6 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - **Success numbers:** the numbers in the success list are starting guesses. Review them after a month of use, especially the 10 minutes a week.
 - **Use-by warnings:** recipes are ranked by what needs using first. Should anything also warn me before things go off?
 - **Other users:** people will sign up and create their own pantry. When does sign-up open? Can two people in one household share a pantry? Does each person get their own Claude connection?
-- **Removing manual sync:** when does this happen, and what replaces it where there's no signal?
+- **Clashes without manual sync:** with changes going through by themselves, the same item changing in two places should be rare (mostly a shop with no signal while the desktop app is used). Is asking which to keep still right, or should the later change win, as the desktop app does?
 - **Phone features:** which of barcode scanning, notifications, widgets and keeping the screen awake are in the first release, and which come later?
 - **The fallback web app:** it won't be improved, so it will fall behind the native app. When is it switched off?
