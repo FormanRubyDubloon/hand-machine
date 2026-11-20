@@ -478,7 +478,7 @@ function Ingredients({ recipe, tab, serves, setServes }: { recipe: Recipe; tab: 
 
   return (
     <section aria-labelledby="ingredients-heading" className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-6">
+      <div className="flex items-end justify-between gap-6">
         <div className="flex flex-col gap-1">
           <h2 id="ingredients-heading"><Eyebrow className="text-foreground">Ingredients · {info.rows.length}</Eyebrow></h2>
           {/* Optional ingredients aren't counted. A recipe that's all optional has no line. */}
@@ -486,7 +486,7 @@ function Ingredients({ recipe, tab, serves, setServes }: { recipe: Recipe; tab: 
             <p className="font-serif text-xl leading-[26px]">
               {info.have >= info.needed
                 ? info.needed === 1 ? "You have the 1 item" : `You have all ${info.needed} items`
-                : `You have ${info.have} of ${plural(info.needed, "item")}`}
+                : `You are missing ${plural(info.needed - info.have, "item")}`}
             </p>
           )}
         </div>
