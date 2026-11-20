@@ -44,6 +44,9 @@ type Ctx = {
   pending: number
   lastError?: string
   syncNow: () => Promise<boolean>
+  /** A sync the person asked for by pulling a list down. The list shows its own spinner for it. */
+  pullToSync: () => Promise<void>
+  pulling: boolean
   toast: Toast | null
   say: (message: string, undo?: () => void) => void
   dismissToast: () => void
@@ -76,6 +79,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [online, setOnline] = React.useState(true)
   const [lastError, setLastError] = React.useState<string>()
   const [toast, setToast] = React.useState<Toast | null>(null)
+  const [pulling, setPulling] = React.useState(false)
 
   // Timers and listeners read the latest state through this.
   const ref = React.useRef(state)
@@ -153,6 +157,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
     return ok
   }, [put])
+
+  const pullToSync = React.useCallback(async () => {
+    setPulling(true)
+    try {
+      await syncNow()
+    } finally {
+      setPulling(false)
+    }
+  }, [syncNow])
 
   const soon = React.useCallback((ms: number) => {
     clearTimeout(timer.current)
@@ -266,7 +279,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const pending = React.useMemo(() => pendingCount(state), [state])
 
   const value: Ctx = {
-    ready, state, change, local, status, online, pending, lastError, syncNow, toast, say, dismissToast, signIn, signOut, resolveConflict,
+    ready, state, change, local, status, online, pending, lastError, syncNow, pullToSync, pulling, toast, say, dismissToast, signIn, signOut, resolveConflict,
   }
   return <StoreContext value={value}>{children}</StoreContext>
 }

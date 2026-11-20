@@ -11,7 +11,7 @@ import { LOCATIONS } from "../../../ui/locations"
 import { font, radius, space, useColours } from "../../../ui/theme"
 
 export default function Pantry() {
-  const { state, status, syncNow } = useStore()
+  const { state, pulling, pullToSync } = useStore()
   const c = useColours()
   const [q, setQ] = React.useState("")
   const items = Object.values(state.items).filter((i) => !i.oneOff)
@@ -25,7 +25,7 @@ export default function Pantry() {
     <ScrollView
       contentContainerStyle={{ padding: space.screen, gap: 10, paddingBottom: 40 }}
       keyboardShouldPersistTaps="handled"
-      refreshControl={<RefreshControl refreshing={status === "syncing"} onRefresh={() => void syncNow()} tintColor={c.muted} />}
+      refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void pullToSync()} tintColor={c.muted} />}
     >
       <View style={{ marginBottom: 6 }}>
         <Field

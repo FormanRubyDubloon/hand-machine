@@ -15,7 +15,7 @@ import { Body, Button, Caption, Display, IconButton, Label, Press } from "../../
 import { focus, font, radius, space, useColours, useReduceMotion } from "../../../ui/theme"
 
 export default function ListScreen() {
-  const { state, change, local, say, status, online, syncNow } = useStore()
+  const { state, change, local, say, status, online, pulling, pullToSync } = useStore()
   const c = useColours()
   const insets = useSafeAreaInsets()
 
@@ -127,7 +127,7 @@ export default function ListScreen() {
       <ScrollView
         {...swipe.panHandlers}
         contentContainerStyle={{ paddingHorizontal: space.screen, paddingBottom: hint ? 0 : 40, flexGrow: 1 }}
-        refreshControl={<RefreshControl refreshing={status === "syncing"} onRefresh={() => void syncNow()} tintColor={c.muted} />}
+        refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void pullToSync()} tintColor={c.muted} />}
       >
         {shopDone && (
           <View accessibilityRole="summary" style={{ backgroundColor: focus.bg, borderRadius: radius.base, padding: 16, gap: 12, marginBottom: 12 }}>
