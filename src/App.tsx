@@ -16,7 +16,12 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Info, Trash2, Plus } from 'lucide-react'
+import { ArrowRight, Info, Trash2, Plus } from 'lucide-react'
+
+const prototypes = [
+  { name: 'Pantry', href: '/prototypes/pantry-app/', description: 'The desktop pantry app: stock, recipes, the shopping list and History.' },
+  { name: 'Shopping list', href: '/prototypes/shopping-list/', description: 'The phone web app for the shop. A fallback until the iPhone app replaces it.' },
+]
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -37,6 +42,27 @@ function App() {
             <h1 className="text-2xl font-semibold tracking-tight">hand-machine</h1>
             <p className="text-sm text-muted-foreground">Design system · Stevie Sans · Taupe · Radix Sera</p>
           </div>
+
+          <Separator />
+
+          {/* The prototypes built with these components. Each is its own page on this site. */}
+          <Section title="Prototypes">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {prototypes.map((p) => (
+                <a
+                  key={p.href}
+                  href={p.href}
+                  className="group flex flex-col gap-1 border border-border p-4 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="flex items-center justify-between text-sm font-semibold">
+                    {p.name}
+                    <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  </span>
+                  <span className="text-xs text-muted-foreground">{p.description}</span>
+                </a>
+              ))}
+            </div>
+          </Section>
 
           <Separator />
 
