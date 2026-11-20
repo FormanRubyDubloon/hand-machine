@@ -38,7 +38,7 @@ The canvas IDs are kept, so there are gaps in the numbers. The screens not liste
 
 | ID | Screen | File | What it's for |
 | --- | --- | --- | --- |
-| PAN-09 | Home | `screens/PAN-09.html` | Quick use: a big "What did you use?" search, tiles for the items used most often ("Used 1" / "All", or "Finished it" / "Opened one" for bulk), History down the right, and "Cook these first". |
+| PAN-09 | Home | `screens/PAN-09.html` | Quick use: a big "What did you use?" search, tiles for the items used most often ("Used 1" / "All", or "Finished it" / "Opened one" for bulk) and History down the right. ("Cook these first" was removed on 20 November 2026.) |
 | PAN-10 | Pantry table | `screens/PAN-10.html` | Every item in one table, with filters in a sidebar: location, Staples, below minimum, out, use within 3 days, counted or bulk, shop or aisle. Steppers change stock in place. |
 | PAN-11 | Item selected | `screens/PAN-11.html` | Click a name and a side panel opens over the table: every field, units with their own use-by dates, recipes that use it, notes, history. Save, Cancel, Delete, Merge. |
 | PAN-16 | Bulk item selected | `screens/PAN-16.html` | The same panel for a bulk item (Plain flour): pack size, one row per pack with "Finished it" and "Open it". |
@@ -87,7 +87,7 @@ The canvas IDs are kept, so there are gaps in the numbers. The screens not liste
 ### How the screens link
 
 - **Top menu, every screen:** Home (PAN-09), Pantry (PAN-10), Recipes (REC-07), Shopping list (LIST-01). Then search, the phone's last sync time, Settings (SET-01) and a main button: "Add item" (PAN-12), or "Add with Claude" on recipe screens.
-- **PAN-09:** typing in "What did you use?" searches items. "See all … items in the pantry" goes to PAN-10. "Cook these first" goes to the recipe in REC-09.
+- **PAN-09:** typing in "What did you use?" searches items. "See all … items in the pantry" goes to PAN-10.
 - **PAN-10:** an item name opens PAN-11 (or PAN-16 for bulk). Import goes to PAN-15. Merge and Delete in the panel open PAN-17 and PAN-18 over the table.
 - **REC-07 and REC-08:** the two tabs switch between them. A recipe opens REC-09. Full screen goes to REC-10, and back again. "Cooked it" opens REC-11. "Want to cook" shows REC-13.
 - **LIST-01:** "Add to list" opens LIST-05. With nothing on the list it shows LIST-06.

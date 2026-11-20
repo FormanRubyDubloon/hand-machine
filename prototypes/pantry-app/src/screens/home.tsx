@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { FilterChips } from "@/components/ui/filter-chips"
 import {
-  byUseFirst, containsText, dateText, daysUntil, haveText, inStockText, isToday, lower, recipesUsing, shortDate, soonest, isBulk, locationLabel, namesOf, recipeInfo, timeText, usesUpText, type Db, type HistoryEntry, type Item, type Items, type Location, type Who,
+  containsText, dateText, daysUntil, haveText, inStockText, isToday, lower, recipesUsing, shortDate, soonest, isBulk, locationLabel, namesOf, recipeInfo, timeText, type Db, type HistoryEntry, type Item, type Items, type Location, type Who,
 } from "../model"
 import { href, navigate } from "../router"
 import { canUndo, usePantry } from "../state"
@@ -122,32 +122,6 @@ function History() {
         <SmartphoneIcon className="size-3.5" aria-hidden="true" />
         Phone synced {isToday(phoneSyncedAt) ? "today" : shortDate(phoneSyncedAt)}, {timeText(phoneSyncedAt)}
       </span>
-    </section>
-  )
-}
-
-function CookFirst() {
-  const { db, items } = usePantry()
-  const ready = db.recipes
-    .map((recipe) => ({ recipe, info: recipeInfo(recipe, items) }))
-    .filter((r) => r.info.canCook && r.info.usesUp)
-    .sort(byUseFirst)
-    .slice(0, 3)
-  if (!ready.length) return null
-  return (
-    <section aria-label="Cook these first" className="flex flex-col gap-2">
-      <Eyebrow className="text-foreground">Cook these first</Eyebrow>
-      {ready.map(({ recipe, info }) => (
-        <button
-          key={recipe.id}
-          type="button"
-          onClick={() => navigate({ name: "home", recipe: recipe.id })}
-          className="flex flex-col gap-0.5 rounded-lg border border-border bg-background p-3 text-left transition-colors hover:bg-muted"
-        >
-          <span className="text-sm font-semibold">{recipe.name}</span>
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">{usesUpText(info.usesUp)}<ExpiryAlert date={info.usesUp?.date ?? null} /></span>
-        </button>
-      ))}
     </section>
   )
 }
@@ -336,7 +310,6 @@ export function Home({ item, recipe }: { item?: string; recipe?: string }) {
 
       <aside className="flex w-[360px] shrink-0 flex-col gap-8 overflow-y-auto border-l border-border bg-muted/50 px-6 py-8">
         <History />
-        <CookFirst />
         <p className="mt-auto text-xs text-muted-foreground">A Staple that drops below its minimum goes on the shopping list by itself.</p>
       </aside>
       <ItemPanel id={item} onClose={() => navigate({ name: "home" })} />
