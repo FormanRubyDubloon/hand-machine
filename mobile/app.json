@@ -9,11 +9,11 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.handmachine.collca",
+      "bundleIdentifier": "com.isaacforman.collca",
       "config": { "usesNonExemptEncryption": false }
     },
     "android": {
-      "package": "com.handmachine.collca",
+      "package": "com.isaacforman.collca",
       "adaptiveIcon": {
         "backgroundColor": "#BA9E5F",
         "foregroundImage": "./assets/android-icon-foreground.png",
