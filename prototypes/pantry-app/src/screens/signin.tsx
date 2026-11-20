@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { createAccount, sendSignInLink, signedInHereBefore, signInWithPassword } from "../../../shared/src/auth"
 import { Field } from "../components"
+import { SplashEmblem } from "../splash-emblem"
 
 const MIN_PASSWORD = 8
 
@@ -57,17 +58,11 @@ export function SignIn() {
     <div className="grid min-h-dvh grid-cols-[1.1fr_1fr] bg-background">
       <div className="flex flex-col justify-between bg-primary p-12 text-primary-foreground">
         <span className="text-base font-semibold tracking-[0.12em] uppercase">Pantry</span>
-        <div className="flex max-w-xl flex-col gap-4">
-          {/* One phrase per line, so the breaks follow the sense. 56px on a wide window, smaller on a narrow
-              one, so the longest phrase ("What you have,") always fits the panel. */}
-          <h1 className="font-serif text-[clamp(36px,4.2vw,56px)] leading-none font-bold tracking-[0.02em] uppercase">
-            <span className="block whitespace-nowrap">What you have,</span>
-            <span className="block whitespace-nowrap">what to cook,</span>
-            <span className="block whitespace-nowrap">what to buy</span>
-          </h1>
-          <p className="text-primary-foreground/70">
-            Know what's in the cupboard, cook from what you have, and shop for what's missing. On your computer, your phone and in Claude.
-          </p>
+        {/* The emblem says it visually; the heading and line stay for screen readers. */}
+        <div className="flex flex-1 items-center justify-center py-8">
+          <h1 className="sr-only">What you have, what to cook, what to buy</h1>
+          <p className="sr-only">Know what's in the cupboard, cook from what you have, and shop for what's missing. On your computer, your phone and in Claude.</p>
+          <SplashEmblem className="h-auto max-h-[min(640px,70vh)] w-full max-w-[520px]" />
         </div>
         <span className="text-xs tracking-widest text-primary-foreground/70 uppercase">Private to you</span>
       </div>
