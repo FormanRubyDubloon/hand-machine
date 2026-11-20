@@ -40,7 +40,7 @@ npm run typecheck
 npm test
 ```
 
-Everything the app uses ships with Expo Go (SDK 58), so you don't need your own build to try it. TestFlight needs an EAS build (`npx eas-cli@latest build --platform ios`) and an Apple Developer account. The bundle id in `app.json` (`com.handmachine.collca`) is a placeholder: change it before the first build.
+Everything the app uses ships with Expo Go (SDK 58), so you don't need your own build to try it. TestFlight needs an EAS build (`npx eas-cli@latest build --platform ios`) and an Apple Developer account. The bundle id (and Android package) is `com.isaacforman.collca`, set in `app.json`. It can't change once the app is uploaded to App Store Connect.
 
 This folder uses **npm**, not pnpm, and has its own `package-lock.json`. Expo works best with npm, and keeping it apart means the web app's build and Netlify aren't affected.
 
