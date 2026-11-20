@@ -8,15 +8,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
-  categoriesAtoZ, dateText, locations, guessPlace, ingredientName, inStockText, isBulk, lower, measureText, needOf, plural, recipeInfo, recipeQty, shortDate, unitText,
+  categoriesAtoZ, dateText, haveText, locations, guessPlace, ingredientName, inStockText, isBulk, lower, measureText, needOf, plural, recipeInfo, recipeQty, shortDate, unitText,
   type IngredientRow, type Item, type Recipe,
 } from "../model"
 import { href, navigate, type RecipesTab } from "../router"
 import { usePantry } from "../state"
 import { Eyebrow, ExpiryAlert, Field, Stepper } from "../components"
 import { RecipeEditor } from "./recipe-edit"
+import { ItemSearch, useLikelyItems } from "../link-picker"
 import { ItemPanel, pluralise } from "./item-panel"
 import { CookedDialog, DeleteRecipeDialog, WantButton, useRecipeList } from "./recipe"
 
@@ -139,37 +141,156 @@ const IconButton = React.forwardRef<HTMLButtonElement, { tip: string; label: str
 )
 
 /**
- * "I already have this". For an ingredient the pantry doesn't know: name, how many and aisle, and it becomes a
- * pantry item linked to the recipe (location guessed, marked New for review). For one it knows: just how many.
+ * "I already have this". For an ingredient the pantry doesn't know, two tabs. Existing item links the recipe line
+ * to something already in the pantry and sets that item's stock (filled in with what the pantry has now). New item
+ * makes a pantry item from name, how many, unit, aisle and location (location guessed, marked New for review). It
+ * opens on Existing item when the pantry has a likely match, with nothing picked, so Enter can't link the wrong
+ * thing. For an ingredient the pantry knows: just how many.
  */
 function HaveDialog({
   recipe, row, position, onClose, onFull,
 }: { recipe: Recipe; row: IngredientRow; position: number; onClose: (saved: boolean) => void; onFull: (seed: Partial<Item>) => void }) {
   const { items, db, actions } = usePantry()
   const linked = !!row.item
+  const { likely } = useLikelyItems(linked ? "" : row.ing.text)
+  const [tab, setTab] = React.useState<"existing" | "new">(() => (likely.length ? "existing" : "new"))
   const [name, setName] = React.useState(() => ingredientName(row.ing.text))
   const [qty, setQty] = React.useState(() => Math.max(1, row.need))
   const [categoryId, setCategoryId] = React.useState(() => guessPlace(ingredientName(row.ing.text), items).categoryId)
   const [unitName_, setUnit] = React.useState("")
   const [location, setLocation] = React.useState<NonNullable<Item["location"]>>(() => guessPlace(ingredientName(row.ing.text), items).location ?? "cupboard")
+  const [pickedId, setPickedId] = React.useState<string>()
+  const [haveQty, setHaveQty] = React.useState(1)
   const [tried, setTried] = React.useState(false)
-  const ok = linked || (name.trim() && categoryId)
+  const picked = pickedId ? items[pickedId] : undefined
+  const existing = !linked && tab === "existing"
+  const ok = linked || (existing ? !!picked : name.trim() && categoryId)
   const typedUnit = unitName_.trim()
   const nameInput = React.useRef<HTMLInputElement>(null)
+  const searchInput = React.useRef<HTMLInputElement>(null)
+  const pick = (id: string) => {
+    const i = items[id]
+    setPickedId(id)
+    setHaveQty(i && i.inStock > 0 ? i.inStock : 1)
+  }
   const save = () => {
     setTried(true)
     if (!ok) return
     if (row.item) actions.setStock(row.item.id, qty)
-    else actions.haveNewIngredient(recipe, position, { name, qty, categoryId, location, unit: typedUnit ? [typedUnit, pluralise(typedUnit)] : undefined })
+    else if (existing && picked) {
+      if (haveQty !== picked.inStock) actions.setStock(picked.id, haveQty)
+      actions.linkIngredient(recipe, position, picked.id)
+    } else actions.haveNewIngredient(recipe, position, { name, qty, categoryId, location, unit: typedUnit ? [typedUnit, pluralise(typedUnit)] : undefined })
     onClose(true)
   }
-  const unit = (n: number) => (row.item?.unit ? (n === 1 ? row.item.unit[0] : row.item.unit[1]) : "")
+  const unitOf = (i: Item | undefined, n: number) => (i?.unit ? (n === 1 ? i.unit[0] : i.unit[1]) : "")
+  const howMany = (value: number, onChange: (n: number) => void, item: Item | undefined) => (
+    <div className="flex flex-col gap-2">
+      <Eyebrow>How many</Eyebrow>
+      <div className="flex items-center gap-3">
+        <Stepper size="md" label="How many" value={value} min={1} onChange={onChange} />
+        {unitOf(item, value) && <span className="text-sm text-muted-foreground">{unitOf(item, value)}</span>}
+      </div>
+    </div>
+  )
+  const footer = (
+    <DialogFooter className="sm:justify-between">
+      <Button type="button" variant="outline" onClick={() => onClose(false)}>Cancel</Button>
+      <Button type="submit">{linked ? "Update stock" : existing ? "Link item" : "Add to pantry"}</Button>
+    </DialogFooter>
+  )
+  const submit = (e: React.FormEvent) => { e.preventDefault(); save() }
+
+  const newForm = (
+    <form className="flex min-w-0 flex-col gap-5" onSubmit={submit}>
+      <Field label="Name">
+        <Input ref={nameInput} value={name} onChange={(e) => setName(e.target.value)} aria-invalid={tried && !name.trim()} />
+      </Field>
+      <div className="grid grid-cols-[auto_1fr] items-start gap-5">
+        {howMany(qty, setQty, undefined)}
+        <Field label="Unit" hint="Optional: tin, jar, bag. Leave blank to count them.">
+          <Input value={unitName_} placeholder="pack" onChange={(e) => setUnit(e.target.value)} />
+        </Field>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Eyebrow>Aisle</Eyebrow>
+        <Select value={categoryId || undefined} onValueChange={setCategoryId}>
+          <SelectTrigger className="w-full" aria-label="Aisle" aria-invalid={tried && !categoryId}>
+            <SelectValue placeholder="Choose an aisle" />
+          </SelectTrigger>
+          <SelectContent>
+            {categoriesAtoZ(db.categories).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {tried && !categoryId && <span className="text-xs text-destructive">Choose an aisle.</span>}
+      </div>
+      <div className="flex flex-col gap-2">
+        <Eyebrow>Location</Eyebrow>
+        <Select value={location} onValueChange={(l) => setLocation(l as NonNullable<Item["location"]>)}>
+          <SelectTrigger className="w-full" aria-label="Location">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {locations.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <button
+        type="button"
+        className="self-start text-xs underline underline-offset-4 hover:text-foreground text-muted-foreground"
+        onClick={() =>
+          onFull({
+            name: name.trim() || ingredientName(row.ing.text), inStock: qty, useBy: Array(qty).fill(null), categoryId, location,
+            unit: typedUnit ? [typedUnit, pluralise(typedUnit)] : undefined,
+          })
+        }
+      >
+        More details? Open the full Add item
+      </button>
+      {footer}
+    </form>
+  )
+
+  // The search sits outside the form: Enter in the search picks the highlighted item, it doesn't link.
+  const existingForm = (
+    <div className="flex min-w-0 flex-col gap-5">
+      <div className="flex flex-col gap-1.5">
+        <ItemSearch
+          text={row.ing.text}
+          value={pickedId}
+          onPick={pick}
+          inputRef={searchInput}
+          className="border border-input bg-transparent"
+          listClassName="max-h-52"
+        />
+        {tried && !picked && <span className="text-xs text-destructive">Pick an item, or add a new one.</span>}
+      </div>
+      <form className="flex min-w-0 flex-col gap-5" onSubmit={submit}>
+        {picked && (
+          <div className="flex flex-col gap-2">
+            {howMany(haveQty, setHaveQty, picked)}
+            <span className="text-xs text-muted-foreground">
+              {picked.inStock > 0 ? `Your pantry has ${haveText(picked)}. Change it if that's wrong.` : "Your pantry has none. Say how many you have."}
+            </span>
+          </div>
+        )}
+        {footer}
+      </form>
+    </div>
+  )
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose(false)}>
       <DialogContent
-        className="gap-5 p-8 sm:max-w-[440px]"
-        // Open with the guessed name selected, so typing replaces it and Enter keeps it.
+        className="max-h-[90vh] gap-5 overflow-y-auto p-8 sm:max-w-[440px]"
+        // Existing item: open in the search. New item: open with the guessed name selected, so typing replaces it
+        // and Enter keeps it.
         onOpenAutoFocus={(e) => {
+          if (existing && searchInput.current) {
+            e.preventDefault()
+            searchInput.current.focus()
+            return
+          }
           if (!nameInput.current) return
           e.preventDefault()
           nameInput.current.focus()
@@ -178,79 +299,32 @@ function HaveDialog({
       >
         <DialogHeader>
           <Eyebrow>{row.text}</Eyebrow>
-          <DialogTitle className="text-[22px] tracking-[0.04em] uppercase">{linked ? `How much ${lower(row.item!.name)} do you have?` : "Add it to your pantry"}</DialogTitle>
+          <DialogTitle className="text-[22px] tracking-[0.04em] uppercase">
+            {linked ? `How much ${lower(row.item!.name)} do you have?` : existing ? "Find it in your pantry" : "Add it to your pantry"}
+          </DialogTitle>
           <DialogDescription>
             {linked
               ? "This sets the stock to what you have, and the recipe counts it as in stock."
-              : "It goes in your pantry with what you have, linked to this recipe. Fill in the rest from the item later."}
+              : existing
+                ? "Pick the pantry item this is and check how many you have. The recipe uses that item from now on."
+                : "It goes in your pantry with what you have, linked to this recipe. Fill in the rest from the item later."}
           </DialogDescription>
         </DialogHeader>
-        <form className="flex min-w-0 flex-col gap-5" onSubmit={(e) => { e.preventDefault(); save() }}>
-          {!linked && (
-            <Field label="Name">
-              <Input ref={nameInput} value={name} onChange={(e) => setName(e.target.value)} aria-invalid={tried && !name.trim()} />
-            </Field>
-          )}
-          <div className={cn("grid items-start gap-5", !linked && "grid-cols-[auto_1fr]")}>
-            <div className="flex flex-col gap-2">
-              <Eyebrow>How many</Eyebrow>
-              <div className="flex items-center gap-3">
-                <Stepper size="md" label="How many" value={qty} min={1} onChange={setQty} />
-                {unit(qty) && <span className="text-sm text-muted-foreground">{unit(qty)}</span>}
-              </div>
-            </div>
-            {!linked && (
-              <Field label="Unit" hint="Optional: tin, jar, bag. Leave blank to count them.">
-                <Input value={unitName_} placeholder="pack" onChange={(e) => setUnit(e.target.value)} />
-              </Field>
-            )}
-          </div>
-          {!linked && (
-            <div className="flex flex-col gap-2">
-              <Eyebrow>Aisle</Eyebrow>
-              <Select value={categoryId || undefined} onValueChange={setCategoryId}>
-                <SelectTrigger className="w-full" aria-label="Aisle" aria-invalid={tried && !categoryId}>
-                  <SelectValue placeholder="Choose an aisle" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categoriesAtoZ(db.categories).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {tried && !categoryId && <span className="text-xs text-destructive">Choose an aisle.</span>}
-            </div>
-          )}
-          {!linked && (
-            <div className="flex flex-col gap-2">
-              <Eyebrow>Location</Eyebrow>
-              <Select value={location} onValueChange={(l) => setLocation(l as NonNullable<Item["location"]>)}>
-                <SelectTrigger className="w-full" aria-label="Location">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          {!linked && (
-            <button
-              type="button"
-              className="self-start text-xs underline underline-offset-4 hover:text-foreground text-muted-foreground"
-              onClick={() =>
-                onFull({
-                  name: name.trim() || ingredientName(row.ing.text), inStock: qty, useBy: Array(qty).fill(null), categoryId, location,
-                  unit: typedUnit ? [typedUnit, pluralise(typedUnit)] : undefined,
-                })
-              }
-            >
-              More details? Open the full Add item
-            </button>
-          )}
-          <DialogFooter className="sm:justify-between">
-            <Button type="button" variant="outline" onClick={() => onClose(false)}>Cancel</Button>
-            <Button type="submit">{linked ? "Update stock" : "Add to pantry"}</Button>
-          </DialogFooter>
-        </form>
+        {linked ? (
+          <form className="flex min-w-0 flex-col gap-5" onSubmit={submit}>
+            {howMany(qty, setQty, row.item)}
+            {footer}
+          </form>
+        ) : (
+          <Tabs value={tab} onValueChange={(t) => { setTab(t as "existing" | "new"); setTried(false) }} className="gap-5">
+            <TabsList variant="line" className="h-10 gap-6 p-0">
+              <TabsTrigger value="existing" className="px-0 text-xs font-semibold tracking-widest uppercase">Existing item</TabsTrigger>
+              <TabsTrigger value="new" className="px-0 text-xs font-semibold tracking-widest uppercase">New item</TabsTrigger>
+            </TabsList>
+            <TabsContent value="existing">{existingForm}</TabsContent>
+            <TabsContent value="new">{newForm}</TabsContent>
+          </Tabs>
+        )}
       </DialogContent>
     </Dialog>
   )
