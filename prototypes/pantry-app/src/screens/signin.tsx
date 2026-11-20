@@ -5,13 +5,14 @@ import * as React from "react"
 import { MailIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { createAccount, sendSignInLink, signInWithPassword } from "../../../shared/src/auth"
+import { createAccount, sendSignInLink, signedInHereBefore, signInWithPassword } from "../../../shared/src/auth"
 import { Field } from "../components"
 
 const MIN_PASSWORD = 8
 
 export function SignIn() {
-  const [mode, setMode] = React.useState<"signin" | "create">("signin")
+  // Create account comes first. A browser that has been signed in before opens on Sign in instead.
+  const [mode, setMode] = React.useState<"signin" | "create">(() => (signedInHereBefore() ? "signin" : "create"))
   const [email, setEmail] = React.useState("")
   const [sent, setSent] = React.useState<false | "link" | "confirm">(false)
   const [password, setPassword] = React.useState("")

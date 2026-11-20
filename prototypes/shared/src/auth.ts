@@ -44,6 +44,15 @@ export function claimLocalPantry(userId: string): boolean {
   return true
 }
 
+/** Whether any account has signed in on this browser before. The sign-in screen opens on Sign in if so. */
+export function signedInHereBefore(): boolean {
+  try {
+    return localStorage.getItem(OWNER_KEY) !== null
+  } catch {
+    return false
+  }
+}
+
 export function useAuthSession(): { signedIn: boolean | undefined; session: Session | null } {
   const [state, setState] = React.useState<{ session: Session | null; known: boolean }>({ session: null, known: false })
   React.useEffect(() => {
