@@ -58,7 +58,7 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - When checking off an item, I can tick one unit at a time, enter an amount, or check off all of it at once.
 - An item leaves the list once what I've checked off brings stock back above its minimum.
 - The list can hold things that aren't in the pantry yet, such as a recipe ingredient I've never bought. These stay on the list only and don't appear in the pantry while I'm shopping.
-- When I check one of these off and sync, it becomes a pantry item with the amount I bought and a minimum of 0. The app guesses its category and location, and I can change them. It is linked to the recipe ingredient it came from.
+- When I check one of these off, it becomes a pantry item with the amount I bought and a minimum of 0. The app guesses its category and location, and I can change them. It is linked to the recipe ingredient it came from.
 - A new item made this way is marked "New" until I've reviewed and saved it, because its category and location are guesses. I can review it in the admin app or in the phone's Pantry section.
 - If I undo the check-off on the phone, the item comes off stock again (and doesn't go into the pantry if it was new).
 - Items that are already in the pantry stay there while they're on the list. If I have none, they show as Out.
