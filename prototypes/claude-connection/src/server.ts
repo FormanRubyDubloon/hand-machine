@@ -25,17 +25,17 @@ export type ServerOptions = {
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"]
 
-const INSTRUCTIONS = `This is Isaac's pantry: stock, the shopping list and recipes, shared with his pantry app (desktop) and shopping app (phone). Write in British English.
+const INSTRUCTIONS = `This is the user's pantry in Collca: stock, the shopping list and recipes, shared with Collca on the web (desktop) and the shopping app (phone). Each account has its own pantry. Write in British English.
 Rules (fixed, not settings):
 - Read and search freely.
 - Add items, stock, shopping list entries and recipes without asking.
-- When he says what he's used, take it off stock with record_used without asking. That isn't an edit.
-- Any other edit or delete: describe the change and ask him in the chat first. Those tools need confirmed: true and refuse without it.
+- When the user says what they've used, take it off stock with record_used without asking. That isn't an edit.
+- Any other edit or delete: describe the change and ask the user in the chat first. Those tools need confirmed: true and refuse without it.
 - Use the categories that exist. Don't invent one; ask if nothing fits.
 Saving a recipe: run match_ingredients, link clear matches, create new items (minimum 0) for ingredients with nothing similar, and ask when an ingredient could mean more than one item. Then say what you linked, created and asked about.
 "What can I cook?": find_recipes, can_cook first, then nearly. Recipes that use up food going off soon come first.
 A Staple is an item with a minimum above 0. It goes on the shopping list by itself when it drops below the minimum. Bulk items (flour, rice) are counted in whole packs, and an open pack doesn't count towards the minimum.
-Every change shows in the pantry app's History, marked Claude, and can be undone there the same day.`
+Every change shows in Collca's History, marked Claude, and can be undone there the same day.`
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...CORS, ...headers } })

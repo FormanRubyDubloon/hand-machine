@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { createAccount, sendSignInLink, signedInHereBefore, signInWithPassword } from "../../../shared/src/auth"
 import { Field } from "../components"
+import { SplashEmblem } from "../splash-emblem"
 
 const MIN_PASSWORD = 8
 
@@ -56,12 +57,12 @@ export function SignIn() {
   return (
     <div className="grid min-h-dvh grid-cols-[1.1fr_1fr] bg-background">
       <div className="flex flex-col justify-between bg-primary p-12 text-primary-foreground">
-        <span className="text-base font-semibold tracking-[0.12em] uppercase">Pantry</span>
-        <div className="flex max-w-lg flex-col gap-4">
-          <h1 className="text-[40px] leading-[1.05] font-semibold tracking-[0.02em] uppercase">What you have, what to cook, what to buy</h1>
-          <p className="text-primary-foreground/70">
-            Your pantry, recipes and shopping list in one place, kept in step with the shopping app, the kitchen app and Claude.
-          </p>
+        <span className="text-base font-semibold tracking-[0.12em] uppercase">Collca</span>
+        {/* The emblem says it visually; the heading and line stay for screen readers. */}
+        <div className="flex flex-1 items-center justify-center py-8">
+          <h1 className="sr-only">What you have, what to cook, what to buy</h1>
+          <p className="sr-only">Know what's in the cupboard, cook from what you have, and shop for what's missing. On your computer, your phone and in Claude.</p>
+          <SplashEmblem className="h-auto max-h-[min(640px,70vh)] w-full max-w-[520px]" />
         </div>
         <span className="text-xs tracking-widest text-primary-foreground/70 uppercase">Private to you</span>
       </div>
@@ -105,7 +106,7 @@ export function SignIn() {
             <>
               <div className="flex flex-col gap-2">
                 <h2 className="text-[22px] font-semibold tracking-[0.04em] uppercase">Sign in</h2>
-                <p className="text-sm text-muted-foreground">One account for the pantry, kitchen and shopping apps.</p>
+                <p className="text-sm text-muted-foreground">One account for the pantry, your phone and Claude.</p>
               </div>
               <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (valid && password && !busy) void signIn() }}>
                 <Field label="Email">

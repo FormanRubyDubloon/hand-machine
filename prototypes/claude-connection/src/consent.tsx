@@ -36,7 +36,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh justify-center bg-background px-4 py-10 text-foreground sm:items-center">
       <div className="flex w-full max-w-md flex-col gap-8">
-        <span className="text-base font-semibold tracking-[0.12em] uppercase">Pantry</span>
+        <span className="text-base font-semibold tracking-[0.12em] uppercase">Collca</span>
         {children}
       </div>
     </div>
@@ -175,7 +175,7 @@ export function Consent() {
       </div>
       <Rules title="Claude can, without asking" rows={CAN} />
       <Rules title="Claude asks you first, in the chat" rows={ASKS} />
-      <p className="text-xs text-muted-foreground">Every change shows in the pantry app's History, marked Claude, and can be undone there the same day. You can disconnect in the pantry app's Settings.</p>
+      <p className="text-xs text-muted-foreground">Every change shows in Collca's History, marked Claude, and can be undone there the same day. You can disconnect in Collca's Settings.</p>
       <div className="flex flex-col gap-3">
         <Button size="lg" disabled={busy} onClick={() => void decide(true)}>Allow</Button>
         <Button size="lg" variant="outline" disabled={busy} onClick={() => void decide(false)}>Cancel</Button>
