@@ -1,11 +1,11 @@
 // Sign in: email and password, the same account as Collca on the web. Sign-up isn't designed yet (handoff
 // open question 5), so new accounts are made on the web.
-import { Image } from "expo-image"
 import * as React from "react"
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { DEMO } from "../data/supabase"
 import { useStore } from "../data/store"
+import { SignInEmblem } from "../ui/art"
 import { Body, Button, Caption, Field } from "../ui/kit"
 import { font, SPLASH, useColours } from "../ui/theme"
 
@@ -25,8 +25,8 @@ export default function SignIn() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: c.bg }}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 24, paddingHorizontal: 20, paddingBottom: 40, gap: 16 }} keyboardShouldPersistTaps="handled">
-        <View style={{ backgroundColor: SPLASH, borderRadius: 8, overflow: "hidden", alignItems: "center", paddingVertical: 12 }}>
-          <Image source={require("../../assets/splash.png")} style={{ width: 200, height: 224 }} contentFit="contain" accessibilityLabel="Collca: what you have, what to cook, what to buy" />
+        <View style={{ backgroundColor: SPLASH, borderRadius: 8, overflow: "hidden", alignItems: "center", paddingTop: 20, paddingBottom: 16 }}>
+          <SignInEmblem width={220} />
         </View>
         <Text accessibilityRole="header" style={{ fontFamily: font.serif, fontWeight: "700", fontSize: 32, letterSpacing: 1.2, textTransform: "uppercase", color: c.ink }}>Sign in</Text>
         <Body colour={c.muted}>Your list, pantry and recipes, on this phone.</Body>

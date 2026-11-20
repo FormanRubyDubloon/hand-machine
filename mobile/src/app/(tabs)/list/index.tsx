@@ -3,12 +3,13 @@
 // the buttons at the foot, to change aisle. Ticking adds to stock straight away and syncs by itself.
 import * as Haptics from "expo-haptics"
 import { router } from "expo-router"
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react-native"
+import { Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react-native"
 import * as React from "react"
 import { Animated, PanResponder, Platform, RefreshControl, ScrollView, Text, View, useWindowDimensions } from "react-native"
 import { TOAST_UNDO_MS, useStore } from "../../../data/store"
 import { restoreTicks, tickAll, tickOne, untick, clearShop } from "../../../logic/actions"
 import { aisleLabel, leftOf, refreshShop, rowsOf, shopAisles, sortRows, tickedText, type AisleView, type Row } from "../../../logic/list"
+import { AddItemIcon } from "../../../ui/art"
 import { Body, Button, Caption, Display, IconButton, Label, Press } from "../../../ui/kit"
 import { focus, font, radius, space, useColours, useReduceMotion } from "../../../ui/theme"
 
@@ -113,7 +114,7 @@ export default function ListScreen() {
             <Caption style={{ fontSize: 15 }}>{meta}</Caption>
           </View>
           <IconButton label="Add to the list" onPress={() => router.push("/add")}>
-            <Plus size={24} color={c.ink} strokeWidth={2} />
+            <AddItemIcon colour={c.ink} />
           </IconButton>
         </View>
       </View>
