@@ -10,7 +10,9 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.isaacforman.collca",
-      "config": { "usesNonExemptEncryption": false }
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.isaacforman.collca",
@@ -43,6 +45,12 @@
     ],
     "experiments": {
       "typedRoutes": false
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "0bf11391-2722-4770-a500-a300487faeeb"
+      }
+    },
+    "owner": "robotpunk"
   }
 }
