@@ -599,7 +599,7 @@ function Account() {
       </section>
       <section className="flex flex-col">
         <Eyebrow className="pb-1 text-foreground">Where you're signed in</Eyebrow>
-        {row("This computer", "Collca on the web · now")}
+        {row("This computer", `Collca on the web · syncs by itself${db.syncedAt ? ` · last synced ${isToday(db.syncedAt) ? "today" : shortDate(db.syncedAt)}, ${timeText(db.syncedAt)}` : ""}`)}
         {row("iPhone", `Shopping app · last synced ${isToday(phoneSyncedAt) ? "today" : shortDate(phoneSyncedAt)}, ${timeText(phoneSyncedAt)}`, <Button variant="link" size="xs" className="text-xs" onClick={() => toast("Not in the prototype")}>Sign out</Button>)}
         <Button variant="outline" className="mt-3 self-start" onClick={() => toast("Not in the prototype")}>Sign out everywhere</Button>
       </section>

@@ -56,7 +56,6 @@ const steps: Step[] = [
   { target: "nav-recipes", title: "What you can cook", text: "Recipes ranked by what you have, with food that needs using first at the top. Open one to cook from it." },
   { target: "nav-list", title: "What to buy", text: "The list builds itself from Staples below their minimum and recipes you want to cook. Mark things as ordered here; tick them off on your phone." },
   { target: "history", title: "Every change, undoable", text: "What changed and who did it: you, your phone or Claude. Today's changes can be undone." },
-  { target: "sync", title: "Kept in step", text: "Claude's changes arrive by themselves. Press Sync after shopping on your phone, or whenever you want to be sure." },
   { target: "settings", title: "Connect Claude", text: "In Settings, under Claude connection, let Claude read and update your pantry: save recipes, record what you've used, plan a shop." },
 ]
 
