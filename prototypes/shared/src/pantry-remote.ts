@@ -60,7 +60,7 @@ export async function writeRemote(push: SharedItem[], remove: string[], categori
     const full = push.filter((i) => !onlyStock.has(i.id))
     const rows = full.map((i) => toRow(i, categories))
     if (rows.length) {
-      const { error } = await supabase.from("items").upsert(rows, { onConflict: "id" })
+      const { error } = await supabase.from("items").upsert(rows, { onConflict: "owner_id,id" })
       if (error) throw new Error(error.message)
     }
     for (const i of push.filter((i) => onlyStock.has(i.id))) {
@@ -112,7 +112,7 @@ export async function fetchCategories(): Promise<CategoryRow[]> {
 /** Adds, renames or recolours categories. Throws if Supabase refuses (for example, two categories with one name). */
 export async function upsertCategories(rows: CategoryRow[]) {
   if (!rows.length) return
-  const { error } = await supabase.from("categories").upsert(rows, { onConflict: "id" })
+  const { error } = await supabase.from("categories").upsert(rows, { onConflict: "owner_id,id" })
   if (error) throw new Error(error.message)
 }
 
@@ -160,7 +160,7 @@ export async function fetchStores(): Promise<SharedStore[]> {
 export async function writeStores(stores: SharedStore[], sort: (id: string) => number, categories: Set<string>) {
   if (!stores.length) return
   const rows = stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id) }))
-  const up = await supabase.from("stores").upsert(rows, { onConflict: "id" })
+  const up = await supabase.from("stores").upsert(rows, { onConflict: "owner_id,id" })
   if (up.error) throw new Error(up.error.message)
   const ids = stores.map((x) => x.id)
   const del = await supabase.from("store_aisles").delete().in("store_id", ids)
@@ -205,7 +205,7 @@ export { toRecipe }
 export async function writeRecipes(recipes: SharedRecipe[], before: Record<string, RecipeRow>, items: Set<string>) {
   if (!recipes.length) return
   const { rows, lines } = recipeRows(recipes, before, items)
-  const up = await supabase.from("recipes").upsert(rows, { onConflict: "id" })
+  const up = await supabase.from("recipes").upsert(rows, { onConflict: "owner_id,id" })
   if (up.error) throw new Error(up.error.message)
   const ids = recipes.map((r) => r.id)
   const del = await supabase.from("recipe_ingredients").delete().in("recipe_id", ids)
@@ -250,6 +250,17 @@ export async function fetchHistory(limit = 500): Promise<HistoryRow[]> {
 
 export async function writeHistory(rows: HistoryRow[]) {
   if (!rows.length) return
-  const { error } = await supabase.from("history").upsert(rows, { onConflict: "id" })
+  const { error } = await supabase.from("history").upsert(rows, { onConflict: "owner_id,id" })
   if (error) throw new Error(error.message)
+}
+
+/** Whether the signed-in account has anything in its pantry yet: any category or item. Used to skip Setup. */
+export async function hasRemotePantry(): Promise<boolean> {
+  const [items, categories] = await Promise.all([
+    supabase.from("items").select("id", { count: "exact", head: true }),
+    supabase.from("categories").select("id", { count: "exact", head: true }),
+  ])
+  // Can't tell (offline, an error): don't put an existing account through Setup.
+  if (items.error || categories.error) return true
+  return (items.count ?? 0) + (categories.count ?? 0) > 0
 }

@@ -68,7 +68,7 @@ export function supabaseBackend(db: SupabaseClient): Backend {
 
     async saveItems(items, categories) {
       if (!items.length) return
-      check(await db.from("items").upsert(items.map((i) => toRow(i, categories)), { onConflict: "id" }))
+      check(await db.from("items").upsert(items.map((i) => toRow(i, categories)), { onConflict: "owner_id,id" }))
       const ids = items.map((i) => i.id)
       check(await db.from("list_entries").delete().in("item_id", ids))
       const entries = items.flatMap((i) => (i.entries ?? []).map((e, n) => ({ item_id: i.id, ...toEntryRow(e, n) })))
@@ -82,7 +82,7 @@ export function supabaseBackend(db: SupabaseClient): Backend {
     async saveRecipes(recipes, before, items) {
       if (!recipes.length) return
       const { rows, lines } = recipeRows(recipes, before, items)
-      check(await db.from("recipes").upsert(rows, { onConflict: "id" }))
+      check(await db.from("recipes").upsert(rows, { onConflict: "owner_id,id" }))
       check(await db.from("recipe_ingredients").delete().in("recipe_id", recipes.map((r) => r.id)))
       if (lines.length) check(await db.from("recipe_ingredients").insert(lines))
     },
@@ -93,7 +93,7 @@ export function supabaseBackend(db: SupabaseClient): Backend {
 
     async saveStores(stores, sort, categories) {
       if (!stores.length) return
-      check(await db.from("stores").upsert(stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id) })), { onConflict: "id" }))
+      check(await db.from("stores").upsert(stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id) })), { onConflict: "owner_id,id" }))
       check(await db.from("store_aisles").delete().in("store_id", stores.map((x) => x.id)))
       const aisles = stores.flatMap((x) =>
         Object.entries(x.aisles)
