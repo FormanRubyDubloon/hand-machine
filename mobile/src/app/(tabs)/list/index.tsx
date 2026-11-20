@@ -6,6 +6,7 @@ import { router } from "expo-router"
 import { Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react-native"
 import * as React from "react"
 import { Animated, PanResponder, Platform, RefreshControl, ScrollView, Text, View, useWindowDimensions } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { TOAST_UNDO_MS, useStore } from "../../../data/store"
 import { restoreTicks, tickAll, tickOne, untick, clearShop } from "../../../logic/actions"
 import { aisleLabel, leftOf, refreshShop, rowsOf, shopAisles, sortRows, tickedText, type AisleView, type Row } from "../../../logic/list"
@@ -16,6 +17,7 @@ import { focus, font, radius, space, useColours, useReduceMotion } from "../../.
 export default function ListScreen() {
   const { state, change, local, say, status, online, syncNow } = useStore()
   const c = useColours()
+  const insets = useSafeAreaInsets()
 
   // Keep the shop in step with the items (things added elsewhere join it; untouched rows follow their item).
   React.useEffect(() => {
@@ -167,12 +169,15 @@ export default function ListScreen() {
                   ) : <View />}
                   {(all ? count > 0 : at < count - 1) && <AisleStep dir="next" a={all ? aisles[0] : aisles[at + 1]} onPress={() => step(1)} />}
                 </View>
-                {count > 1 && <Caption style={{ textAlign: "center" }}>Swipe left or right to change aisle</Caption>}
               </>
             )}
           </View>
         )}
       </ScrollView>
+      {/* The swipe hint sits at the foot of the screen, under the list, whenever there's another aisle to swipe to. */}
+      {!empty && count > 1 && nextWithItems < 0 && (
+        <Caption style={{ textAlign: "center", paddingTop: 8, paddingBottom: insets.bottom + 8 }}>Swipe left or right to change aisle</Caption>
+      )}
     </View>
   )
 }
