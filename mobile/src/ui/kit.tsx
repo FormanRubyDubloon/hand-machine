@@ -211,7 +211,7 @@ export function InfoBox({ children, style }: { children: React.ReactNode; style?
 
 export type FieldRef = React.ComponentRef<typeof TextInput>
 
-export function Field({ label, dark, style, ref, ...p }: TextInputProps & { label?: string; dark?: boolean; ref?: React.Ref<FieldRef> }) {
+export function Field({ label, labelColour, dark, style, ref, ...p }: TextInputProps & { label?: string; labelColour?: string; dark?: boolean; ref?: React.Ref<FieldRef> }) {
   const c = useColours()
   const [focused, setFocused] = React.useState(false)
   const input = (
@@ -232,7 +232,7 @@ export function Field({ label, dark, style, ref, ...p }: TextInputProps & { labe
   if (!label) return input
   return (
     <View style={{ gap: 6 }}>
-      <Label colour={dark ? focus.label : undefined}>{label}</Label>
+      <Label colour={labelColour ?? (dark ? focus.label : undefined)}>{label}</Label>
       {input}
     </View>
   )

@@ -1,6 +1,6 @@
 // Drawings for the phone, in the style of Collca's emblem on the web (prototypes/pantry-app/src/splash-emblem.tsx).
 import * as React from "react"
-import Svg, { Circle, Defs, G, Line, Path, Rect, Text as SvgText, TextPath } from "react-native-svg"
+import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from "react-native-svg"
 import { font, SPLASH } from "./theme"
 
 const INK = "#3D2B1F"
@@ -20,6 +20,35 @@ function Sprig({ flip }: { flip?: boolean }) {
 }
 
 /**
+ * "COLLCA" along the arch over the window, one letter at a time. react-native-svg's TextPath ignores the
+ * centring (startOffset 50% with textAnchor middle) and runs the word off the right, so each letter is placed
+ * and turned by hand. Widths are Georgia Bold at 80 pt, near enough to space them evenly.
+ */
+function ArchedName() {
+  const letters: [string, number][] = [["C", 58], ["O", 64], ["L", 54], ["L", 54], ["C", 58], ["A", 60]]
+  const gap = 4
+  const r = 146
+  const total = letters.reduce((n, [, w]) => n + w, 0) + gap * (letters.length - 1)
+  let at = -total / 2
+  return (
+    <G>
+      {letters.map(([ch, w], k) => {
+        const mid = at + w / 2
+        at += w + gap
+        const a = mid / r
+        const x = 200 + r * Math.sin(a)
+        const y = 262 - r * Math.cos(a)
+        return (
+          <SvgText key={k} x={x} y={y} transform={`rotate(${(a * 180) / Math.PI} ${x} ${y})`} textAnchor="middle" fontFamily={font.serif} fontSize={80} fontWeight="700" fill={INK}>
+            {ch}
+          </SvgText>
+        )
+      })}
+    </G>
+  )
+}
+
+/**
  * The sign-in emblem: the web emblem cut down to its centre. "Collca" arched over the window, the jar between
  * two sprigs on a plain mound, one sparkle. The label copy, rosettes, stamps, dots and the jar's N°1 are gone:
  * at phone width they turned to texture, and the screen's own heading says the rest.
@@ -27,12 +56,7 @@ function Sprig({ flip }: { flip?: boolean }) {
 export function SignInEmblem({ width = 220 }: { width?: number }) {
   return (
     <Svg width={width} height={width * (340 / 400)} viewBox="0 0 400 340" accessibilityLabel="Collca">
-      <Defs>
-        <Path id="arch" d="M54 262 A 146 146 0 0 1 346 262" />
-      </Defs>
-      <SvgText fontFamily={font.serif} fontSize={80} fontWeight="700" letterSpacing={2} fill={INK}>
-        <TextPath href="#arch" startOffset="50%" textAnchor="middle">COLLCA</TextPath>
-      </SvgText>
+      <ArchedName />
 
       {/* The window and its sill. */}
       <Path d="M108 330 V 240 A 92 92 0 0 1 292 240 V 330" fill="none" stroke={INK} strokeWidth={4} />
