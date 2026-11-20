@@ -10,7 +10,7 @@ import {
   containsText, dateText, daysUntil, haveText, inStockText, isToday, lower, recipesUsing, shortDate, soonest, isBulk, locationLabel, namesOf, recipeInfo, timeText, type Db, type HistoryEntry, type Item, type Items, type Location, type Who,
 } from "../model"
 import { href, navigate } from "../router"
-import { canUndo, usePantry } from "../state"
+import { canRevert, canUndo, usePantry } from "../state"
 import { Eyebrow, ExpiryAlert, HistoryRow, StockPill, type HistoryLinks } from "../components"
 import { CategoryMark } from "../category-look"
 import { QuickUseActions } from "../quick-use"
@@ -109,7 +109,7 @@ function History() {
       />
       <div className="flex flex-col">
         {entries.slice(0, shown).map((h) => (
-          <HistoryRow key={h.id} entry={h} compact links={linksFor(h, db, items)} onUndo={canUndo(h) ? () => actions.undo(h.id) : undefined} />
+          <HistoryRow key={h.id} entry={h} compact links={linksFor(h, db, items)} onUndo={canUndo(h) ? () => actions.undo(h.id) : undefined} onRevert={canRevert(h) ? () => actions.revert(h.id) : undefined} />
         ))}
         {entries.length === 0 && <p className="py-4 text-sm text-muted-foreground">Nothing yet.</p>}
       </div>

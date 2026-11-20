@@ -34,6 +34,8 @@ export type HistoryEntry = {
   /** Puts things back the way they were. Only today's changes can be undone. */
   undo?: Snapshot
   undone?: boolean
+  /** What the undo overwrote, saved when Undo is pressed, so Revert can put the change back. */
+  redo?: Snapshot
   /** Consecutive changes with the same key (tapping a stepper) merge into one entry. */
   key?: string
 }

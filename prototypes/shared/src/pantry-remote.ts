@@ -238,6 +238,8 @@ export type HistoryRow = {
   recipe_id: string | null
   undo: unknown
   undone: boolean
+  /** What an undo overwrote, so the app can revert it (20261120200000_history_redo). */
+  redo?: unknown
   key: string | null
 }
 
