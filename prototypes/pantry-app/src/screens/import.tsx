@@ -63,9 +63,10 @@ function parseLine(line: string, items: Items, k: number): Row | null {
     target = parseInt(keep[1], 10)
     text = text.replace(keep[0], "")
   }
-  const loc = text.match(/,?\s*(fridge|freezer|cupboard|household)\b/i)
+  const loc = text.match(/,?\s*(fridge|freezer|cupboard|counter|household|other)\b/i)
   if (loc) {
-    location = loc[1].toLowerCase() as Location
+    const word = loc[1].toLowerCase()
+    location = (word === "other" ? "household" : word) as Location
     text = text.replace(loc[0], "")
   }
   let qty = 1

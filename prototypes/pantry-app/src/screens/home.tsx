@@ -284,7 +284,8 @@ export function Home({ item, recipe }: { item?: string; recipe?: string }) {
                 { value: "fridge", label: "Fridge", count: byLocation("fridge").length },
                 { value: "cupboard", label: "Cupboard", count: byLocation("cupboard").length },
                 { value: "freezer", label: "Freezer", count: byLocation("freezer").length },
-                { value: "household", label: "Household", count: byLocation("household").length },
+                { value: "counter", label: "Counter", count: byLocation("counter").length },
+                { value: "household", label: "Other", count: byLocation("household").length },
               ]}
             />
           )}

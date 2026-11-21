@@ -10,8 +10,8 @@
 //
 // Stock, list and recipe rules are the pantry app's own (prototypes/pantry-app/src/model.ts).
 import {
-  amountOf, byUseFirst, cap, distance, entryTotal, haveText, isBulk, isStaple, lower, matchesName, namesOf, needOf, normalise, plural,
-  recipeInfo, settle, soldAt, stockOf, aisleOrder, categoriesAtoZ, listRows, listTotal, money, todayIso, withStock, type Items, type Reason,
+  amountOf, byUseFirst, cap, distance, entryTotal, haveText, isBulk, isStaple, lower, matchesName, namesOf, needOf, normalise, openUnit, plural,
+  recipeInfo, settle, soldAt, stockOf, aisleOrder, categoriesAtoZ, listRows, listTotal, money, withStock, type Items, type Reason,
 } from "../../pantry-app/src/model"
 import { unitPair } from "../../shared/src/rows"
 import type { Category, Location, SharedIngredient, SharedItem, SharedRecipe, SharedStore } from "../../shared/src/pantry"
@@ -239,10 +239,12 @@ function findStore(data: PantryData, ref: unknown) {
   return s
 }
 
-const LOCATIONS: Location[] = ["fridge", "freezer", "cupboard", "household"]
+const LOCATIONS: Location[] = ["fridge", "freezer", "cupboard", "counter", "household"]
 function location(v: unknown): Location | undefined {
-  const s = str(v)?.toLowerCase()
-  if (!s) return undefined
+  const raw = str(v)?.toLowerCase()
+  if (!raw) return undefined
+  // The apps show "household" as Other.
+  const s = raw === "other" ? "household" : raw
   if (!LOCATIONS.includes(s as Location)) throw new ToolError(`Location is one of: ${LOCATIONS.join(", ")}.`)
   return s as Location
 }
@@ -268,7 +270,7 @@ const newItemProps = {
   type: { type: "string", enum: ["counted", "bulk"], description: "counted: tracked by number (eggs, tins, onions). bulk: tracked in whole packs, which can be open (flour, oil, rice, spices)." },
   unit: { type: "string", description: "Optional, singular: \"tin\", \"bag\", \"bottle\". Leave out for plain counts (3 onions)." },
   category: { type: "string", description: "An existing category's name or id (get_categories_and_stores). Leave out if unsure." },
-  location: { type: "string", enum: LOCATIONS },
+  location: { type: "string", enum: LOCATIONS, description: "household is shown to the user as Other: cleaning things, toiletries, anything not food." },
 }
 const ingredientSchema = {
   type: "object",
@@ -696,8 +698,9 @@ export const tools: Tool[] = [
       if (args.opened_pack === true) {
         if (!isBulk(i)) throw new ToolError(`${i.name} is counted, not bulk: use amount instead.`)
         if ((i.open ?? 0) >= i.inStock) throw new ToolError(`Every ${pack} of ${lower(i.name)} is already open (${haveText(i)}). Ask the user whether one was finished or more came in.`)
-        const next = { ...i, open: (i.open ?? 0) + 1, openedAt: [...(i.openedAt ?? []), todayIso()] }
+        const { item: next, movedTo } = openUnit(i)
         await commit(ctx, { items: [next], title: `Opened a ${pack} of ${lower(i.name)}`, detail: stockDetail(normalise(next)), itemIds: [i.id] })
+        if (movedTo) return `Done. Its use-by is now ${movedTo} (use within ${i.useWithinWeeks} weeks once open). ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`
         return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`
       }
       if (i.inStock <= 0) throw new ToolError(`There's no ${lower(i.name)} in stock already, so nothing was taken off. If the stock is wrong, ask the user and use update_item.`)
@@ -916,9 +919,10 @@ export const tools: Tool[] = [
               description: "Bulk only: what one pack holds, e.g. { amount: 1000, measure: \"g\" }. Used to check a recipe has enough.",
             },
             category: { type: ["string", "null"] },
-            location: { type: ["string", "null"], enum: [...LOCATIONS, null] },
+            location: { type: ["string", "null"], enum: [...LOCATIONS, null], description: "household is shown to the user as Other." },
             use_by: { type: "array", items: { type: "string" }, description: "Replaces every date, one per unit or pack. YYYY-MM-DD. [] clears them." },
             open_counts: { type: "boolean", description: "Bulk only: true if an open pack counts towards the minimum like a full one. false (the default) counts only full packs." },
+            use_within_weeks: { type: ["number", "null"], description: "Bulk only: weeks to use a pack within once it's open (1 to 52). Opening a pack then moves its use-by no later than that. null clears it." },
             no_expiry: { type: "boolean", description: "true for things that never go off (salt, tins, cleaning products): clears every date and stops the item asking for one. false to track dates again." },
             use_by_one: {
               type: "object",
@@ -989,6 +993,13 @@ export const tools: Tool[] = [
         if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs.`)
         next.openCounts = c.open_counts || undefined
         said.push(c.open_counts ? "open pack counts towards the minimum" : "open pack doesn't count towards the minimum")
+      }
+      if (has("use_within_weeks")) {
+        if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs.`)
+        const w = cleared("use_within_weeks") ? undefined : Math.round(num(c.use_within_weeks) ?? 0)
+        if (w !== undefined && (w < 1 || w > 52)) throw new ToolError("use_within_weeks is a whole number of weeks, 1 to 52, or null.")
+        next.useWithinWeeks = w
+        said.push(w ? `use within ${w} ${w === 1 ? "week" : "weeks"} once open` : "use-within period cleared")
       }
       if (typeof c.no_expiry === "boolean") {
         next.noExpiry = c.no_expiry || undefined

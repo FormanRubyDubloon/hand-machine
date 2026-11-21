@@ -1,22 +1,24 @@
-// PAN-11 (counted), PAN-16 (bulk) and PAN-12 (add item): one side panel. Everything is a draft
-// until Save. PAN-17 (merge) and PAN-18 (delete) open over it.
+// The item side panel, built to claude/handoff-item-panel.md (21 Nov 2026): PANEL-G (Add) and
+// PANEL-H (Edit). Add asks for a name, where it lives and how many, with the rest behind a click,
+// and saves on Add item. Edit shows the units first, folds every other detail into rows (one open
+// at a time) and saves each change as it's made. PAN-17 (merge) opens over Edit.
 import * as React from "react"
-import { ArrowLeftRightIcon } from "lucide-react"
+import { ArrowLeftRightIcon, CheckIcon, ChevronDownIcon, EllipsisIcon, MinusIcon, PlusIcon, ShoppingCartIcon, XIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import {
-  cap, dateText, entryTotal, haveText, inDaysText, isBulk, isStaple, locationLabel, locations, money, nameList, needOf, normalise,
-  perUnitDates, plural, recipesUsing, shortDate, shortfall, stockOf, stockSentence, todayIso, unitText, type Item, categoriesAtoZ,
+  addListBox, amountOf, cap, categoriesAtoZ, dateText, daysUntil, entryTotal, haveText, isBulk, isStaple, listBox, locationLabel, locations,
+  lower, matchesName, measureText, money, nameList, needOf, normalise, openUnit, plural, recipesUsing, todayIso, unitNames, unitsOf, whenText,
+  withUnits, type Item, type ListBox, type Location, type Unit,
 } from "../model"
 import { navigate } from "../router"
 import { usePantry } from "../state"
-import { CategoryLabel } from "../category-look"
-import { Eyebrow, ExpiryAlert, Field, HistoryRow, NewPill, Segmented, SidePanel, Stepper, StockPill, TagPill, UnitRow } from "../components"
+import { Eyebrow, Field } from "../components"
 
 /** "bag" → "bags", "loaf" → "loaves", "box" → "boxes". */
 export function pluralise(word: string) {
@@ -31,358 +33,1149 @@ export function blankItem(name = ""): Item {
   return { id: `item-${Date.now().toString(36)}`, name, type: "counted", target: 0, inStock: 1, categoryId: "", where: [], useBy: [null] }
 }
 
-const penceText = (p?: number) => (p ? (p / 100).toFixed(2) : "")
+// ---------- small pieces ----------
 
-function DateInput({ value, onChange, label }: { value: string | null; onChange: (v: string | null) => void; label: string }) {
+/** "today", "12 Jan" within about nine months, otherwise "Mar 2028". */
+function dayText(iso: string) {
+  if (iso === todayIso()) return "today"
+  const d = new Date(`${iso}T00:00:00`)
+  const t = new Date()
+  const months = (d.getFullYear() - t.getFullYear()) * 12 + d.getMonth() - t.getMonth()
+  if (months > -10 && months < 9) return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+  return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" })
+}
+
+/** "350 g", "1.5 kg", "500ml" → a pack size. Anything else is null. */
+function parseSize(text: string): Item["packSize"] | null {
+  const m = text.trim().toLowerCase().match(/^(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l|litres?)$/)
+  if (!m) return null
+  const n = parseFloat(m[1].replace(",", "."))
+  const big = m[2] === "kg" || m[2].startsWith("l")
+  return { amount: Math.round(big ? n * 1000 : n), measure: m[2] === "g" || m[2] === "kg" ? "g" : "ml" }
+}
+const sizeText = (i: Item) => (i.packSize ? measureText(i.packSize.amount, i.packSize.measure) : "")
+
+const penceText = (p?: number) => (p ? (p / 100).toFixed(2) : "")
+function parsePence(text: string) {
+  const v = parseFloat(text.replace(/[£,\s]/g, ""))
+  return Number.isFinite(v) && v > 0 ? Math.round(v * 100) : undefined
+}
+const splitNames = (text: string) => text.split(",").map((s) => s.trim()).filter(Boolean)
+
+/** "in the Fridge", "on the Counter", "in Other". */
+function placeText(l?: Location) {
+  if (!l) return ""
+  if (l === "household") return "in Other"
+  return `${l === "counter" ? "on" : "in"} the ${locationLabel(l)}`
+}
+
+const label = "text-sm font-semibold"
+const hint = "text-[13px] leading-[18px] text-muted-foreground"
+const lineInput = "h-10 w-full border-0 border-b border-[var(--line-strong)] bg-transparent px-0.5 text-base text-foreground outline-none placeholder:text-[#8A7868] focus-visible:border-primary"
+const quietButton = "h-10 rounded-[4px] border border-border bg-background px-4 text-xs font-semibold tracking-[0.1em] text-foreground uppercase hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
+const primaryButton = "h-10 rounded-[4px] border border-primary bg-primary px-4 text-xs font-semibold tracking-[0.1em] text-primary-foreground uppercase hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-45"
+const textLink = "self-start text-sm text-foreground underline underline-offset-4 hover:text-primary"
+const focus = "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+
+function IconButton({ label: name, children, className, ...props }: React.ComponentProps<"button"> & { label: string }) {
+  return (
+    <button type="button" aria-label={name} className={cn("flex size-10 shrink-0 items-center justify-center rounded-[4px] border border-border bg-background text-foreground hover:bg-muted [&_svg]:size-[18px]", focus, className)} {...props}>
+      {children}
+    </button>
+  )
+}
+
+function SmallLabel({ children, id, className }: { children: React.ReactNode; id?: string; className?: string }) {
+  return <span id={id} className={cn("text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase", className)}>{children}</span>
+}
+
+/** − n +. The value is announced as it changes. */
+function Counter({ value, onChange, min = 0, max, size = "md", labelledBy, label: name, less, more, format }: {
+  value: number; onChange: (n: number) => void; min?: number; max?: number; size?: "lg" | "md" | "sm"
+  labelledBy?: string; label?: string; less: string; more: string; format?: (n: number) => string
+}) {
+  const box = size === "lg" ? "size-11" : "size-10"
+  const text = size === "lg" ? "w-14 text-[22px]" : size === "md" ? "w-12 text-xl" : "w-11 text-[17px]"
+  return (
+    <span role="group" aria-labelledby={labelledBy} aria-label={name} className="inline-flex shrink-0 items-center rounded-[4px] border border-border">
+      <button type="button" aria-label={less} disabled={value <= min} onClick={() => onChange(value - 1)} className={cn(box, "flex items-center justify-center bg-background text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45", focus)}>
+        <MinusIcon className="size-4" />
+      </button>
+      <span aria-live="polite" className={cn(text, "text-center font-semibold tabular-nums", format && "w-[72px] text-[15px]")}>{format ? format(value) : value}</span>
+      <button type="button" aria-label={more} disabled={max !== undefined && value >= max} onClick={() => onChange(value + 1)} className={cn(box, "flex items-center justify-center bg-background text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45", focus)}>
+        <PlusIcon className="size-4" />
+      </button>
+    </span>
+  )
+}
+
+function Toggle({ on, onChange, labelledBy }: { on: boolean; onChange: (on: boolean) => void; labelledBy: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-labelledby={labelledBy}
+      onClick={() => onChange(!on)}
+      className={cn("flex h-7 w-12 shrink-0 rounded-full border border-primary p-0.5", on ? "justify-end bg-primary" : "justify-start bg-muted", focus)}
+    >
+      <span aria-hidden className={cn("size-[22px] rounded-full", on ? "bg-primary-foreground" : "bg-primary")} />
+    </button>
+  )
+}
+
+/** Counted / Bulk. */
+function TwoWay<T extends string>({ value, onChange, options, label: name }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[]; label: string }) {
+  return (
+    <div role="group" aria-label={name} className="flex overflow-hidden rounded-[4px] border border-primary">
+      {options.map((o, k) => (
+        <button
+          key={o.value}
+          type="button"
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={cn("h-10 flex-1 px-1.5 text-xs font-semibold tracking-[0.1em] uppercase", k > 0 && "border-l border-primary", value === o.value ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-muted", focus, "focus-visible:-outline-offset-4")}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// The location icons from PANEL-G. Fridge and Other are Lucide's; the cupboard and fruit bowl were drawn for the panel.
+const LOCATION_ICONS: Record<Location, React.ReactNode> = {
+  fridge: <><path d="M5 6a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6Z" /><path d="M5 10h14" /><path d="M15 6v1" /><path d="M15 13v3" /></>,
+  freezer: <><path d="M2 12h20" /><path d="M12 2v20" /><path d="m20 16-4-4 4-4" /><path d="m4 8 4 4-4 4" /><path d="m16 4-4 4-4-4" /><path d="m8 20 4-4 4 4" /></>,
+  cupboard: <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M12 3v18" /><path d="M9 12h.01" /><path d="M15 12h.01" /></>,
+  counter: <><path d="M3 13h18" /><path d="M4 13a8 7 0 0 0 16 0" /><circle cx="9" cy="9.5" r="3" /><circle cx="15.5" cy="10" r="2.5" /><path d="M9 6.5 10 4" /><path d="M9 20h6" /></>,
+  household: <><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" /><path d="M12 22V12" /><path d="m3.3 7 8.7 5 8.7-5" /><path d="m7.5 4.27 9 5.15" /></>,
+}
+
+function LocationPicker({ value, onChange }: { value?: Location; onChange: (l: Location) => void }) {
+  return (
+    <div role="group" aria-label="Location" className="flex overflow-hidden rounded-[4px] border border-primary">
+      {locations.map((o, k) => {
+        const on = value === o.value
+        // A divider only between two unselected neighbours.
+        const line = k > 0 && !on && value !== locations[k - 1].value
+        return (
+          <React.Fragment key={o.value}>
+            {k > 0 && <span aria-hidden className={cn("h-8 w-px shrink-0 self-center", line ? "bg-border" : "bg-transparent")} />}
+            <button
+              type="button"
+              aria-pressed={on}
+              onClick={() => onChange(o.value)}
+              className={cn("flex h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1.5 px-1 text-[11px] font-semibold tracking-[0.08em] uppercase", on ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-muted", focus, "focus-visible:-outline-offset-4")}
+            >
+              <svg aria-hidden width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">{LOCATION_ICONS[o.value]}</svg>
+              <span>{o.label}</span>
+            </button>
+          </React.Fragment>
+        )
+      })}
+    </div>
+  )
+}
+
+/** A folded detail row: title, one-line summary, and its contents below when open. */
+function Fold({ title, summary, open, onToggle, children, titleWidth = 160 }: { title: string; summary: React.ReactNode; open: boolean; onToggle: () => void; children: React.ReactNode; titleWidth?: number }) {
+  const id = React.useId()
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={onToggle}
+        className={cn("flex min-h-14 w-full items-center gap-3 border-b border-border py-2 text-left text-foreground", focus)}
+      >
+        <span className="shrink-0 text-sm font-semibold" style={{ width: titleWidth }}>{title}</span>
+        <span className="min-w-0 flex-1 text-sm text-muted-foreground">{summary}</span>
+        <ChevronDownIcon aria-hidden className={cn("size-4 shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && <div id={id} className="flex flex-col gap-5 border-b border-border pt-5 pb-6">{children}</div>}
+    </div>
+  )
+}
+
+function ListBoxView({ box }: { box: ListBox }) {
+  return (
+    <div role="status" className={cn("flex items-start gap-3 rounded-[4px] border px-4 py-3.5", box.on ? "border-primary bg-muted" : "border-border bg-background")}>
+      <ShoppingCartIcon aria-hidden className="mt-px size-[18px] shrink-0" />
+      <div className="flex flex-col gap-1">
+        <span className="text-[15px] font-semibold">{box.head}</span>
+        <span className="text-sm leading-5 text-muted-foreground">{box.reason}</span>
+      </div>
+    </div>
+  )
+}
+
+function StepRow({ title, sub, id, children }: { title: string; sub: React.ReactNode; id?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-1">
+        <span id={id} className={label}>{title}</span>
+        <span className={hint}>{sub}</span>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+/**
+ * Unit, typed in the singular ("bag", "punnet"). The plural is guessed. Blank counts the item
+ * itself ("3 eggs"). Saved when you leave the field.
+ */
+function UnitField({ unit, onChange }: { unit?: [string, string]; onChange: (u: [string, string] | undefined) => void }) {
+  return (
+    <label className="flex min-w-0 flex-1 flex-col gap-1.5">
+      <span className={label}>Unit</span>
+      <BlurInput
+        className={lineInput}
+        placeholder="e.g. bag"
+        value={unit?.[0] ?? ""}
+        onCommit={(v) => {
+          const one = v.trim().toLowerCase()
+          if (one === (unit?.[0] ?? "")) return
+          onChange(one ? [one, pluralise(one)] : undefined)
+        }}
+      />
+    </label>
+  )
+}
+
+/** Size of each, as text; it's kept as a pack size when it reads as grams or millilitres. */
+function SizeField({ item, onChange }: { item: Item; onChange: (size: Item["packSize"]) => void }) {
+  const [text, setText] = React.useState(sizeText(item))
+  const [bad, setBad] = React.useState(false)
+  const shown = sizeText(item)
+  const [lastShown, setLastShown] = React.useState(shown)
+  if (shown !== lastShown) {
+    setLastShown(shown)
+    setText(shown)
+  }
+  return (
+    <label className="flex min-w-0 flex-1 flex-col gap-1.5">
+      <span className={label}>Size of each</span>
+      <input
+        className={lineInput}
+        value={text}
+        placeholder="e.g. 350 g"
+        aria-invalid={bad}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => {
+          if (!text.trim()) return setBad(false), onChange(undefined)
+          const size = parseSize(text)
+          setBad(!size)
+          if (size) onChange(size)
+        }}
+      />
+      {bad && <span className={hint}>Use grams or millilitres, like 350 g or 1.5 kg.</span>}
+    </label>
+  )
+}
+
+const typeExplain = (i: Item, adding: boolean) => {
+  const [one, many] = unitNames(i)
+  if (!isBulk(i)) return "Used up in one go, like tins or eggs. You count how many you have."
+  return adding
+    ? `Used a bit at a time, like flour or rice. New ${many} start full. Open ones don't count towards your minimum.`
+    : `Used a bit at a time, like flour or rice. Each ${one} is full or open, and only full ones count towards your minimum.`
+}
+
+function PanelShell({ open, onClose, title, children, footer }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; footer?: React.ReactNode }) {
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        style={{ width: 560, maxWidth: "100vw" }}
+        className="gap-0 bg-background text-foreground outline-none sm:max-w-none"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault()
+          ;(e.currentTarget as HTMLElement | null)?.focus()
+        }}
+        tabIndex={-1}
+      >
+        <SheetTitle className="sr-only">{title}</SheetTitle>
+        <SheetDescription className="sr-only">Item details</SheetDescription>
+        {children}
+        {footer}
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+// ---------- the panel ----------
+
+export function ItemPanel({ id, prefill, seed, onSaved, onClose }: { id?: string; prefill?: string; seed?: Partial<Item>; onSaved?: (id: string) => void; onClose: () => void }) {
+  const { items } = usePantry()
+  const isNew = id === "new"
+  // Keep the panel open on a deleted item, to say it's gone.
+  const [deleted, setDeleted] = React.useState<string | null>(null)
+  const [lastId, setLastId] = React.useState(id)
+  if (id !== lastId) {
+    setLastId(id)
+    setDeleted(null)
+  }
+  const saved = id && !isNew ? items[id] : undefined
+
+  if (isNew) return <AddPanel key={prefill ?? ""} prefill={prefill} seed={seed} onSaved={onSaved} onClose={onClose} />
+  if (deleted) {
+    return (
+      <PanelShell open onClose={onClose} title={`${deleted} deleted`}>
+        <div className="flex flex-1 flex-col items-start justify-center gap-4 p-8">
+          <h2 className="font-serif text-[30px] leading-[1.05] font-bold">{deleted} deleted</h2>
+          <span role="status" className="text-[15px] text-muted-foreground">It has gone from your pantry and the shopping list. You can undo it from History today.</span>
+          <button type="button" className={cn(quietButton, focus)} onClick={onClose}>Close</button>
+        </div>
+      </PanelShell>
+    )
+  }
+  return <EditPanel key={id} item={saved} onClose={onClose} onDeleted={setDeleted} />
+}
+
+// ---------- Add (PANEL-G) ----------
+
+const DEFAULT_NAME = "New item"
+type Extra = "store" | "price" | "brand" | "other" | "notes"
+const CHIPS: { key: Extra; label: string }[] = [
+  { key: "store", label: "Store" }, { key: "price", label: "Price" }, { key: "brand", label: "Preferred brand" }, { key: "other", label: "Other names" }, { key: "notes", label: "Notes" },
+]
+
+type AddForm = {
+  item: Item
+  /** Already open (Bulk). */
+  openShown: boolean
+  hasUseBy: boolean
+  oneDate: boolean
+  date: string
+  dates: string[]
+  /** Which date field to focus next: the single one, or a unit's. */
+  focusDate: "one" | number | null
+  rulesOpen: boolean
+  extras: Extra[]
+  price: string
+  otherNames: string
+  dupDismissed: string
+}
+
+function freshForm(prefill?: string, seed?: Partial<Item>, keep?: Partial<Item>): AddForm {
+  const base = normalise({ ...blankItem(prefill || DEFAULT_NAME), useBy: [], noExpiry: true, ...seed, ...keep })
+  return {
+    item: base, openShown: false, hasUseBy: false, oneDate: true, date: "", dates: [], focusDate: null, rulesOpen: false,
+    extras: [], price: "", otherNames: "", dupDismissed: "",
+  }
+}
+
+function AddPanel({ prefill, seed, onSaved, onClose }: { prefill?: string; seed?: Partial<Item>; onSaved?: (id: string) => void; onClose: () => void }) {
+  const { items, db, actions } = usePantry()
+  const [f, setF] = React.useState<AddForm>(() => freshForm(prefill, seed))
+  const [addAnother, setAddAnother] = React.useState(false)
+  const [toast, setToast] = React.useState("")
+  const [done, setDone] = React.useState<{ title: string; line: string } | null>(null)
+  const nameRef = React.useRef<HTMLInputElement>(null)
+
+  const i = f.item
+  const bulk = isBulk(i)
+  const [one, many] = unitNames(i)
+  const set = (patch: Partial<Item>) => setF((s) => ({ ...s, item: normalise({ ...s.item, ...patch }) }))
+  const name = i.name.trim()
+  const nameOk = !!name && name.toLowerCase() !== DEFAULT_NAME.toLowerCase()
+  const dup = nameOk ? Object.values(items).find((x) => !x.oneOff && matchesName(x, name)) : undefined
+  const showDup = !!dup && f.dupDismissed !== dup.id
+  const missing = [!nameOk && "a name", !i.location && "a location", !i.categoryId && "a shop aisle"].filter(Boolean) as string[]
+  const category = db.categories.find((c) => c.id === i.categoryId)
+  const n = i.inStock
+
+  const setQty = (q: number) =>
+    setF((s) => {
+      const qty = Math.max(0, q)
+      const dates = s.dates.slice(0, qty)
+      while (dates.length < qty) dates.push(s.oneDate ? s.date : "")
+      const grew = qty > s.item.inStock
+      return {
+        ...s,
+        item: normalise({ ...s.item, inStock: qty, open: bulk ? Math.min(s.item.open ?? 0, qty) : undefined }),
+        dates,
+        oneDate: qty < 2 ? true : s.oneDate,
+        focusDate: grew && s.hasUseBy ? (s.oneDate || qty < 2 ? (s.date ? null : "one") : qty - 1) : null,
+      }
+    })
+
+  const reset = (keepLocation?: Location) => {
+    setF(freshForm(undefined, undefined, keepLocation ? { location: keepLocation } : undefined))
+    setDone(null)
+  }
+
+  const submit = () => {
+    if (missing.length) return
+    const useBy = f.hasUseBy ? (f.oneDate ? Array<string | null>(n).fill(f.date || null) : f.dates.map((d) => d || null)) : []
+    const units: Unit[] = Array.from({ length: n }, (_, k) => ({ open: bulk && k < (i.open ?? 0), useBy: useBy[k] ?? null, openedAt: null }))
+    const item = withUnits(
+      {
+        ...i,
+        name,
+        noExpiry: f.hasUseBy ? undefined : true,
+        price: parsePence(f.price),
+        priceEstimate: undefined,
+        otherNames: splitNames(f.otherNames).length ? splitNames(f.otherNames) : undefined,
+        useWithinWeeks: undefined,
+      },
+      units,
+    )
+    actions.saveItem(item, true)
+    onSaved?.(item.id)
+    // Adding from a recipe goes straight back to the recipe.
+    if (seed) return onClose()
+    if (addAnother) {
+      reset(i.location)
+      setToast(`Added ${name} ${placeText(i.location)}. Ready for the next one.`)
+      setTimeout(() => nameRef.current?.focus(), 0)
+      return
+    }
+    const stock = n ? cap(unitText2(item, n)) : "No stock yet"
+    setDone({
+      title: `${name} added`,
+      line: `${stock} ${placeText(i.location)}, on the ${category?.name ?? ""} aisle. ${isStaple(item) ? `It's a Staple with a minimum of ${item.target}.` : "It isn't a Staple."}`,
+    })
+  }
+
+  const addToExisting = () => {
+    if (!dup) return
+    actions.setStock(dup.id, dup.inStock + 1)
+    const after = dup.inStock + 1
+    setDone({ title: `${dup.name} updated`, line: `Added ${unitText2(dup, 1)} to ${dup.name}. You now have ${unitText2(dup, after)}.` })
+  }
+
+  const stores = db.stores.map((s) => {
+    const aisle = i.categoryId ? s.aisles[i.categoryId] : undefined
+    return { id: s.id, label: typeof aisle === "number" ? `${s.name} · aisle ${aisle}` : s.name }
+  })
+
+  if (done) {
+    return (
+      <PanelShell open onClose={onClose} title={done.title}>
+        <div className="flex flex-1 flex-col justify-center gap-4 p-8">
+          <span className="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground"><CheckIcon aria-hidden className="size-[22px]" strokeWidth={2.5} /></span>
+          <h2 className="font-serif text-[30px] leading-[1.05] font-bold">{done.title}</h2>
+          <span role="status" className="text-[15px] leading-[21px] text-muted-foreground">{done.line}</span>
+          <div className="flex gap-2 pt-2">
+            <button type="button" className={cn(primaryButton, focus)} onClick={() => { reset(); setTimeout(() => nameRef.current?.focus(), 0) }}>Add another item</button>
+            <button type="button" className={cn(quietButton, focus)} onClick={onClose}>Close</button>
+          </div>
+        </div>
+      </PanelShell>
+    )
+  }
+
+  return (
+    <PanelShell
+      open
+      onClose={onClose}
+      title="Add to pantry"
+      footer={
+        <div className="flex shrink-0 flex-col gap-2.5 border-t border-border px-8 pt-3.5 pb-[18px]">
+          {missing.length > 0 && <span className="text-[13px] text-muted-foreground">To add it, give it {nameList(missing)}.</span>}
+          <div className="flex items-center gap-2">
+            <label className="flex min-h-10 flex-1 items-center gap-2.5 text-sm">
+              <input type="checkbox" checked={addAnother} onChange={(e) => setAddAnother(e.target.checked)} className={cn("size-[18px] accent-primary", focus)} />
+              Add another after this
+            </label>
+            <button type="button" className={cn(quietButton, focus)} onClick={onClose}>Cancel</button>
+            <button type="button" className={cn(primaryButton, "px-[18px]", focus)} disabled={missing.length > 0} onClick={submit}>Add item</button>
+          </div>
+        </div>
+      }
+    >
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-8 pt-6 pb-8">
+        <div className="flex items-start gap-2">
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <SmallLabel>Add to pantry</SmallLabel>
+            <input
+              ref={nameRef}
+              aria-label="Item name"
+              value={i.name}
+              placeholder="Name"
+              onChange={(e) => {
+                set({ name: e.target.value })
+                setToast("")
+              }}
+              onFocus={(e) => {
+                const el = e.currentTarget
+                if (el.value === DEFAULT_NAME) setTimeout(() => el.select(), 0)
+              }}
+              className={cn(
+                "h-12 w-full border-0 border-b-2 bg-transparent px-0.5 font-serif text-[30px] font-bold outline-none placeholder:text-[#8A7868]",
+                nameOk ? "border-primary text-foreground" : "border-[var(--line-strong)] text-muted-foreground",
+                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+              )}
+            />
+          </div>
+          <IconButton label="Close" className="mt-[18px]" onClick={onClose}><XIcon /></IconButton>
+        </div>
+
+        {toast && (
+          <div role="status" className="flex items-center gap-2.5 rounded-[4px] bg-muted px-3.5 py-3 text-sm">
+            <CheckIcon aria-hidden className="size-4 shrink-0" />
+            <span>{toast}</span>
+          </div>
+        )}
+
+        {showDup && dup && (
+          <div role="status" className="flex flex-col gap-3 rounded-[4px] border border-primary bg-muted p-4">
+            <span className="text-[15px] leading-[21px]">
+              You already have <strong>{dup.name}</strong>: {dup.inStock ? haveText(dup) : "none in stock"}{dup.location ? ` ${placeText(dup.location)}` : ""}.
+            </span>
+            <div className="flex flex-wrap items-center gap-4">
+              <button type="button" className={cn(primaryButton, focus)} onClick={addToExisting}>Add {unitText2(dup, 1)} to stock instead</button>
+              <button type="button" className={cn(textLink, focus)} onClick={() => setF((s) => ({ ...s, dupDismissed: dup.id }))}>Add as a separate item</button>
+            </div>
+          </div>
+        )}
+
+        <section aria-labelledby="add-where" className="flex flex-col gap-3.5">
+          <SmallLabel id="add-where">Where it lives</SmallLabel>
+          <LocationPicker value={i.location} onChange={(location) => set({ location })} />
+          <label className="mt-2.5 flex flex-col gap-1.5">
+            <span className={label}>Shop aisle</span>
+            <select className={cn(lineInput, !i.categoryId && "text-muted-foreground")} value={i.categoryId} onChange={(e) => set({ categoryId: e.target.value })}>
+              <option value="">Choose an aisle</option>
+              {categoriesAtoZ(db.categories).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+        </section>
+
+        <section aria-labelledby="add-stock" className="flex flex-col gap-4">
+          <SmallLabel id="add-stock">What you're adding</SmallLabel>
+          <StepRow
+            id="add-qty"
+            title={`How many ${many}`}
+            sub={n === 0 ? "None in stock yet. You can still add it." : f.hasUseBy ? "Each one gets a use-by date." : "Marked as bought today."}
+          >
+            <Counter size="lg" value={n} onChange={setQty} labelledBy="add-qty" less="One fewer" more="One more" />
+          </StepRow>
+
+          {bulk && n > 0 && !f.openShown && (
+            <button type="button" className={cn(textLink, focus)} onClick={() => setF((s) => ({ ...s, openShown: true }))}>Some already open?</button>
+          )}
+          {bulk && n > 0 && f.openShown && (
+            <StepRow id="add-open" title="Already open" sub="Open ones don't count towards your minimum.">
+              <Counter size="sm" value={i.open ?? 0} max={n} onChange={(o) => set({ open: o })} labelledBy="add-open" less="One fewer open" more="One more open" />
+            </StepRow>
+          )}
+
+          <div className="border-t border-border">
+            <Fold
+              title="Stock rules"
+              titleWidth={120}
+              open={f.rulesOpen}
+              onToggle={() => setF((s) => ({ ...s, rulesOpen: !s.rulesOpen }))}
+              summary={`${bulk ? "Bulk" : "Counted"} · ${many}${i.packSize ? ` of ${sizeText(i)}` : ""} · minimum ${i.target}`}
+            >
+              <StepRow title="Minimum to keep" sub="Above 0 makes it a Staple.">
+                <Counter value={i.target} onChange={(target) => set({ target })} label="Minimum to keep" less="Lower minimum" more="Raise minimum" />
+              </StepRow>
+              <div className="flex flex-col gap-2">
+                <span className={label}>How you use it</span>
+                <TwoWay label="How you use it" value={i.type} onChange={(type) => set({ type, open: type === "bulk" ? i.open ?? 0 : undefined })} options={[{ value: "counted", label: "Counted" }, { value: "bulk", label: "Bulk" }]} />
+                <span className={hint}>{typeExplain(i, true)}</span>
+              </div>
+              <div className="flex flex-wrap gap-5">
+                <UnitField unit={i.unit} onChange={(unit) => set({ unit })} />
+                <SizeField item={i} onChange={(packSize) => set({ packSize })} />
+              </div>
+            </Fold>
+          </div>
+
+          <StepRow id="add-useby" title="Has a use-by date" sub={f.hasUseBy ? `Each ${one} has its own date.` : `Off, so each ${one} shows when you bought it.`}>
+            <Toggle
+              labelledBy="add-useby"
+              on={f.hasUseBy}
+              onChange={(on) => setF((s) => ({ ...s, hasUseBy: on, oneDate: true, focusDate: on && s.item.inStock > 0 ? "one" : null }))}
+            />
+          </StepRow>
+
+          {f.hasUseBy && n > 0 && f.oneDate && (
+            <div className="flex items-end justify-between gap-4">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[13px] text-muted-foreground">{n > 1 ? `Use by, all ${n}` : "Use by"}</span>
+                <DateField
+                  value={f.date}
+                  focus={f.focusDate === "one"}
+                  onChange={(v) => setF((s) => ({ ...s, date: v, dates: s.dates.map(() => v), focusDate: null }))}
+                />
+              </label>
+              {n > 1 && (
+                <button type="button" className={cn(textLink, "pb-2.5", focus)} onClick={() => setF((s) => ({ ...s, oneDate: false, dates: s.dates.map(() => s.date), focusDate: 1 }))}>
+                  Different dates?
+                </button>
+              )}
+            </div>
+          )}
+          {f.hasUseBy && n > 1 && !f.oneDate && (
+            <div className="flex flex-col gap-2.5">
+              <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+                {f.dates.map((d, k) => (
+                  <label key={k} className="flex flex-col gap-1.5">
+                    <span className="text-[13px] text-muted-foreground">{cap(one)} {k + 1} use by</span>
+                    <DateField
+                      value={d}
+                      focus={f.focusDate === k}
+                      onChange={(v) => setF((s) => ({ ...s, dates: s.dates.map((x, j) => (j === k ? v : x)), focusDate: null }))}
+                    />
+                  </label>
+                ))}
+              </div>
+              <button type="button" className={cn(textLink, focus)} onClick={() => setF((s) => ({ ...s, oneDate: true, date: s.dates[0] || "", focusDate: null }))}>Use one date for all</button>
+            </div>
+          )}
+
+          <ListBoxView box={addListBox(i)} />
+        </section>
+
+        <section aria-labelledby="add-optional" className="flex flex-col gap-3.5">
+          <SmallLabel id="add-optional">Optional details</SmallLabel>
+          {f.extras.includes("store") && (
+            <label className="flex flex-col gap-1.5">
+              <span className={label}>Store</span>
+              <select className={lineInput} value={i.where[0] ?? "any"} onChange={(e) => set({ where: e.target.value === "any" ? [] : [e.target.value] })} autoFocus>
+                <option value="any">Any store</option>
+                {stores.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+              <span className={hint}>{category ? `Aisle numbers are for ${category.name}.` : "Choose an aisle to see each store's aisle number."}</span>
+            </label>
+          )}
+          {f.extras.includes("price") && (
+            <label className="flex flex-col gap-1.5">
+              <span className={label}>Price each</span>
+              <span className="flex items-center gap-1 border-b border-[var(--line-strong)] focus-within:border-primary">
+                <span aria-hidden className="text-base text-muted-foreground">£</span>
+                <input className={cn(lineInput, "border-0")} inputMode="decimal" placeholder="0.00" value={f.price} onChange={(e) => setF((s) => ({ ...s, price: e.target.value }))} autoFocus />
+              </span>
+              <span className={hint}>Leave it blank and Claude will estimate it. Estimates are marked.</span>
+            </label>
+          )}
+          {f.extras.includes("brand") && (
+            <label className="flex flex-col gap-1.5">
+              <span className={label}>Preferred brand</span>
+              <input className={lineInput} placeholder="Any" value={i.brand ?? ""} onChange={(e) => set({ brand: e.target.value || undefined })} autoFocus />
+            </label>
+          )}
+          {f.extras.includes("other") && (
+            <label className="flex flex-col gap-1.5">
+              <span className={label}>Other names</span>
+              <input className={lineInput} placeholder="e.g. oat drink" value={f.otherNames} onChange={(e) => setF((s) => ({ ...s, otherNames: e.target.value }))} autoFocus />
+              <span className={hint}>Used to match recipes and in search.</span>
+            </label>
+          )}
+          {f.extras.includes("notes") && (
+            <label className="flex flex-col gap-1.5">
+              <span className={label}>Notes</span>
+              <textarea rows={3} className={cn("resize-y rounded-[4px] border border-[var(--line-strong)] bg-transparent p-2.5 text-[15px] leading-[21px] outline-none placeholder:text-[#8A7868] focus-visible:border-primary")} placeholder="Anything worth remembering" value={i.notes ?? ""} onChange={(e) => set({ notes: e.target.value || undefined })} autoFocus />
+            </label>
+          )}
+          {f.extras.length < CHIPS.length && (
+            <div className="flex flex-wrap gap-2">
+              {CHIPS.filter((c) => !f.extras.includes(c.key)).map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => setF((s) => ({ ...s, extras: [...s.extras, c.key] }))}
+                  className={cn("inline-flex h-9 items-center gap-1.5 rounded-full border border-dashed border-primary bg-background px-3.5 text-[13px] text-foreground hover:bg-muted", focus)}
+                >
+                  <PlusIcon aria-hidden className="size-3" strokeWidth={2.5} />
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </PanelShell>
+  )
+}
+
+/** "1 bag", "2 bags"; with no unit, "1" reads as the item: "1 lemon". */
+function unitText2(i: Item, n: number) {
+  if (i.unit) return `${n} ${n === 1 ? i.unit[0] : i.unit[1]}`
+  return amountOf(i, n)
+}
+
+function DateField({ value, onChange, focus: wantFocus, label: name }: { value: string; onChange: (v: string) => void; focus?: boolean; label?: string }) {
+  const ref = React.useRef<HTMLInputElement>(null)
+  React.useEffect(() => {
+    if (wantFocus) ref.current?.focus()
+  }, [wantFocus])
   return (
     <input
+      ref={ref}
       type="date"
-      aria-label={label}
-      value={value ?? ""}
-      onChange={(e) => onChange(e.target.value || null)}
-      className="h-7 border-b border-transparent bg-transparent text-sm font-semibold outline-none hover:border-ring focus:border-foreground"
+      aria-label={name}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn("h-10 rounded-[4px] border bg-background px-2 text-[15px] text-foreground", value ? "border-[var(--line-strong)]" : "border-primary", focus)}
     />
   )
 }
 
-/** Units (counted) or packs (bulk), each with a use-by date when you keep more than one. */
-function Slots({ draft, setDraft }: { draft: Item; setDraft: (i: Item) => void }) {
-  const bulk = isBulk(draft)
-  const word = cap(draft.unit?.[0] ?? (bulk ? "Pack" : "Unit"))
-  const perUnit = perUnitDates(draft)
-  const slots = Math.max(draft.inStock, draft.target, bulk || perUnit ? 0 : 1)
-  const dates = draft.useBy ?? []
-  const setDate = (index: number, v: string | null) => {
-    const next = [...dates]
-    next[index] = v
-    setDraft({ ...draft, useBy: next })
-  }
-  const remove = (index: number) => {
-    const next = [...dates]
-    next.splice(index, 1)
-    const open = bulk && index < (draft.open ?? 0) ? (draft.open ?? 0) - 1 : draft.open
-    const opened = bulk && index < (draft.open ?? 0) ? (draft.openedAt ?? []).filter((_, k) => k !== index) : draft.openedAt
-    setDraft(normalise({ ...draft, inStock: draft.inStock - 1, useBy: next, open, openedAt: opened }))
-  }
-  const add = () => setDraft(normalise({ ...draft, inStock: draft.inStock + 1, useBy: [...dates, null] }))
-  const openIt = (index: number) => {
-    // Open packs come first. Move this one to the front of the full ones.
-    const o = draft.open ?? 0
-    const next = [...dates]
-    const [d] = next.splice(index, 1)
-    next.splice(o, 0, d)
-    setDraft(normalise({ ...draft, useBy: next, open: o + 1, openedAt: [...(draft.openedAt ?? []), todayIso()] }))
-  }
+// ---------- Edit (PANEL-H) ----------
 
-  if (draft.noExpiry && !bulk) {
-    return <p className="text-sm text-muted-foreground">Doesn't expire, so no use-by dates are kept.</p>
-  }
-  if (!bulk && !perUnit) {
-    return (
-      <div className="flex flex-col">
-        <UnitRow
-          label="All"
-          title={draft.inStock ? <span className="flex items-center gap-2">Use by <DateInput label="Use by" value={dates[0] ?? null} onChange={(v) => setDate(0, v)} /></span> : "None in stock"}
-          aside={inDaysText(dates[0])}
-          empty={!draft.inStock}
-        />
-        <p className="pt-2 text-xs text-muted-foreground">You keep 1 or fewer, so the item has one use-by date.</p>
-      </div>
-    )
-  }
-  return (
-    <div className="flex flex-col">
-      {Array.from({ length: slots }, (_, k) => {
-        if (k >= draft.inStock)
-          return (
-            <UnitRow
-              key={k}
-              empty
-              label={`${word} ${k + 1}`}
-              title="Empty slot"
-              sub="Not bought yet"
-              action={<Button size="xs" variant="outline" className="h-8 border-primary" onClick={add}>Bought one</Button>}
-            />
-          )
-        const isOpen = bulk && k < (draft.open ?? 0)
-        const dateEl = draft.noExpiry ? <span className="font-normal text-muted-foreground">No expiry</span> : perUnit || k === 0 ? <DateInput label={`Use by, ${word.toLowerCase()} ${k + 1}`} value={dates[k] ?? null} onChange={(v) => setDate(k, v)} /> : <span className="font-normal text-muted-foreground">{dateText(dates[0])}</span>
-        return (
-          <UnitRow
-            key={k}
-            label={`${word} ${k + 1}`}
-            title={<span className="flex items-center gap-2">{bulk ? (isOpen ? "Open · use by" : "Full · use by") : "Use by"} {dateEl}</span>}
-            sub={isOpen && draft.openedAt?.[k] ? `Opened ${shortDate(draft.openedAt[k]!)}` : undefined}
-            aside={!bulk ? inDaysText(dates[k]) : undefined}
-            action={
-              bulk && !isOpen ? (
-                <Button size="xs" variant="outline" className="h-8 border-primary" onClick={() => openIt(k)}>Open it</Button>
-              ) : (
-                <Button size="xs" variant="outline" className="h-8 border-primary" onClick={() => remove(k)}>{bulk ? "Finished it" : "Used it"}</Button>
-              )
-            }
-          />
-        )
-      })}
-      {slots === 0 && <p className="text-sm text-muted-foreground">None in stock.</p>}
-      <p className="pt-2 text-xs text-muted-foreground">
-        {bulk ? "The app tracks whole packs. It doesn't measure what's left in an open one." : "You keep more than one, so each unit has its own date."}
-      </p>
-    </div>
-  )
-}
+type Group = "stock" | "where" | "store" | "notes" | "recipes" | "history"
 
-/** The line at the bottom of Add item: whether it's a Staple and whether it goes on the list. */
-function Summary({ draft }: { draft: Item }) {
-  const s = stockOf(draft)
-  const need = shortfall(draft)
-  return (
-    <div className="flex items-center gap-3 border border-border bg-muted px-4 py-3 text-sm">
-      {s && <StockPill item={draft} />}
-      <span>
-        {isStaple(draft)
-          ? <>A Staple. You have {haveText(draft)} and keep {draft.target}, so {need ? <strong>{need} {need === 1 ? "goes" : "go"} on the shopping list</strong> : "nothing goes on the shopping list"}.</>
-          : <>Not a Staple: a minimum of 0. It only goes on the list when you or a recipe adds it.</>}
-      </span>
-    </div>
-  )
-}
-
-export function ItemPanel({ id, prefill, seed, onSaved, onClose }: { id?: string; prefill?: string; seed?: Partial<Item>; onSaved?: (id: string) => void; onClose: () => void }) {
-  const { items, db, actions } = usePantry()
-  const isNew = id === "new"
-  const saved = id && !isNew ? items[id] : undefined
-  const open = isNew || !!saved
-  const fresh = () => (seed ? normalise({ ...blankItem(prefill), ...seed }) : blankItem(prefill))
-  const [draft, setDraft] = React.useState<Item>(() => saved ?? fresh())
+function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => void; onDeleted: (name: string) => void }) {
+  const { db, actions } = usePantry()
+  const [group, setGroup] = React.useState<Group | null>(null)
+  const [renaming, setRenaming] = React.useState(false)
+  const [nameDraft, setNameDraft] = React.useState("")
+  const [menuOpen, setMenuOpen] = React.useState(false)
+  const [confirmDelete, setConfirmDelete] = React.useState(false)
   const [merge, setMerge] = React.useState(false)
-  const [remove, setRemove] = React.useState(false)
-  const [tried, setTried] = React.useState(false)
+  const [editing, setEditing] = React.useState<{ index: number; value: string } | null>(null)
+  const [notice, setNotice] = React.useState<{ text: string; undo?: Unit } | null>(null)
+  const [stockNote, setStockNote] = React.useState("")
+  // Bulk → Counted keeps which packs were open, so switching back restores them.
+  const [wasOpen, setWasOpen] = React.useState<Pick<Item, "open" | "openedAt"> | null>(null)
+  const [savedOnce, setSavedOnce] = React.useState(false)
+  const deleteRef = React.useRef<HTMLButtonElement>(null)
+  const menuRef = React.useRef<HTMLButtonElement>(null)
 
-  // A different item (or a fresh Add) resets the draft.
-  const key = `${id}:${prefill ?? ""}`
-  const [lastKey, setLastKey] = React.useState(key)
-  if (key !== lastKey) {
-    setLastKey(key)
-    setDraft(saved ?? fresh())
-    setTried(false)
+  React.useEffect(() => {
+    if (confirmDelete) deleteRef.current?.focus()
+  }, [confirmDelete])
+
+  if (!item) return <PanelShell open={false} onClose={onClose} title="Item">{null}</PanelShell>
+  const i = item
+  const bulk = isBulk(i)
+  const [one, many] = unitNames(i)
+  const units = unitsOf(i)
+  const n = units.length
+  const openN = units.filter((u) => u.open).length
+  const hasUseBy = !i.noExpiry
+  const category = db.categories.find((c) => c.id === i.categoryId)
+  const key = `panel:${i.id}`
+
+  const save = (next: Item, opts?: { title?: string; merge?: boolean }) => {
+    actions.saveItem(normalise(next), false, { key: opts?.merge === false ? undefined : key, title: opts?.title })
+    setSavedOnce(true)
+  }
+  const set = (patch: Partial<Item>) => save({ ...i, ...patch })
+
+  // Header line: "2 bags · 1 open · soonest use by 12 Jan".
+  const soonestDate = units.map((u) => u.useBy).filter((d): d is string => !!d).sort()[0]
+  const summary = n === 0
+    ? "None in stock"
+    : [cap(unitText2(i, n)), openN ? `${openN} open` : null, hasUseBy && soonestDate ? `soonest use by ${dayText(soonestDate)}` : null].filter(Boolean).join(" · ")
+
+  const unitLabel = (k: number) => `${cap(one)} ${k + 1}`
+  const act = (k: number) => {
+    const u = units[k]
+    const name = unitLabel(k)
+    setEditing(null)
+    if (bulk && !u.open) {
+      const { item: next, movedTo } = openUnit(i, k)
+      save(next, { title: `Opened a ${one} of ${lower(i.name)}`, merge: false })
+      setNotice({ text: movedTo ? `${name} opened, so use by is now ${dayText(movedTo)}.` : `${name} opened.` })
+      return
+    }
+    const rest = units.filter((_, j) => j !== k)
+    save({ ...withUnits(i, rest), uses: (i.uses ?? 0) + 1 }, { title: bulk ? `Finished a ${one} of ${lower(i.name)}` : `Used ${amountOf(i, 1)}`, merge: false })
+    setNotice({ text: `${name} ${bulk ? "finished" : "used"}.`, undo: u })
+  }
+  const undoRemove = () => {
+    if (!notice?.undo) return
+    save(withUnits(i, [...units, notice.undo]), { title: `Put back ${amountOf(i, 1)}`, merge: false })
+    setNotice(null)
+  }
+  const addUnit = () => {
+    const next = withUnits(i, [...units, { open: false, useBy: null, openedAt: null }])
+    save(next, { title: `Added ${amountOf(i, 1)}`, merge: false })
+    // Undated units sort last, so the new one is at the end.
+    if (hasUseBy) setEditing({ index: next.inStock - 1, value: "" })
+    setNotice({ text: hasUseBy ? "Added. Set its use-by date." : "Added, bought today." })
+  }
+  const commitDate = () => {
+    if (!editing) return
+    const u = units[editing.index]
+    if (u && (editing.value || null) !== u.useBy) {
+      save(withUnits(i, units.map((x, j) => (j === editing.index ? { ...x, useBy: editing.value || null } : x))), { title: `Changed a use-by date for ${i.name}` })
+    }
+    setEditing(null)
   }
 
-  const set = (patch: Partial<Item>) => setDraft((d) => normalise({ ...d, ...patch }))
-  const problems = [!draft.name.trim() && "a name", !draft.location && "a location", !draft.categoryId && "a shop or aisle"].filter(Boolean) as string[]
-  const save = (again = false) => {
-    setTried(true)
-    if (problems.length) return
-    actions.saveItem(normalise({ ...draft, name: draft.name.trim() }), isNew)
-    onSaved?.(draft.id)
-    if (again) {
-      setDraft(blankItem())
-      setTried(false)
-    } else onClose()
+  const setType = (type: Item["type"]) => {
+    if (type === i.type) return
+    if (type === "counted") {
+      setStockNote(openN ? `Your ${openN === 1 ? `open ${one} now counts` : `${openN} open ${many} now count`} as whole. Switch back to keep tracking ${openN === 1 ? "it" : "them"}.` : "")
+      setWasOpen(openN ? { open: i.open, openedAt: i.openedAt } : null)
+      set({ type, open: undefined, openedAt: undefined })
+    } else {
+      setStockNote("")
+      set({ type, ...(wasOpen ?? { open: 0 }) })
+      setWasOpen(null)
+    }
   }
 
-  const usedIn = saved ? recipesUsing(db.recipes, saved.id) : []
-  const history = saved ? db.history.filter((h) => h.itemIds?.includes(saved.id)).slice(0, 5) : []
-  const bulk = isBulk(draft)
-  const category = db.categories.find((c) => c.id === draft.categoryId)?.name
+  const toggle = (g: Group) => {
+    setGroup((cur) => (cur === g ? null : g))
+    setMenuOpen(false)
+  }
+
+  // Stores that sell this aisle, each with its aisle number.
+  const stores = db.stores.flatMap((s) => {
+    const aisle = s.aisles[i.categoryId]
+    return typeof aisle === "number" ? [{ id: s.id, name: s.name, label: `${s.name} · aisle ${aisle}` }] : []
+  })
+  const store = stores.find((s) => s.id === i.where[0])
+  const priceSummary = i.price ? `${money(i.price)}${i.priceEstimate ? " (estimate)" : ""}` : "No price"
+  const usedIn = recipesUsing(db.recipes, i.id)
+  const last = db.history.find((h) => h.itemIds?.includes(i.id))
+  const sortHint = n > 1 ? (bulk ? "Open first, then soonest use-by" : hasUseBy ? "Soonest use-by first" : "") : ""
+  const soon = (iso: string) => daysUntil(iso) <= 14
+  const weeks = i.useWithinWeeks ?? 0
 
   return (
     <>
-      <SidePanel
-        open={open}
+      <PanelShell
+        open
         onClose={onClose}
-        width={560}
-        eyebrow={isNew ? "New item" : [locationLabel(draft.location), category].filter(Boolean).join(" · ")}
-        title={isNew ? "Add item" : saved && <span className="inline-flex items-center gap-2">{saved.name}<ExpiryAlert item={saved} className="[&_svg]:size-4" /></span>}
-        badges={!isNew && saved && <>{<StockPill item={saved} />}{isStaple(saved) && <TagPill>Staple</TagPill>}{saved.review && <NewPill tip="Added from a recipe and not bought yet." />}</>}
-        description={!isNew && saved ? stockSentence(draft) : undefined}
+        title={i.name}
         footer={
-          isNew ? (
-            <>
-              <Button variant="outline" onClick={onClose}>Cancel</Button>
-              <span className="flex-1" />
-              <Button variant="outline" className="border-primary" onClick={() => save(true)}>Add and start another</Button>
-              <Button onClick={() => save()}>Add item</Button>
-            </>
-          ) : (
-            <>
-              <Button variant="destructive" onClick={() => setRemove(true)}>Delete</Button>
-              <Button variant="outline" onClick={() => setMerge(true)}>Merge</Button>
-              <span className="flex-1" />
-              <Button variant="outline" onClick={onClose}>Cancel</Button>
-              <Button onClick={() => save()}>Save</Button>
-            </>
-          )
+          <div className="flex h-[52px] shrink-0 items-center gap-2 border-t border-border px-8 text-[13px] text-muted-foreground">
+            <CheckIcon aria-hidden className="size-3.5" />
+            <span role="status">{savedOnce ? "Saved just now. Changes save as you go." : "Changes save as you go."}</span>
+          </div>
         }
       >
-        <div className="flex flex-col gap-7">
-          <Field label="Name">
-            <Input value={draft.name} onChange={(e) => set({ name: e.target.value })} placeholder="Oat milk" aria-invalid={tried && !draft.name.trim()} autoFocus={isNew} />
-          </Field>
-
-          <div className="flex flex-col gap-2">
-            <Eyebrow>Type</Eyebrow>
-            <Segmented
-              label="Type"
-              value={draft.type}
-              onChange={(type) => set({ type, open: type === "bulk" ? draft.open ?? 0 : undefined, unit: draft.unit ?? (type === "bulk" ? ["bag", "bags"] : undefined) })}
-              options={[{ value: "counted", label: "Counted" }, { value: "bulk", label: "Bulk" }]}
-            />
-            {isNew && <span className="text-xs text-muted-foreground">Counted: tracked by number, like eggs or tins. Bulk: tracked as whole packs, like flour or oil.</span>}
+        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-8 pt-6 pb-8">
+          <div className="flex items-start gap-2">
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <SmallLabel>{[locationLabel(i.location), category?.name].filter(Boolean).join(" · ")}</SmallLabel>
+              {renaming ? (
+                <form
+                  className="flex items-center gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    const v = nameDraft.trim()
+                    if (v && v !== i.name) save({ ...i, name: v }, { title: `Renamed ${i.name} to ${v}`, merge: false })
+                    setRenaming(false)
+                    setTimeout(() => menuRef.current?.focus(), 0)
+                  }}
+                >
+                  <input
+                    aria-label="Item name"
+                    autoFocus
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setRenaming(false))}
+                    className="h-11 min-w-0 flex-1 border-0 border-b-2 border-primary bg-transparent px-0.5 font-serif text-[28px] font-bold outline-none"
+                  />
+                  <button type="submit" className={cn(primaryButton, focus)}>Done</button>
+                </form>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h2 className="font-serif text-[30px] leading-[1.05] font-bold break-words">{i.name}</h2>
+                  {isStaple(i) && (
+                    <span className="inline-flex h-5 items-center rounded-full border border-border bg-muted px-2 text-[10px] font-semibold tracking-[0.1em] uppercase">Staple</span>
+                  )}
+                </div>
+              )}
+              <span className="text-[15px] leading-5">{summary}</span>
+            </div>
+            <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+              <PopoverTrigger asChild>
+                <IconButton ref={menuRef} label="More actions" aria-haspopup="menu"><EllipsisIcon /></IconButton>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="flex w-60 flex-col gap-0 rounded-[4px] border-border bg-background p-1.5 shadow-[0_8px_24px_rgba(61,43,31,0.14)]">
+                <div role="menu" aria-label="More actions" className="flex flex-col">
+                  <button type="button" role="menuitem" className={cn("h-10 rounded-[4px] px-3 text-left text-sm hover:bg-muted", focus)} onClick={() => { setMenuOpen(false); setNameDraft(i.name); setRenaming(true) }}>Rename</button>
+                  <button type="button" role="menuitem" className={cn("h-10 rounded-[4px] px-3 text-left text-sm hover:bg-muted", focus)} onClick={() => { setMenuOpen(false); setMerge(true) }}>Merge with another item</button>
+                  <button type="button" role="menuitem" className={cn("h-10 rounded-[4px] border-t border-border px-3 text-left text-sm text-destructive hover:bg-muted", focus)} onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}>Delete</button>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <IconButton label="Close" onClick={onClose}><XIcon /></IconButton>
           </div>
 
-          <div className="grid grid-cols-3 gap-5">
-            <div className="flex flex-col gap-1">
-              <Eyebrow>{bulk ? "Packs" : isNew ? "How many you have" : "How many"}</Eyebrow>
-              <Stepper
-                size="md"
-                label="How many"
-                value={draft.inStock}
-                onChange={(n) => set({ inStock: n, useBy: n > draft.inStock ? [...(draft.useBy ?? []), null] : (draft.useBy ?? []).slice(0, n) })}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Eyebrow>Minimum to keep</Eyebrow>
-              <Stepper size="md" label="Minimum to keep" value={draft.target} onChange={(n) => set({ target: n })} />
-            </div>
-            <Field label="Unit">
-              <Input
-                value={draft.unit?.[0] ?? ""}
-                placeholder={bulk ? "bag" : "carton"}
-                onChange={(e) => set({ unit: e.target.value ? [e.target.value, pluralise(e.target.value)] : undefined })}
-              />
-            </Field>
-          </div>
-          {isNew && <p className="-mt-4 text-xs text-muted-foreground">A minimum above 0 makes this a Staple. Leave it at 0 for things you only buy for a recipe.</p>}
-
-          {bulk && (
-            <div className="grid grid-cols-3 gap-5">
-              <Field label="Pack size">
-                <Input
-                  type="number"
-                  min={0}
-                  value={draft.packSize?.amount ?? ""}
-                  placeholder="1000"
-                  onChange={(e) => set({ packSize: e.target.value ? { amount: parseInt(e.target.value, 10), measure: draft.packSize?.measure ?? "g" } : undefined })}
-                />
-              </Field>
-              <div className="col-span-2 flex flex-col gap-1">
-                <Eyebrow>Measured in</Eyebrow>
-                <Segmented
-                  label="Measured in"
-                  size="sm"
-                  value={draft.packSize?.measure ?? "g"}
-                  onChange={(measure) => set({ packSize: { amount: draft.packSize?.amount ?? 0, measure } })}
-                  options={[{ value: "g", label: "Grams" }, { value: "ml", label: "Millilitres" }]}
-                />
+          {confirmDelete && (
+            <div role="alertdialog" aria-labelledby="delete-q" aria-describedby="delete-why" className="flex flex-col gap-3 rounded-[4px] border border-destructive p-4">
+              <span id="delete-q" className="text-[15px] font-semibold">Delete {i.name}{n ? ` and its ${unitText2(i, n)}` : ""}?</span>
+              <span id="delete-why" className="text-sm text-muted-foreground">
+                Recipes that use it will show it as missing{needOf(i) > 0 ? ", and it comes off the shopping list" : ""}. You can undo it from History today.
+              </span>
+              <div className="flex gap-2">
+                <button type="button" className={cn(quietButton, focus)} onClick={() => { setConfirmDelete(false); setTimeout(() => menuRef.current?.focus(), 0) }}>Keep it</button>
+                <button
+                  ref={deleteRef}
+                  type="button"
+                  className={cn("h-10 rounded-[4px] border border-destructive bg-destructive px-4 text-xs font-semibold tracking-[0.1em] text-destructive-foreground uppercase hover:bg-destructive/90", focus)}
+                  onClick={() => {
+                    actions.deleteItem(i.id)
+                    onDeleted(i.name)
+                  }}
+                >
+                  Delete
+                </button>
               </div>
             </div>
           )}
 
-          <div className="flex flex-col gap-2">
-            <Eyebrow className={cn(tried && !draft.location && "text-destructive")}>Location</Eyebrow>
-            <Segmented label="Location" value={draft.location} onChange={(location) => set(location === "household" && draft.noExpiry === undefined ? { location, noExpiry: true } : { location })} options={locations} />
-          </div>
+          <ListBoxView box={listBox(i)} />
 
-          <div className="grid grid-cols-2 gap-5">
-            <Field label="Shop or aisle">
-              <Select value={draft.categoryId || undefined} onValueChange={(categoryId) => set({ categoryId })}>
-                <SelectTrigger className="w-full" aria-invalid={tried && !draft.categoryId}>
-                  <SelectValue placeholder="Choose an aisle" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categoriesAtoZ(db.categories).map((c) => (
-                    <SelectItem key={c.id} value={c.id}><CategoryLabel category={c} /></SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Price each" hint={draft.priceEstimate && draft.price ? "An estimate. Change it to set your own." : undefined}>
-              <Input
-                inputMode="decimal"
-                placeholder="£0.00"
-                defaultValue={penceText(draft.price)}
-                key={`${draft.id}-price`}
-                onBlur={(e) => {
-                  const v = parseFloat(e.target.value.replace(/[£,]/g, ""))
-                  const price = Number.isFinite(v) ? Math.round(v * 100) : undefined
-                  // A price you set yourself isn't an estimate. Tabbing past without a change keeps the mark.
-                  if (price !== draft.price) set({ price, priceEstimate: undefined })
-                }}
-              />
-            </Field>
-            <Field label="Preferred brand" hint="Shows here and nowhere in the shopping app.">
-              <Input value={draft.brand ?? ""} placeholder="Any" onChange={(e) => set({ brand: e.target.value || undefined })} />
-            </Field>
-            <Field label="Other names" hint="Used to match recipes and in search.">
-              <Input
-                key={`${draft.id}-names`}
-                defaultValue={(draft.otherNames ?? []).join(", ")}
-                placeholder="Used to match recipes"
-                onBlur={(e) => set({ otherNames: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-              />
-            </Field>
-          </div>
-
-          {bulk && (
-            <label className="flex items-center justify-between gap-4">
-              <span className="flex flex-col">
-                <span className="text-sm font-semibold">An open pack counts towards the minimum</span>
-                <span className="text-xs text-muted-foreground">Off: only full packs count, so an open one on its own puts this on the list. On: an open pack counts like a full one.</span>
-              </span>
-              <Switch checked={!!draft.openCounts} onCheckedChange={(on) => set({ openCounts: on || undefined })} aria-label="An open pack counts towards the minimum" />
-            </label>
-          )}
-
-          <section className="flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-3">
-              <Eyebrow>{draft.noExpiry ? (bulk ? "Packs" : "Units") : bulk ? "Packs and use-by dates" : "Units and use-by dates"}</Eyebrow>
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                Doesn't expire
-                <Switch size="sm" checked={!!draft.noExpiry} onCheckedChange={(on) => set({ noExpiry: on || undefined })} aria-label="Doesn't expire" />
-              </label>
+          <section aria-labelledby="units-h" className="flex flex-col gap-2.5">
+            <div className="flex items-baseline justify-between">
+              <h3 id="units-h"><SmallLabel>{cap(many)}</SmallLabel></h3>
+              {sortHint && <span className="text-xs text-muted-foreground">{sortHint}</span>}
             </div>
-            <Slots draft={draft} setDraft={setDraft} />
+            {n > 0 ? (
+              <ul className="border-t border-border">
+                {units.map((u, k) => {
+                  const name = unitLabel(k)
+                  const actLabel = bulk ? (u.open ? "Finished" : "Open it") : "Used it"
+                  return (
+                    <li key={k} className="flex min-h-[60px] items-center gap-3 border-b border-border py-2">
+                      <span className="w-16 shrink-0 text-sm font-semibold">{name}</span>
+                      {bulk && (
+                        <span className={cn("inline-flex h-5 shrink-0 items-center rounded-full border border-primary px-2 text-[10px] font-semibold tracking-[0.1em] uppercase", u.open ? "bg-primary text-primary-foreground" : "bg-background")}>
+                          {u.open ? "Open" : "Full"}
+                        </span>
+                      )}
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        {!hasUseBy ? (
+                          <span className="text-sm text-muted-foreground">{u.openedAt ? `Opened ${dayText(u.openedAt)}` : "No use-by date"}</span>
+                        ) : editing?.index === k ? (
+                          <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); commitDate() }}>
+                            <input
+                              type="date"
+                              aria-label={`Use-by date for ${name}`}
+                              autoFocus
+                              value={editing.value}
+                              onChange={(e) => setEditing({ index: k, value: e.target.value })}
+                              onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setEditing(null))}
+                              className={cn("h-9 rounded-[4px] border border-primary bg-background px-1.5 text-sm", focus)}
+                            />
+                            <button type="submit" className={cn(primaryButton, "h-9 px-3", focus)}>Done</button>
+                          </form>
+                        ) : (
+                          <button
+                            type="button"
+                            aria-label={`Change use-by date for ${name}, now ${u.useBy ? dayText(u.useBy) : "not set"}`}
+                            onClick={() => setEditing({ index: k, value: u.useBy ?? "" })}
+                            className={cn("border-b border-dashed border-[var(--line-strong)] py-1 text-left text-sm", u.useBy ? "text-foreground" : "text-muted-foreground", u.useBy && soon(u.useBy) && "font-bold", focus)}
+                          >
+                            {u.useBy ? `Use by ${dayText(u.useBy)}` : "Set use-by date"}
+                          </button>
+                        )}
+                      </div>
+                      <button type="button" aria-label={`${actLabel}: ${name}`} onClick={() => act(k)} className={cn("h-9 shrink-0 rounded-[4px] border border-primary bg-background px-3.5 text-xs font-semibold tracking-[0.1em] uppercase hover:bg-muted", focus)}>
+                        {actLabel}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : (
+              <div className="flex flex-col gap-1 rounded-[4px] border border-dashed border-[var(--line-strong)] px-4 py-5">
+                <span className="text-[15px] font-semibold">No {many} left</span>
+                <span className="text-sm text-muted-foreground">{isStaple(i) ? `${i.name} is on the shopping list.` : "It isn't a Staple, so it won't go on the list by itself."}</span>
+              </div>
+            )}
+            <div className="flex min-h-10 items-center justify-between gap-3">
+              <button type="button" onClick={addUnit} className={cn(quietButton, "inline-flex items-center gap-2", focus)}>
+                <PlusIcon aria-hidden className="size-3.5" />
+                {i.unit ? `Add a ${one}` : "Add one"}
+              </button>
+              <span role="status" className="flex items-center gap-2.5 text-right text-[13px] text-muted-foreground">
+                {notice?.text}
+                {notice?.undo && <button type="button" className={cn("text-[13px] font-semibold text-foreground underline", focus)} onClick={undoRemove}>Undo</button>}
+              </span>
+            </div>
           </section>
 
-          {!isNew && (
-            <section className="flex flex-col gap-1.5">
-              <Eyebrow>{usedIn.length ? `Used in ${plural(usedIn.length, "recipe")}` : "Recipes"}</Eyebrow>
-              <p className="text-sm">
-                {usedIn.length
-                  ? usedIn.map((r, k) => (
-                      <React.Fragment key={r.id}>
-                        {k > 0 && " · "}
-                        <a className="underline underline-offset-4" href={`#/recipes/cook/${r.id}`}>{r.name}</a>
-                      </React.Fragment>
-                    ))
-                  : "Not in any recipe yet."}
-              </p>
-            </section>
-          )}
+          <section aria-label="Details" className="flex flex-col border-t border-primary">
+            <Fold
+              title="Stock rules"
+              open={group === "stock"}
+              onToggle={() => toggle("stock")}
+              summary={`Minimum ${i.target} · ${bulk ? "Bulk" : "Counted"} · ${many}${i.packSize ? ` of ${sizeText(i)}` : ""}`}
+            >
+              <StepRow title="Minimum to keep" sub={i.target > 0 ? "Above 0 makes it a Staple, so it goes on the list by itself." : "At 0 it isn't a Staple."}>
+                <Counter value={i.target} onChange={(target) => set({ target })} label="Minimum to keep" less="Lower minimum" more="Raise minimum" />
+              </StepRow>
+              <div className="flex flex-col gap-2">
+                <span className={label}>How you use it</span>
+                <TwoWay label="How you use it" value={i.type} onChange={setType} options={[{ value: "counted", label: "Counted" }, { value: "bulk", label: "Bulk" }]} />
+                <span className={hint}>{typeExplain(i, false)}</span>
+                {stockNote && <span className="text-[13px] leading-[18px] font-semibold">{stockNote}</span>}
+              </div>
+              <div className="flex flex-wrap gap-5">
+                <UnitField unit={i.unit} onChange={(unit) => set({ unit })} />
+                <SizeField item={i} onChange={(packSize) => set({ packSize })} />
+              </div>
+              <StepRow id="edit-useby" title="Has a use-by date" sub={hasUseBy ? `Each ${one} has its own date.` : `Off, so no use-by dates are kept.`}>
+                <Toggle labelledBy="edit-useby" on={hasUseBy} onChange={(on) => { setEditing(null); set(on ? { noExpiry: undefined } : { noExpiry: true, useBy: [] }) }} />
+              </StepRow>
+              {bulk && hasUseBy && (
+                <StepRow
+                  title="Use within, once open"
+                  sub={weeks
+                    ? `When you open a ${one}, its use-by becomes the printed date or ${plural(weeks, "week")} from opening, whichever is sooner.`
+                    : `Off, so opening a ${one} doesn't change its use-by date.`}
+                >
+                  <Counter
+                    size="md"
+                    value={weeks}
+                    max={52}
+                    onChange={(w) => set({ useWithinWeeks: w || undefined })}
+                    label="Weeks to use within once open"
+                    less="Fewer weeks"
+                    more="More weeks"
+                    format={(w) => (w ? plural(w, "week") : "Off")}
+                  />
+                </StepRow>
+              )}
+            </Fold>
 
-          <Field label="Notes">
-            <Textarea value={draft.notes ?? ""} placeholder="Optional" onChange={(e) => set({ notes: e.target.value || undefined })} className="min-h-16" />
-          </Field>
+            <Fold title="Where it lives" open={group === "where"} onToggle={() => toggle("where")} summary={[locationLabel(i.location), category?.name ?? "No aisle"].join(" · ")}>
+              <div className="flex flex-col gap-2">
+                <span className={label}>Location</span>
+                <LocationPicker value={i.location} onChange={(location) => set({ location })} />
+              </div>
+              <label className="flex flex-col gap-1.5">
+                <span className={label}>Shop aisle</span>
+                <select
+                  className={lineInput}
+                  value={i.categoryId}
+                  onChange={(e) => {
+                    const categoryId = e.target.value
+                    // A store that doesn't stock the new aisle goes back to Any store.
+                    const keep = i.where.filter((sid) => typeof db.stores.find((s) => s.id === sid)?.aisles[categoryId] === "number")
+                    set({ categoryId, where: keep })
+                  }}
+                >
+                  {!i.categoryId && <option value="">Choose an aisle</option>}
+                  {categoriesAtoZ(db.categories).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <span className={hint}>Sets where it appears on the shopping list.</span>
+              </label>
+            </Fold>
 
-          {history.length > 0 && (
-            <section className="flex flex-col">
-              <Eyebrow className="pb-1">History</Eyebrow>
-              {history.map((h) => <HistoryRow key={h.id} entry={h} compact />)}
-            </section>
-          )}
+            <Fold title="Store, price, brand" open={group === "store"} onToggle={() => toggle("store")} summary={[store?.name ?? "Any store", priceSummary, i.brand || "Any brand"].join(" · ")}>
+              <label className="flex flex-col gap-1.5">
+                <span className={label}>Store</span>
+                <select className={lineInput} value={store?.id ?? "any"} onChange={(e) => set({ where: e.target.value === "any" ? [] : [e.target.value] })}>
+                  <option value="any">Any store</option>
+                  {stores.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+                <span className={hint}>{category ? `Only stores with a ${category.name} aisle are listed.` : "Choose an aisle first to see which stores sell it."}</span>
+              </label>
+              <div className="flex gap-5">
+                <label className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span className={label}>Price each</span>
+                  <span className="flex items-center gap-1 border-b border-[var(--line-strong)] focus-within:border-primary">
+                    <span aria-hidden className="text-base text-muted-foreground">£</span>
+                    <BlurInput
+                      className={cn(lineInput, "border-0")}
+                      inputMode="decimal"
+                      value={penceText(i.price)}
+                      onCommit={(v) => {
+                        const price = parsePence(v)
+                        // A price you set yourself isn't an estimate. Leaving it as it was keeps the mark.
+                        if (price !== i.price) set({ price, priceEstimate: undefined })
+                      }}
+                    />
+                  </span>
+                  {i.priceEstimate && i.price ? <span className={hint}>Estimated by Claude. Change it if you know the real price.</span> : null}
+                </label>
+                <label className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span className={label}>Preferred brand</span>
+                  <BlurInput className={lineInput} placeholder="Any" value={i.brand ?? ""} onCommit={(v) => v.trim() !== (i.brand ?? "") && set({ brand: v.trim() || undefined })} />
+                </label>
+              </div>
+            </Fold>
 
-          {isNew && <Summary draft={draft} />}
-          {tried && problems.length > 0 && <p className="text-sm text-destructive">Add {nameList(problems)} first.</p>}
+            <Fold
+              title="Notes, other names"
+              open={group === "notes"}
+              onToggle={() => toggle("notes")}
+              summary={i.otherNames?.length ? `Also called ${i.otherNames.join(", ")}` : i.notes ? "Has a note" : "None yet"}
+            >
+              <label className="flex flex-col gap-1.5">
+                <span className={label}>Other names</span>
+                <BlurInput
+                  className={lineInput}
+                  placeholder="e.g. all-purpose flour"
+                  value={(i.otherNames ?? []).join(", ")}
+                  onCommit={(v) => {
+                    const names = splitNames(v)
+                    if (names.join(",") !== (i.otherNames ?? []).join(",")) set({ otherNames: names.length ? names : undefined })
+                  }}
+                />
+                <span className={hint}>Used to match recipes and in search. Separate them with commas.</span>
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={label}>Notes</span>
+                <BlurInput
+                  multiline
+                  className="resize-y rounded-[4px] border border-[var(--line-strong)] bg-transparent p-2.5 text-[15px] leading-[21px] outline-none placeholder:text-[#8A7868] focus-visible:border-primary"
+                  placeholder="Anything worth remembering"
+                  value={i.notes ?? ""}
+                  onCommit={(v) => v !== (i.notes ?? "") && set({ notes: v || undefined })}
+                />
+              </label>
+            </Fold>
+
+            <Fold title="Recipes" open={group === "recipes"} onToggle={() => toggle("recipes")} summary={usedIn.length ? `Used in ${plural(usedIn.length, "recipe")}` : "None yet"}>
+              {usedIn.length ? (
+                <ul className="-my-3 flex flex-col gap-1">
+                  {usedIn.map((r) => (
+                    <li key={r.id} className="flex justify-between gap-4 py-2 text-sm">
+                      <a className={cn("underline underline-offset-4 hover:text-primary", focus)} href={`#/recipes/cook/${r.id}`}>{r.name}</a>
+                      <span className="text-right text-muted-foreground">{r.ingredients.find((g) => g.itemId === i.id)?.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <span className="-my-3 text-sm text-muted-foreground">No recipe uses it yet.</span>
+              )}
+            </Fold>
+
+            <Fold title="History" open={group === "history"} onToggle={() => toggle("history")} summary={last ? `${last.title} · ${whenText(last.at)}` : "No changes yet"}>
+              <div className="-my-3 flex flex-col gap-2">
+                {last && (
+                  <div className="flex justify-between gap-4 py-2 text-sm">
+                    <span>{last.title}{last.detail ? <span className="text-muted-foreground"> · {last.detail}</span> : null}</span>
+                    <span className="shrink-0 text-muted-foreground">{whenText(last.at)}</span>
+                  </div>
+                )}
+                <a className={cn("self-start text-sm font-semibold underline underline-offset-4 hover:text-primary", focus)} href="#/">See full history</a>
+              </div>
+            </Fold>
+          </section>
         </div>
-      </SidePanel>
-      {saved && (
-        <>
-          <MergeDialog open={merge} onOpenChange={setMerge} keepId={saved.id} onDone={onClose} />
-          <DeleteDialog open={remove} onOpenChange={setRemove} item={saved} onMerge={() => { setRemove(false); setMerge(true) }} onDone={onClose} />
-        </>
-      )}
+      </PanelShell>
+      <MergeDialog open={merge} onOpenChange={setMerge} keepId={i.id} onDone={onClose} />
     </>
   )
+}
+
+/** A text field that saves when you leave it (or press Enter), so typing doesn't save every letter. */
+function BlurInput({ value, onCommit, multiline, ...props }: Omit<React.ComponentProps<"input">, "value" | "onChange"> & { value: string; onCommit: (v: string) => void; multiline?: boolean }) {
+  const [text, setText] = React.useState(value)
+  const [last, setLast] = React.useState(value)
+  if (value !== last) {
+    setLast(value)
+    setText(value)
+  }
+  const common = {
+    value: text,
+    onBlur: () => onCommit(text),
+    className: props.className,
+    placeholder: props.placeholder,
+  }
+  if (multiline) return <textarea rows={3} {...common} onChange={(e) => setText(e.target.value)} />
+  return <input {...props} {...common} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && onCommit(text)} />
 }
 
 // ---------- PAN-17 merge ----------
@@ -472,61 +1265,6 @@ export function MergeDialog({ open, onOpenChange, keepId, onDone }: { open: bool
             }}
           >
             Merge into {keep.name}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// ---------- PAN-18 delete ----------
-
-export function DeleteDialog({ open, onOpenChange, item, onMerge, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; item: Item; onMerge: () => void; onDone: () => void }) {
-  const { db, actions } = usePantry()
-  const used = recipesUsing(db.recipes, item.id)
-  const example = used[0]?.ingredients.find((g) => g.itemId === item.id)?.text
-  const onList = needOf(item)
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-5 p-8 sm:max-w-[560px]">
-        <DialogHeader>
-          <Eyebrow>Delete item</Eyebrow>
-          <DialogTitle className="text-[22px] tracking-[0.04em] uppercase">Delete {item.name}?</DialogTitle>
-          <DialogDescription className="sr-only">What happens if you delete it.</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-3 text-sm leading-relaxed">
-          {used.length > 0 ? (
-            <p>
-              {item.name} is used in {plural(used.length, "recipe")}:{" "}
-              {used.map((r, k) => (
-                <React.Fragment key={r.id}>
-                  {k > 0 && (k === used.length - 1 ? " and " : ", ")}
-                  <a className="underline underline-offset-4" href={`#/recipes/cook/${r.id}`}>{r.name}</a>
-                </React.Fragment>
-              ))}
-              . If you delete it, those recipes keep their wording{example ? `, such as "${example}",` : ""} but lose the link. They won't be able to check your stock for it, and Want to cook won't add it to the list.
-            </p>
-          ) : (
-            <p>{item.name} isn't used in any recipe.</p>
-          )}
-          {onList > 0 && <p>It's also on your shopping list ({unitText(item, onList)} to buy). It comes off the list.</p>}
-        </div>
-        <div className="flex items-center justify-between gap-4 border border-border bg-muted p-4">
-          <span className="text-sm">Is it a duplicate of another item? Merge it instead, and the recipe links move across.</span>
-          <Button variant="outline" className="shrink-0 border-primary bg-background" onClick={onMerge}>Merge instead</Button>
-        </div>
-        <p className="text-[13px] text-muted-foreground">You can undo this from History today.</p>
-        <DialogFooter className="sm:justify-between">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/80"
-            onClick={() => {
-              actions.deleteItem(item.id)
-              onOpenChange(false)
-              onDone()
-            }}
-          >
-            Delete item
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -79,7 +79,9 @@ export const locations: { value: Location; label: string }[] = [
   { value: "fridge", label: "Fridge" },
   { value: "freezer", label: "Freezer" },
   { value: "cupboard", label: "Cupboard" },
-  { value: "household", label: "Household" },
+  { value: "counter", label: "Counter" },
+  // Stored as "household" (the database's value), shown as Other since 21 Nov 2026.
+  { value: "household", label: "Other" },
 ]
 export const locationLabel = (l?: Location) => locations.find((x) => x.value === l)?.label ?? "No location"
 
@@ -87,8 +89,6 @@ export const locationLabel = (l?: Location) => locations.find((x) => x.value ===
 
 export const isStaple = (i: Item) => i.target > 0
 export const isBulk = (i: Item) => i.type === "bulk"
-/** Each unit has its own use-by date when you keep more than one. */
-export const perUnitDates = (i: Item) => i.target > 1
 
 /** Whole packs that count towards the minimum. An open pack doesn't, unless the item says it does. */
 export const fullOf = (i: Item, total = i.inStock) => (isBulk(i) && !i.openCounts ? Math.max(0, total - (i.open ?? 0)) : total)
@@ -137,7 +137,8 @@ export function inStockText(i: Item, sep = " · ") {
 export function normalise(i: Item): Item {
   const open = isBulk(i) ? Math.min(i.open ?? 0, i.inStock) : undefined
   // Things that never go off keep no dates at all.
-  const want = i.noExpiry ? 0 : perUnitDates(i) || isBulk(i) ? i.inStock : Math.min(1, i.inStock)
+  // Every unit has its own date (since 21 Nov 2026; before, a minimum of 1 or less kept one date).
+  const want = i.noExpiry ? 0 : i.inStock
   const dates = i.noExpiry ? [] : [...(i.useBy ?? [])].slice(0, want)
   while (dates.length < want) dates.push(null)
   const opened = [...(i.openedAt ?? [])].slice(0, open ?? 0)
@@ -154,6 +155,66 @@ export function withStock(i: Item, n: number): Item {
   let open = i.open ?? 0
   if (isBulk(i) && next < i.inStock) open = Math.max(0, open - (i.inStock - next))
   return normalise({ ...i, inStock: next, useBy: dates, open: isBulk(i) ? open : undefined, openedAt: i.openedAt?.slice(i.openedAt.length - open) })
+}
+
+// ---------- units ----------
+
+/** One unit or pack in stock. */
+export type Unit = { open: boolean; useBy: string | null; openedAt: string | null }
+
+/** The units in stock, in the item's order: open packs first, then by use-by. */
+export function unitsOf(i: Item): Unit[] {
+  const open = isBulk(i) ? Math.min(i.open ?? 0, i.inStock) : 0
+  return Array.from({ length: i.inStock }, (_, k) => ({
+    open: k < open,
+    useBy: i.noExpiry ? null : i.useBy?.[k] ?? null,
+    openedAt: k < open ? i.openedAt?.[k] ?? null : null,
+  }))
+}
+
+const byUseBy = (a: Unit, b: Unit) => (a.useBy ?? "9999").localeCompare(b.useBy ?? "9999")
+
+/** Writes units back: Bulk open packs first, then soonest use-by, undated last. */
+export function withUnits(i: Item, units: Unit[]): Item {
+  const bulk = isBulk(i)
+  const sorted = [...units].sort((a, b) => (bulk ? Number(b.open) - Number(a.open) : 0) || byUseBy(a, b))
+  const open = bulk ? sorted.filter((u) => u.open).length : undefined
+  return normalise({
+    ...i,
+    inStock: sorted.length,
+    open,
+    useBy: i.noExpiry ? [] : sorted.map((u) => u.useBy),
+    openedAt: bulk ? sorted.slice(0, open).map((u) => u.openedAt) : undefined,
+  })
+}
+
+const addDays = (iso: string, days: number) => {
+  const [y, m, d] = iso.split("-").map(Number)
+  const t = new Date(Date.UTC(y, m - 1, d + days))
+  return t.toISOString().slice(0, 10)
+}
+
+/** A pack's use-by once opened today: the printed date, or today plus "use within", whichever is sooner. */
+export function openedUseBy(i: Item, printed: string | null, today = todayIso()) {
+  if (i.noExpiry) return null
+  if (!i.useWithinWeeks) return printed
+  const limit = addDays(today, i.useWithinWeeks * 7)
+  return !printed || limit < printed ? limit : printed
+}
+
+/**
+ * Opens a pack: the one at `index` in unitsOf, or the soonest full one. Returns the item and the
+ * pack's new use-by when opening moved it.
+ */
+export function openUnit(i: Item, index?: number): { item: Item; movedTo: string | null } {
+  const units = unitsOf(i)
+  const k = index ?? units.findIndex((u) => !u.open)
+  const u = units[k]
+  if (!isBulk(i) || !u || u.open) return { item: i, movedTo: null }
+  const today = todayIso()
+  const useBy = openedUseBy(i, u.useBy, today)
+  units[k] = { open: true, useBy, openedAt: today }
+  return { item: withUnits(i, units), movedTo: useBy !== u.useBy ? useBy : null }
 }
 
 /** Bought more: list entries are settled by what came in, oldest first. */
@@ -247,6 +308,63 @@ export function stockSentence(i: Item) {
   const s = shortfall(i)
   if (s === 0) return `At or above its minimum, ${listed}`
   return `${s} below minimum, ${listed}`
+}
+
+/** An item's unit names, singular and plural: its own, or "pack" for Bulk and "item" otherwise. */
+export const unitNames = (i: Item): [string, string] => i.unit ?? (isBulk(i) ? ["pack", "packs"] : ["item", "items"])
+
+export type ListBox = { on: boolean; head: string; reason: string }
+
+/** Who or what put entries on the list: "for Lamb vindaloo and by you". */
+function entrySources(i: Item) {
+  const out: string[] = []
+  for (const e of i.entries ?? []) {
+    const t = e.source.kind === "recipe" ? `for ${e.source.recipe}` : e.source.kind === "claude" ? "by Claude" : "by you"
+    if (!out.includes(t)) out.push(t)
+  }
+  return nameList(out)
+}
+
+/** The item panel's shopping-list box: whether it's on the list and why, in a sentence. */
+export function listBox(i: Item): ListBox {
+  const [, many] = unitNames(i)
+  const t = i.target
+  const short = shortfall(i)
+  const listed = entryTotal(i)
+  const full = fullOf(i)
+  const opensDontCount = isBulk(i) && !i.openCounts && (i.open ?? 0) > 0
+  if (short > 0) {
+    const need = needOf(i)
+    let reason = i.inStock === 0
+      ? `None left, and your minimum is ${t}.`
+      : opensDontCount
+        ? `Open ${many} don't count towards your minimum of ${t}. You have ${full} full, so ${short} ${short === 1 ? "is" : "are"} on the list.`
+        : `You have ${full}, below your minimum of ${t}.`
+    if (listed > short) reason += ` ${listed} ${listed === 1 ? "was" : "were"} added ${entrySources(i)}.`
+    return { on: true, head: `${need} on the shopping list`, reason }
+  }
+  if (listed > 0) {
+    const why = isStaple(i) ? `It meets your minimum of ${t}.` : "It isn't a Staple, so it only goes on the list when you or a recipe adds it."
+    return { on: true, head: `${listed} on the shopping list`, reason: `Added ${entrySources(i)}. ${why}` }
+  }
+  if (!isStaple(i)) return { on: false, head: "Not on the shopping list", reason: "It isn't a Staple, so it only goes on the list if you add it yourself." }
+  const has = isBulk(i) && !i.openCounts ? `${full} full ${full === 1 ? unitNames(i)[0] : many} ${full === 1 ? "meets" : "meet"}` : `You have ${full}, which meets`
+  return { on: false, head: "Not on the shopping list", reason: `${has} your minimum of ${t}. It goes on the list when that drops below ${t}.` }
+}
+
+/** The same box while adding an item, before it exists. */
+export function addListBox(i: Item): ListBox {
+  const [, many] = unitNames(i)
+  const bulk = isBulk(i)
+  const open = bulk && !i.openCounts ? i.open ?? 0 : 0
+  const full = fullOf(i)
+  if (!isStaple(i)) return { on: false, head: "Not a Staple", reason: "It won't go on the shopping list by itself. Set a minimum under Stock rules to change that." }
+  const adding = `You're adding ${full}${bulk ? " full" : ""}`
+  if (full < i.target) {
+    const need = i.target - full
+    return { on: true, head: `A Staple, and ${need} will go straight on the shopping list`, reason: `${open ? `Open ${many} don't count. ` : ""}${adding}, below your minimum of ${i.target}.` }
+  }
+  return { on: false, head: "A Staple, not on the shopping list yet", reason: `${adding}, which meets your minimum of ${i.target}.` }
 }
 
 // ---------- matching ----------

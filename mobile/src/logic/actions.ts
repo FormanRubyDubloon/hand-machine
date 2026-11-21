@@ -1,7 +1,7 @@
 // Every change the phone can make, as a pure function from one state to the next. The store (src/data/store.tsx)
 // runs them, saves the result, writes a History entry and syncs. Rules from intent.md and the PROTO-1 handoff.
 import {
-  cap, guessPlace, ingredientName, isBulk, isListedItem, isStaple, needOf, normalise, recipeInfo, withStock,
+  cap, guessPlace, ingredientName, isBulk, isListedItem, isStaple, needOf, normalise, openUnit, recipeInfo, withStock,
   type Category, type Item, type Items, type Location, type Recipe, type Store,
 } from "../../../prototypes/pantry-app/src/model"
 import type { PhoneState } from "../data/state"
@@ -266,13 +266,8 @@ export const usedOne = (s: PhoneState, id: string) => edit(s, id, (x) => ({ ...w
 export const usedAll = (s: PhoneState, id: string) => edit(s, id, (x) => ({ ...withStock(x, 0), uses: (x.uses ?? 0) + 1 }))
 /** Add one more (a full pack, for bulk). */
 export const addOne = (s: PhoneState, id: string) => edit(s, id, (x) => bought(x, 1))
-/** Opens a full pack. */
-export const openOne = (s: PhoneState, id: string) =>
-  edit(s, id, (x) => {
-    const open = x.open ?? 0
-    if (!isBulk(x) || open >= x.inStock) return x
-    return { ...x, open: open + 1, openedAt: [...(x.openedAt ?? []).slice(0, open), new Date().toISOString().slice(0, 10)] }
-  })
+/** Opens the soonest full pack. With "use within, once open" set, its use-by moves no later than that. */
+export const openOne = (s: PhoneState, id: string) => edit(s, id, (x) => openUnit(x).item)
 
 export const setMin = (s: PhoneState, id: string, n: number) => withShopRow(edit(s, id, (x) => ({ ...x, target: Math.max(0, n) })), id)
 export const setLocation = (s: PhoneState, id: string, location: Location) => edit(s, id, (x) => ({ ...x, location }))

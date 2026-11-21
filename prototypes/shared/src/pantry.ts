@@ -15,7 +15,8 @@ export const DB_KEY = "hm-pantry:db:v3"
 /** The phone's own state. The pantry app reads its last sync time from here. */
 export const PHONE_KEY = "hm-shopping-list:v5"
 
-export type Location = "fridge" | "freezer" | "cupboard" | "household"
+/** "household" is shown as Other. */
+export type Location = "fridge" | "freezer" | "cupboard" | "counter" | "household"
 /** A category (an aisle). Colour and icon are optional: one without them shows plain. */
 export type Category = { id: string; name: string; colour?: CategoryColour; icon?: CategoryIcon }
 export type ListSource = { kind: "hand" } | { kind: "claude" } | { kind: "recipe"; recipe: string }
@@ -55,12 +56,14 @@ export type SharedItem = {
   priceEstimate?: boolean
   /** Blank means any brand. */
   brand?: string
-  /** One ISO date per unit or pack in stock, soonest first. One date only when the minimum is 1 or less. */
+  /** One ISO date per unit or pack in stock: open packs first, then soonest first. */
   useBy?: (string | null)[]
   /** Never goes off (salt, tins, cleaning products): no use-by dates are kept or asked for. */
   noExpiry?: boolean
   /** Bulk: an open pack counts towards the minimum like a full one. Otherwise only full packs count. */
   openCounts?: boolean
+  /** Bulk with use-by dates: weeks to use a pack within once it's open. Opening moves its use-by no later than that. */
+  useWithinWeeks?: number
   /** Bulk: when each open pack was opened, matching the first `open` entries of useBy. */
   openedAt?: (string | null)[]
   /** A one-off on the list: not a pantry item, stock isn't tracked. */
