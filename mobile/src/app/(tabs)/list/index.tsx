@@ -1,16 +1,16 @@
 // LIST: one aisle at a time, in the order you walk the store you're in (PROTO-1 handoff, "List").
-// Tap the count to get one; hold it to get them all; tap the name for the item sheet. Swipe sideways, or use
-// the buttons at the foot, to change aisle. Ticking adds to stock straight away and syncs by itself.
+// Tap the count to get one; hold it to get them all; tap the name for the item sheet. Swipe sideways, or tap the
+// heading for the aisle menu, to change aisle (there are no previous and next links). "Add item" sits under each
+// aisle's rows; the button by the heading opens the list filters. Ticking adds to stock straight away and syncs by itself.
 import * as Haptics from "expo-haptics"
 import { router } from "expo-router"
-import { Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react-native"
+import { Check, ChevronDown, ChevronRight, Plus, SlidersHorizontal } from "lucide-react-native"
 import * as React from "react"
 import { Animated, PanResponder, Platform, RefreshControl, ScrollView, Text, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { TOAST_UNDO_MS, useStore } from "../../../data/store"
 import { restoreTicks, tickAll, tickOne, untick, clearShop } from "../../../logic/actions"
-import { aisleLabel, leftOf, refreshShop, rowsOf, shopAisles, sortRows, tickedText, type AisleView, type Row } from "../../../logic/list"
-import { AddItemIcon } from "../../../ui/art"
+import { aisleLabel, filtersOn, leftOf, refreshShop, rowsOf, shopAisles, shownRows, sortRows, tickedText, type AisleView, type Row } from "../../../logic/list"
 import { Body, Button, Caption, Display, IconButton, Label, Press } from "../../../ui/kit"
 import { focus, font, radius, space, useColours, useReduceMotion } from "../../../ui/theme"
 
@@ -30,10 +30,14 @@ export default function ListScreen() {
   const all = state.aisle === "all"
   const at = all ? 0 : Math.min(Math.max(0, state.aisle as number), Math.max(0, aisles.length - 1))
   const aisle = aisles[at]
-  const rows = rowsOf(state)
+  // Everything on the list decides "empty" and "shop done"; what the filters let through is what's shown.
+  const allRows = rowsOf(state)
+  const rows = shownRows(state)
   const totalLeft = leftOf(rows)
-  const empty = rows.length === 0
-  const shopDone = !empty && rows.every((r) => r.done || r.ordered)
+  const empty = allRows.length === 0
+  const shopDone = !empty && allRows.every((r) => r.done || r.ordered)
+  const filtered = filtersOn(state.filter)
+  const noMatch = !empty && rows.length === 0
 
   const go = React.useCallback((i: number | "all") => local((s) => ({ ...s, aisle: i })), [local])
 
@@ -69,16 +73,18 @@ export default function ListScreen() {
   }
 
   // ----- the heading -----
-  const names = all ? ["All items"] : empty ? ["Shopping list"] : (aisle?.categories.map((k) => k.name) ?? [])
+  const names = all ? ["All items"] : empty || noMatch ? ["Shopping list"] : (aisle?.categories.map((k) => k.name) ?? [])
   const meta = empty
     ? "All done"
+    : noMatch
+      ? "Nothing matches the filters"
     : all
       ? `${totalLeft} left`
       : aisle
         ? `${aisle.left ? `${aisle.left} of ${aisle.total} left` : `all ${aisle.total} in your basket`}`
         : ""
   // The aisle number leads the line, bold and in ink, so it can be found at a glance in the shop.
-  const aisleName = !empty && !all && aisle ? aisleLabel(aisle) : null
+  const aisleName = !empty && !noMatch && !all && aisle ? aisleLabel(aisle) : null
 
   // ----- moving between aisles -----
   const count = aisles.length
@@ -97,7 +103,8 @@ export default function ListScreen() {
 
   const nextWithItems = !all && aisle && aisle.left === 0 ? aisles.findIndex((a, k) => k > at && a.left > 0) : -1
   const offline = !online || status === "offline"
-  const hint = !empty && count > 1 && nextWithItems < 0
+  // Adding from an aisle with one category puts a new item in that category.
+  const addTo = !all && aisle?.categories.length === 1 && aisle.categories[0].id ? aisle.categories[0].id : undefined
 
   return (
     <View style={{ flex: 1 }}>
@@ -108,25 +115,31 @@ export default function ListScreen() {
         </Press>
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
           <View style={{ flex: 1, gap: 6 }}>
-            <Press fade disabled={empty} onPress={() => router.push("/aisles")} accessibilityLabel={`${names.join(" and ")}. All aisles`} style={{ alignSelf: "flex-start", opacity: 1 }}>
+            <Press fade disabled={empty || noMatch} onPress={() => router.push("/aisles")} accessibilityLabel={`${names.join(" and ")}. All aisles`} style={{ alignSelf: "flex-start", opacity: 1 }}>
               {names.map((n) => (
                 // An underline 2 pt thick, 6 pt below the name, as in the prototype (text underlines can't be offset).
-                <View key={n} style={{ alignSelf: "flex-start", borderBottomWidth: empty ? 0 : 2, borderBottomColor: c.olive, paddingBottom: 2, marginBottom: 4 }}>
+                <View key={n} style={{ alignSelf: "flex-start", borderBottomWidth: empty || noMatch ? 0 : 2, borderBottomColor: c.olive, paddingBottom: 2, marginBottom: 4 }}>
                   <Display size={names.length > 1 ? 26 : 32}>{n}</Display>
                 </View>
               ))}
             </Press>
             <Caption style={{ fontSize: 15 }}>{aisleName && <><Text style={{ fontFamily: font.bold, color: c.ink }}>{aisleName}</Text> · </>}{meta}</Caption>
           </View>
-          <IconButton label="Add to the list" onPress={() => router.push("/add")}>
-            <AddItemIcon colour={c.ink} />
+          <IconButton
+            label={filtered ? `Filters, ${filtered} on` : "Filters"}
+            filled={!!filtered}
+            disabled={empty}
+            onPress={() => router.push("/filters")}
+            style={empty ? { opacity: 0.4 } : undefined}
+          >
+            <SlidersHorizontal size={22} color={filtered ? c.onOlive : c.ink} strokeWidth={2} />
           </IconButton>
         </View>
       </View>
 
       <ScrollView
         {...swipe.panHandlers}
-        contentContainerStyle={{ paddingHorizontal: space.screen, paddingBottom: hint ? 0 : 40, flexGrow: 1 }}
+        contentContainerStyle={{ paddingHorizontal: space.screen, paddingBottom: insets.bottom + 40, flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void pullToSync()} tintColor={c.muted} />}
       >
         {shopDone && (
@@ -144,43 +157,41 @@ export default function ListScreen() {
           </Body>
         )}
 
+        {noMatch && (
+          <View style={{ paddingVertical: 24, gap: 12, alignItems: "flex-start" }}>
+            <Body>Nothing on the list matches the filters.</Body>
+            <Press fade onPress={() => local((s) => ({ ...s, filter: undefined, aisle: 0 }))} style={{ minHeight: 44, justifyContent: "center" }}>
+              <Text style={{ fontFamily: font.medium, fontSize: 16, color: c.ink, textDecorationLine: "underline" }}>Clear filters</Text>
+            </Press>
+          </View>
+        )}
+
         <Animated.View style={slide}>
-          {all ? (
+          {noMatch ? null : all ? (
             sortRows(rows).map((r) => <ListRow key={r.id} r={r} onTick={tick} onHold={tickRest} />)
           ) : aisle ? (
             <AisleRows aisle={aisle} onTick={tick} onHold={tickRest} />
           ) : null}
+          <Button
+            kind="secondary"
+            label="Add item"
+            icon={<Plus size={20} color={c.ink} strokeWidth={2} />}
+            accessibilityLabel={addTo && aisle ? `Add an item to ${aisle.categories[0].name}` : "Add an item to the list"}
+            onPress={() => router.push(addTo ? { pathname: "/add", params: { category: addTo } } : "/add")}
+            style={{ marginTop: 16 }}
+          />
         </Animated.View>
 
-        {!empty && (
-          <View style={{ marginTop: 20, gap: 10 }}>
-            {nextWithItems >= 0 ? (
-              <Press onPress={() => go(nextWithItems)} accessibilityLabel={`Done here. Next: ${aisleLabel(aisles[nextWithItems])}, ${aisles[nextWithItems].categories.map((k) => k.name).join(" and ")}`} style={{ minHeight: 64, borderRadius: radius.base, backgroundColor: c.olive, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: font.semibold, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", color: c.onOlive }}>Done here · next {aisleLabel(aisles[nextWithItems])}</Text>
-                  <Text style={{ fontFamily: font.medium, fontSize: 18, color: c.onOlive }}>{aisles[nextWithItems].categories.map((k) => k.name).join(" & ")}</Text>
-                </View>
-                <ChevronRight size={24} color={c.onOlive} />
-              </Press>
-            ) : (
-              <>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
-                  {(all ? count > 0 : at > 0) ? (
-                    <AisleStep dir="prev" a={all ? aisles[count - 1] : aisles[at - 1]} onPress={() => step(-1)} />
-                  ) : <View />}
-                  {(all ? count > 0 : at < count - 1) && <AisleStep dir="next" a={all ? aisles[0] : aisles[at + 1]} onPress={() => step(1)} />}
-                </View>
-              </>
-            )}
+        {!empty && !noMatch && nextWithItems >= 0 && (
+          <View style={{ marginTop: 20 }}>
+            <Press onPress={() => go(nextWithItems)} accessibilityLabel={`Done here. Next: ${aisleLabel(aisles[nextWithItems])}, ${aisles[nextWithItems].categories.map((k) => k.name).join(" and ")}`} style={{ minHeight: 64, borderRadius: radius.base, backgroundColor: c.olive, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: font.semibold, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", color: c.onOlive }}>Done here · next {aisleLabel(aisles[nextWithItems])}</Text>
+                <Text style={{ fontFamily: font.medium, fontSize: 18, color: c.onOlive }}>{aisles[nextWithItems].categories.map((k) => k.name).join(" & ")}</Text>
+              </View>
+              <ChevronRight size={24} color={c.onOlive} />
+            </Press>
           </View>
-        )}
-        {/* The swipe hint: the spacer pushes it to the foot of the screen when the list is short; when the list is
-            longer than the screen, it follows the last row. */}
-        {hint && (
-          <>
-            <View style={{ flex: 1 }} />
-            <Caption style={{ textAlign: "center", paddingTop: 24, paddingBottom: insets.bottom + 8 }}>Swipe left or right to change aisle</Caption>
-          </>
         )}
       </ScrollView>
     </View>
@@ -206,18 +217,6 @@ function useSlide(key: number) {
     ]).start()
   }, [key, reduce, width, x, o])
   return { transform: [{ translateX: x }], opacity: o }
-}
-
-function AisleStep({ dir, a, onPress }: { dir: "prev" | "next"; a: AisleView; onPress: () => void }) {
-  const c = useColours()
-  const name = a.categories.map((k) => k.name).join(" & ")
-  return (
-    <Press fade onPress={onPress} accessibilityLabel={`${dir === "prev" ? "Previous" : "Next"}: ${aisleLabel(a)}, ${name}`} style={{ maxWidth: "48%", minHeight: 48, flexDirection: "row", alignItems: "center", gap: 2 }}>
-      {dir === "prev" && <ChevronLeft size={20} color={c.ink} />}
-      <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: font.medium, fontSize: 16, color: c.ink }}>{name}</Text>
-      {dir === "next" && <ChevronRight size={20} color={c.ink} />}
-    </Press>
-  )
 }
 
 /** An aisle's rows. When two categories share the number, each gets a small heading with its own count. */

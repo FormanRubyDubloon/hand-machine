@@ -1,12 +1,12 @@
 // The aisle menu (full screen): All items first, then one row per aisle number, with what's left in each.
 // The current aisle's box is filled; finished aisles have a dashed box.
 import { router } from "expo-router"
-import { List } from "lucide-react-native"
+import { List, X } from "lucide-react-native"
 import * as React from "react"
 import { ScrollView, Text, View } from "react-native"
 import { useStore } from "../data/store"
-import { leftOf, rowsOf, shopAisles } from "../logic/list"
-import { Press } from "../ui/kit"
+import { filterNames, filtersOn, leftOf, NO_FILTER, shopAisles, shownRows, type ListFilter } from "../logic/list"
+import { Chip, Press } from "../ui/kit"
 import { SheetHeader } from "../ui/sheet"
 import { font, radius, useColours } from "../ui/theme"
 
@@ -15,6 +15,15 @@ export default function Aisles() {
   const c = useColours()
   const aisles = shopAisles(state)
   const all = state.aisle === "all"
+  // With filters on, only aisles with a match are listed. Each filter shows as a chip, as in the Filters sheet;
+  // tapping its X turns that one off.
+  const f = state.filter
+  const filters = f ? (["show", "stock"] as const).filter((k) => f[k] !== "all").map((k) => ({ key: k, name: filterNames({ ...NO_FILTER, [k]: f[k] })[0] })) : []
+  const remove = (k: "show" | "stock") => local((s) => {
+    const next: ListFilter = { ...(s.filter ?? NO_FILTER), [k]: "all" }
+    return { ...s, filter: filtersOn(next) ? next : undefined, aisle: s.aisle === "all" ? "all" : 0 }
+  })
+  const shown = shownRows(state)
   const go = (i: number | "all") => {
     local((s) => ({ ...s, aisle: i }))
     router.back()
@@ -27,10 +36,17 @@ export default function Aisles() {
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <SheetHeader title="Aisles" full />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
-        <Press onPress={() => go("all")} accessibilityState={{ selected: all }} accessibilityLabel={`All items, ${leftOf(rowsOf(state))} left`} style={{ minHeight: 68, flexDirection: "row", alignItems: "center", gap: 14, borderBottomWidth: 1, borderBottomColor: c.line }}>
+        {filters.length > 0 && (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: c.line }}>
+            {filters.map((x) => (
+              <Chip key={x.key} on label={x.name} accessibilityLabel={`Remove filter: ${x.name}`} icon={<X size={16} color={c.onOlive} strokeWidth={2.5} />} onPress={() => remove(x.key)} />
+            ))}
+          </View>
+        )}
+        <Press onPress={() => go("all")} accessibilityState={{ selected: all }} accessibilityLabel={`All items, ${leftOf(shown)} left`} style={{ minHeight: 68, flexDirection: "row", alignItems: "center", gap: 14, borderBottomWidth: 1, borderBottomColor: c.line }}>
           <View style={box(all)}><List size={20} color={all ? c.onOlive : c.ink} /></View>
           <Text style={{ flex: 1, fontFamily: font.medium, fontSize: 19, color: c.ink }}>All items</Text>
-          <Text style={{ fontFamily: font.regular, fontSize: 15, color: c.muted }}>{leftOf(rowsOf(state))} left</Text>
+          <Text style={{ fontFamily: font.regular, fontSize: 15, color: c.muted }}>{leftOf(shown)} left</Text>
         </Press>
         {aisles.map((a, k) => {
           const on = !all && state.aisle === k

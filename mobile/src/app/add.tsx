@@ -1,6 +1,6 @@
 // Add to the list (sheet). Type to find something in the pantry and tap it to put one on the list. Something
 // the pantry doesn't have can be added with an aisle; it becomes a New pantry item, bought or not.
-import { router } from "expo-router"
+import { router, useLocalSearchParams } from "expo-router"
 import { Plus } from "lucide-react-native"
 import * as React from "react"
 import { ScrollView, Text, View } from "react-native"
@@ -17,7 +17,9 @@ export default function Add() {
   const { state, change, say } = useStore()
   const c = useColours()
   const [q, setQ] = React.useState("")
-  const [cat, setCat] = React.useState("")
+  // Opened from an aisle with one category: a new item goes there unless another is picked.
+  const { category } = useLocalSearchParams<{ category?: string }>()
+  const [cat, setCat] = React.useState(category ?? "")
   const input = React.useRef<FieldRef>(null)
   const query = q.trim()
   const pantry = Object.values(state.items).filter((i) => !i.oneOff)
@@ -30,7 +32,7 @@ export default function Add() {
     const name = query
     change((s) => addNew(s, name, cat).state, { title: `Added ${name} to the shopping list`, detail: "New · not in the pantry yet" })
     setQ("")
-    setCat("")
+    setCat(category ?? "")
     if (more) {
       say(`Added ${name}. Type the next one.`)
       input.current?.focus()

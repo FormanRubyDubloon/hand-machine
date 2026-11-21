@@ -90,8 +90,8 @@ function kindStyle(kind: Kind, c: Colours): { box: ViewStyle; text: string } {
   }
 }
 
-export function Button({ kind = "primary", label, height = 56, onPress, disabled, style, icon, accessibilityLabel, ...p }: {
-  kind?: Kind; label: string; height?: number; onPress?: () => void; disabled?: boolean; style?: StyleProp<ViewStyle>; icon?: React.ReactNode; accessibilityLabel?: string
+export function Button({ kind = "primary", label, height = 56, onPress, disabled, style, textColour, icon, accessibilityLabel, ...p }: {
+  kind?: Kind; label: string; height?: number; onPress?: () => void; disabled?: boolean; style?: StyleProp<ViewStyle>; textColour?: string; icon?: React.ReactNode; accessibilityLabel?: string
 } & Omit<PressableProps, "style" | "children">) {
   const c = useColours()
   const k = kindStyle(kind, c)
@@ -105,7 +105,7 @@ export function Button({ kind = "primary", label, height = 56, onPress, disabled
       style={[{ minHeight: height, paddingHorizontal: 18, borderWidth: 1, borderRadius: radius.base, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 }, k.box, style]}
     >
       {icon}
-      <Text style={{ fontFamily: font.semibold, fontSize: 15, letterSpacing: 0.9, textTransform: "uppercase", color: k.text, textAlign: "center" }}>{label}</Text>
+      <Text style={{ fontFamily: font.semibold, fontSize: 15, letterSpacing: 0.9, textTransform: "uppercase", color: textColour ?? k.text, textAlign: "center" }}>{label}</Text>
     </Press>
   )
 }
@@ -180,15 +180,17 @@ export function Segmented<T extends string>({ options, value, onChange, label }:
   )
 }
 
-export function Chip({ label, on, onPress, dashed }: { label: string; on?: boolean; onPress: () => void; dashed?: boolean }) {
+export function Chip({ label, on, onPress, dashed, icon, accessibilityLabel }: { label: string; on?: boolean; onPress: () => void; dashed?: boolean; icon?: React.ReactNode; accessibilityLabel?: string }) {
   const c = useColours()
   return (
     <Press
       accessibilityState={{ selected: !!on }}
+      accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      style={{ minHeight: 40, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, borderStyle: dashed ? "dashed" : "solid", borderColor: on ? c.olive : c.stone, backgroundColor: on ? c.olive : "transparent", alignItems: "center", justifyContent: "center" }}
+      style={{ minHeight: 40, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, borderStyle: dashed ? "dashed" : "solid", borderColor: on ? c.olive : c.stone, backgroundColor: on ? c.olive : "transparent", flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center" }}
     >
       <Text style={{ fontFamily: on ? font.bold : font.medium, fontSize: 15, color: on ? c.onOlive : c.ink }}>{label}</Text>
+      {icon}
     </Press>
   )
 }

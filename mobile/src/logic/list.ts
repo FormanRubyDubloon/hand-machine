@@ -1,7 +1,7 @@
 // The shopping list in a shop: what to get, in the order you walk the store, and the shop in progress.
 // Pure, so it's tested (test/list.test.ts). The rules come from intent.md ("The shopping list") and the PROTO-1
 // handoff (section 6).
-import { entryTotal, isStaple, needOf, normalise, settle, shortfall, type Category, type Item, type Items, type Store } from "../../../prototypes/pantry-app/src/model"
+import { entryTotal, isStaple, needOf, normalise, settle, shortfall, stockOf, type Category, type Item, type Items, type Store } from "../../../prototypes/pantry-app/src/model"
 import type { PhoneState, Shop } from "../data/state"
 import { count } from "./phrases"
 
@@ -110,7 +110,26 @@ export type Row = {
   isNew: boolean
   /** The line under the name. */
   note: string
+  /** Why it's on the list, as the pantry app's Show filter groups it. */
+  group: Exclude<ListFilter["show"], "all">
+  /** Ordered, or the stock it had before this shop (so ticking doesn't move it out of a filter). */
+  status: "low" | "out" | "ordered" | null
 }
+
+/** The list filters, the same two as the pantry app's shopping list: why it's there, and how much is left. */
+export type ListFilter = { show: "all" | "staples" | "recipes" | "added"; stock: "all" | "low" | "out" | "ordered" }
+export const NO_FILTER: ListFilter = { show: "all", stock: "all" }
+
+const FILTER_NAMES: Record<string, string> = { staples: "Staples", recipes: "For recipes", added: "Added", low: "Low", out: "Out", ordered: "Ordered" }
+
+/** The filters that are on, by name: ["Staples", "Out"]. */
+export const filterNames = (f: ListFilter | undefined) => (f ? [f.show, f.stock].filter((v) => v !== "all").map((v) => FILTER_NAMES[v]) : [])
+
+/** How many filters are on (0, 1 or 2). */
+export const filtersOn = (f: ListFilter | undefined) => (f ? Number(f.show !== "all") + Number(f.stock !== "all") : 0)
+
+export const matchesFilter = (r: Row, f: ListFilter | undefined) =>
+  !f || ((f.show === "all" || r.group === f.show) && (f.stock === "all" || r.status === f.stock))
 
 /** Why it's on the list, said plainly. */
 export function reasonOf(i: Item, startEntries = i.entries) {
@@ -137,9 +156,17 @@ export function rowsOf(state: Pick<PhoneState, "items" | "shop">): Row[] {
     const done = left === 0
     const reason = reasonOf(item, r.entries)
     const note = done ? `Got ${count(item, r.need)}` : got > 0 ? [`Got ${got} of ${r.need}`, reason].filter(Boolean).join(" · ") : item.ordered ? "Ordered" : reason
-    return [{ id, item, need: r.need, got, left, done, ordered: !!item.ordered, isNew: !!r.review, note }]
+    // Group and grade it as it was before this shop, as the pantry app does (a Staple below its minimum first,
+    // then a recipe, then anything else added).
+    const before = got > 0 ? unbought(item, got, r.entries, r.review) : item
+    const group = shortfall(before) > 0 ? "staples" : before.entries?.[0]?.source.kind === "recipe" ? "recipes" : "added"
+    const status = item.ordered ? "ordered" : stockOf(before)
+    return [{ id, item, need: r.need, got, left, done, ordered: !!item.ordered, isNew: !!r.review, note, group, status }]
   })
 }
+
+/** The rows the list filters let through. */
+export const shownRows = (state: Pick<PhoneState, "items" | "shop" | "filter">) => rowsOf(state).filter((r) => matchesFilter(r, state.filter))
 
 /** Unticked first, then ticked; A to Z within each. */
 export const sortRows = (rows: Row[]) =>
@@ -157,9 +184,9 @@ export const totalOf = (rows: Row[]) => rows.reduce((n, r) => n + (r.ordered ? 0
 export type AisleView = Aisle & { rows: Row[]; left: number; total: number }
 
 /** The aisles of a store that have something on the list, in walking order, with their rows. */
-export function shopAisles(state: Pick<PhoneState, "items" | "shop" | "stores" | "categories" | "storeId">): AisleView[] {
+export function shopAisles(state: Pick<PhoneState, "items" | "shop" | "stores" | "categories" | "storeId" | "filter">): AisleView[] {
   const store = state.stores.find((s) => s.id === state.storeId) ?? state.stores[0]
-  const rows = rowsOf(state)
+  const rows = shownRows(state)
   return aislesOf(store, state.categories)
     .map((a) => {
       const mine = sortRows(rows.filter((r) => aisleKeyOf(r.item, store, state.categories) === a.key))
