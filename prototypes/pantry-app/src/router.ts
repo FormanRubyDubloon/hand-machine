@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react"
 
 export type RecipesTab = "cook" | "all"
-export type SettingsTab = "general" | "stores" | "categories" | "claude" | "account" | "demo"
+export type SettingsTab = "general" | "stores" | "categories" | "claude" | "account"
 
 export type Route =
   | { name: "home"; item?: string; recipe?: string }
@@ -44,7 +44,7 @@ export function parse(hash: string): Route {
       if (parts[1] === "item" && parts[2]) return { name: "list", item: parts[2] }
       return { name: "list", add: parts[1] === "add" || undefined }
     case "settings": {
-      const tab: SettingsTab = parts[1] === "claude" || parts[1] === "account" || parts[1] === "demo" || parts[1] === "categories" || parts[1] === "stores" ? parts[1] : "general"
+      const tab: SettingsTab = parts[1] === "claude" || parts[1] === "account" || parts[1] === "categories" || parts[1] === "stores" ? parts[1] : "general"
       return tab === "stores" && parts[2] ? { name: "settings", tab, store: parts[2] } : { name: "settings", tab }
     }
     default:
