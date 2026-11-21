@@ -45,8 +45,8 @@ export default function Recipes() {
           <View style={{ flex: 1 }}>
             <Segmented<Show> label="Show" value={show} onChange={setShow} options={[{ value: "all", label: "All" }, { value: "shop", label: "This shop" }]} />
           </View>
-          <IconButton label={`Sort, ${current.label}`} size={46} onPress={() => setSorting(true)}>
-            <ArrowUpDown size={22} color={c.ink} strokeWidth={2} />
+          <IconButton label={`Sort, ${current.label}`} size={46} filled={sort !== "name"} onPress={() => setSorting(true)}>
+            <ArrowUpDown size={22} color={sort !== "name" ? c.onOlive : c.ink} strokeWidth={2} />
           </IconButton>
         </View>
       </View>
