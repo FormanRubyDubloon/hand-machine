@@ -14,9 +14,8 @@ describe("a store with no aisle numbers", () => {
   it("sells only what's ticked, whatever its old numbers say", () => {
     expect(sells(off, "veg")).toBe(true)
     expect(sells(off, "bakery")).toBe(false)
-    expect(soldAt(egg("bakery"), off)).toBe(false)
-    expect(soldAt(egg("veg"), off)).toBe(true)
   })
+
 
   it("lists A to Z and shows no numbers", () => {
     expect(aisleOrder(off, cats).map((c) => c.id)).toEqual(["bakery", "veg", "meat"])
@@ -39,5 +38,17 @@ describe("a store with no aisle numbers", () => {
   it("reads from a Supabase row", () => {
     expect(storeExtras({ no_aisle_numbers: true, sells: ["veg"] })).toEqual({ noAisleNumbers: true, sells: ["veg"] })
     expect(storeExtras({ no_aisle_numbers: false, sells: [] })).toEqual({})
+  })
+})
+
+describe("Any store", () => {
+  it("is on every store's list, even where the store has no number for its aisle", () => {
+    expect(soldAt(egg("meat"), grocer)).toBe(true)
+    expect(soldAt(egg("bakery"), { ...grocer, noAisleNumbers: true, sells: [] })).toBe(true)
+  })
+
+  it("a chosen store keeps it to that store", () => {
+    expect(soldAt({ ...egg("veg"), where: ["butcher"] }, grocer)).toBe(false)
+    expect(soldAt({ ...egg("veg"), where: ["grocer"] }, grocer)).toBe(true)
   })
 })
