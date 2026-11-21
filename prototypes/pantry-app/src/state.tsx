@@ -14,7 +14,7 @@ import { deleteCategories } from "../../shared/src/pantry-remote"
 import { href } from "./router"
 import type { CategoryColour, CategoryIcon } from "../../shared/src/category-look"
 import {
-  amountOf, cap, haveText, unitText, nameList, isBulk, isToday, lower, needOf, normalise, openUnit, plural, settle, withStock,
+  amountOf, cap, haveText, unitText, nameList, isBulk, isToday, lower, needOf, normalise, openUnit, plural, settle, todayIso, unitsOf, withStock, withUnits,
   type Db, type HistoryEntry, type Item, type Items, type Recipe, type Snapshot, type Store, type Who,
 } from "./model"
 
@@ -301,6 +301,21 @@ function usePantryState() {
       if (!i || (i.open ?? 0) >= i.inStock) return
       commit((s) => edit(s, id, (x) => openUnit(x).item), {
         title: `Opened a ${i.unit?.[0] ?? "pack"} of ${lower(i.name)}`, detail: stockDetail(id), itemIds: [id],
+      })
+    },
+
+    /**
+     * Throws out the units whose use-by was yesterday or earlier. Not a use, so it doesn't count
+     * towards "Used most often". A Staple that drops below its minimum goes on the list as usual.
+     */
+    throwOutExpired(id: string) {
+      const i = ref.current.items[id]
+      if (!i) return
+      const today = todayIso()
+      const gone = unitsOf(i).filter((u) => u.useBy && u.useBy < today).length
+      if (!gone) return
+      commit((s) => edit(s, id, (x) => withUnits(x, unitsOf(x).filter((u) => !(u.useBy && u.useBy < today)))), {
+        title: `Threw out ${amountOf(i, gone)}`, detail: stockDetail(id), itemIds: [id],
       })
     },
 
