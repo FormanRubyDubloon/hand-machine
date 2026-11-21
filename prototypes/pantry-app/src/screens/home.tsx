@@ -1,6 +1,6 @@
 // PAN-09: quick use. Record what you used in a couple of clicks, see History, and what to cook first.
 import * as React from "react"
-import { CopyIcon, SearchIcon, SmartphoneIcon } from "lucide-react"
+import { CopyIcon, SearchIcon, SmartphoneIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -137,7 +137,7 @@ function suggestions(itemId: string, db: Db, items: Items) {
 }
 
 function UseTodayCard({ item }: { item: Item }) {
-  const { db, items } = usePantry()
+  const { db, items, actions } = usePantry()
   const date = soonest(item)!
   const n = daysUntil(date)
   const recipes = suggestions(item.id, db, items)
@@ -156,7 +156,21 @@ function UseTodayCard({ item }: { item: Item }) {
             {n === 0 ? "Use by today" : `Was due ${n === -1 ? "yesterday" : dateText(date)}`} · {inStockText(item, ", ")}
           </span>
         </div>
-        <QuickUseActions item={item} compact className="shrink-0" />
+        <div className="flex shrink-0 gap-1.5">
+          <QuickUseActions item={item} compact />
+          {n < 0 && (
+            <Button
+              size="icon-xs"
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              aria-label={`Throw out the out-of-date ${lower(item.name)}`}
+              title="Throw out what's past its use-by"
+              onClick={() => actions.throwOutExpired(item.id)}
+            >
+              <Trash2Icon />
+            </Button>
+          )}
+        </div>
       </div>
       {recipes.length ? (
         <ul className="flex flex-col border-t border-border" aria-label={`Recipes that use ${lower(item.name)}`}>
