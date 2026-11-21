@@ -68,6 +68,14 @@ npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_ANON_KEY --environment pr
 
 (The second one asks for the key.)
 
+The key is baked into the app when it's built, and nothing checks it until someone signs in. A wrong one shows **Invalid API key** on the sign-in screen (it happened to build 6, 21 November 2026: the stored value wasn't a Supabase key at all). Before building, check the EAS key matches the local one. This prints `MATCHES_LOCAL` or `DIFFERENT` without showing the key:
+
+```bash
+[ "$(npx eas-cli@latest env:get production --variable-name EXPO_PUBLIC_SUPABASE_ANON_KEY --non-interactive 2>/dev/null | grep -o 'sb_publishable_[A-Za-z0-9_-]*')" = "$(grep '^EXPO_PUBLIC_SUPABASE_ANON_KEY=' .env.local | cut -d= -f2-)" ] && echo MATCHES_LOCAL || echo DIFFERENT
+```
+
+Changing a variable doesn't fix a build that's already made: build and submit again.
+
 **Each build.** Build, then send it to App Store Connect, where it shows in TestFlight once Apple has processed it:
 
 ```bash
