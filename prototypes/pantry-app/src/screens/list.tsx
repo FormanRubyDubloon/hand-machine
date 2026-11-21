@@ -123,7 +123,8 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
   const aisles = store ? aisleOrder(store, db.categories) : categoriesAtoZ(db.categories)
   const groups = [
     ...aisles.map((c) => ({ key: c.id, name: c.name, category: c as Category | undefined, number: store ? aisleNumber(store, c.id) : null, rows: shown.filter((r) => r.item.categoryId === c.id && (!store || soldAt(r.item, store))) })),
-    { key: "elsewhere", category: undefined, name: store ? `Not at ${store.name.split(",")[0]}` : "Other", number: null, rows: shown.filter((r) => !store || !soldAt(r.item, store)) },
+    // Items for another store, and any whose category isn't known, so nothing on the list is hidden.
+    { key: "elsewhere", category: undefined, name: store ? `Not at ${store.name.split(",")[0]}` : "Other", number: null, rows: shown.filter((r) => !store || !soldAt(r.item, store) || !aisles.some((c) => c.id === r.item.categoryId)) },
   ].filter((g) => g.rows.length)
 
   return (

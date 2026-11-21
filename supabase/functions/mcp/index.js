@@ -402,7 +402,6 @@ function listTotal(rows) {
 var aisleNumber = (store, categoryId) => store.noAisleNumbers ? null : store.aisles[categoryId] ?? null;
 var sells = (store, categoryId) => store.noAisleNumbers ? (store.sells ?? []).includes(categoryId) : aisleNumber(store, categoryId) !== null;
 function soldAt(i, store) {
-  if (!sells(store, i.categoryId)) return false;
   return i.where.length === 0 || i.where.includes(store.id);
 }
 var categoriesAtoZ = (categories) => [...categories].sort((a, b) => a.name.localeCompare(b.name));
@@ -882,10 +881,11 @@ ${list.map((i) => itemLine(i, data.categories)).join("\n")}`;
         out.push(store.noAisleNumbers ? `${store.name} (no aisle numbers), A to Z:` : `${store.name}, in aisle order:`);
         for (const c of aisleOrder(store, data.categories)) {
           const here = rows.filter((r) => r.item.categoryId === c.id && soldAt(r.item, store));
-          if (here.length) out.push(store.noAisleNumbers ? c.name : `Aisle ${aisleNumber(store, c.id) ?? "?"} \xB7 ${c.name}`, ...here.map(line));
+          const n = aisleNumber(store, c.id);
+          if (here.length) out.push(n === null ? `${c.name} (no aisle number)` : `Aisle ${n} \xB7 ${c.name}`, ...here.map(line));
         }
-        const elsewhere = rows.filter((r) => !soldAt(r.item, store));
-        if (elsewhere.length) out.push(`Not sold at ${store.name} (or no aisle set):`, ...elsewhere.map(line));
+        const elsewhere = rows.filter((r) => !soldAt(r.item, store) || !data.categories.some((c) => c.id === r.item.categoryId));
+        if (elsewhere.length) out.push(`For other stores, or with no category:`, ...elsewhere.map(line));
       } else {
         for (const c of [...categoriesAtoZ(data.categories), { id: "", name: "No category" }]) {
           const here = rows.filter((r) => (r.item.categoryId || "") === c.id || c.id === "" && !data.categories.some((x) => x.id === r.item.categoryId));

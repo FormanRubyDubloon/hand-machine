@@ -436,8 +436,12 @@ export const aisleNumber = (store: Store, categoryId: string): number | null => 
 export const sells = (store: Store, categoryId: string) =>
   store.noAisleNumbers ? (store.sells ?? []).includes(categoryId) : aisleNumber(store, categoryId) !== null
 
+/**
+ * Whether an item goes on a store's list. "Any store" (no store chosen) means every store's list, in
+ * that store's aisle if it has one, otherwise at the end (Isaac's call, 21 Nov 2026). An item tied to
+ * stores is on theirs only.
+ */
 export function soldAt(i: Item, store: Store) {
-  if (!sells(store, i.categoryId)) return false
   return i.where.length === 0 || i.where.includes(store.id)
 }
 

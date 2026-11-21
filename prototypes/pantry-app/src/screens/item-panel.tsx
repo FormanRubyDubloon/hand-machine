@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import {
   addListBox, aisleNumber, amountOf, cap, categoriesAtoZ, dateText, daysUntil, entryTotal, haveText, isBulk, isStaple, listBox, locationLabel, locations,
-  lower, matchesName, measureText, money, nameList, needOf, normalise, openUnit, plural, recipesUsing, sells, todayIso, unitNames, unitsOf, whenText,
+  lower, matchesName, measureText, money, nameList, needOf, normalise, openUnit, plural, recipesUsing, todayIso, unitNames, unitsOf, whenText,
   withUnits, type Item, type ListBox, type Location, type Unit,
 } from "../model"
 import { navigate } from "../router"
@@ -822,11 +822,10 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
     setMenuOpen(false)
   }
 
-  // Stores that sell this aisle, each with its aisle number when it has them.
-  const stores = db.stores.flatMap((s) => {
-    if (!sells(s, i.categoryId)) return []
+  // Every store, with this item's aisle number there when it has one.
+  const stores = db.stores.map((s) => {
     const aisle = aisleNumber(s, i.categoryId)
-    return [{ id: s.id, name: s.name, label: aisle !== null ? `${s.name} · aisle ${aisle}` : s.name }]
+    return { id: s.id, name: s.name, label: aisle !== null ? `${s.name} · aisle ${aisle}` : s.name }
   })
   const store = stores.find((s) => s.id === i.where[0])
   const priceSummary = i.price ? `${money(i.price)}${i.priceEstimate ? " (estimate)" : ""}` : "No price"
@@ -1049,10 +1048,7 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
                   className={lineInput}
                   value={i.categoryId}
                   onChange={(e) => {
-                    const categoryId = e.target.value
-                    // A store that doesn't stock the new aisle goes back to Any store.
-                    const keep = i.where.filter((sid) => { const s = db.stores.find((x) => x.id === sid); return !!s && sells(s, categoryId) })
-                    set({ categoryId, where: keep })
+                    set({ categoryId: e.target.value })
                   }}
                 >
                   {!i.categoryId && <option value="">Choose an aisle</option>}
@@ -1069,7 +1065,7 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
                   <option value="any">Any store</option>
                   {stores.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                 </select>
-                <span className={hint}>{category ? `Only stores with a ${category.name} aisle are listed.` : "Choose an aisle first to see which stores sell it."}</span>
+                <span className={hint}>Any store puts it on every store's shopping list. Choose one to keep it to that store.</span>
               </label>
               <div className="flex gap-5">
                 <label className="flex min-w-0 flex-1 flex-col gap-1.5">
