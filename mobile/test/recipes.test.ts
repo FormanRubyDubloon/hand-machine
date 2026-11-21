@@ -3,6 +3,7 @@ import { demoState } from "../src/data/demo"
 import { addAllMissing, addAisle, cooked, setIngredientQty, toggleWant, usedOne, openOne } from "../src/logic/actions"
 import { phrase, expiryText } from "../src/logic/phrases"
 import { day } from "../../prototypes/shared/src/pantry"
+import { RECIPE_SORTS } from "../src/logic/sort"
 
 const keema = () => demoState().recipes.find((r) => r.id === "keema")!
 
@@ -66,5 +67,22 @@ describe("the pantry", () => {
     expect(made.state.stores.find((x) => x.id === "tesco")!.aisles[made.id]).toBe(7)
     expect(made.state.stores.find((x) => x.id === "sainsburys")!.aisles[made.id]).toBeNull()
     expect(addAisle(made.state, "tesco", "world foods", 8)).toBeNull()
+  })
+})
+
+describe("recipe sorts", () => {
+  const sortBy = (k: string) => {
+    const rs = demoState().recipes.slice(0, 3).map((r, i) => ({ ...r, addedAt: ["2026-01-01", undefined, "2026-03-01"][i], editedAt: ["2026-05-01", "2026-04-01", undefined][i] }))
+    return [...rs].sort(RECIPE_SORTS.find((x) => x.value === k)!.compare).map((r) => r.id)
+  }
+  it("puts the newest first and undated last", () => {
+    const ids = demoState().recipes.slice(0, 3).map((r) => r.id)
+    expect(sortBy("added")).toEqual([ids[2], ids[0], ids[1]])
+    expect(sortBy("edited")).toEqual([ids[0], ids[1], ids[2]])
+  })
+  it("sorts A–Z by name", () => {
+    const names = demoState().recipes.slice(0, 3).map((r) => r.name)
+    expect(sortBy("name").length).toBe(3)
+    expect([...names].sort((a, b) => a.localeCompare(b))).toEqual(demoState().recipes.slice(0, 3).sort(RECIPE_SORTS[0].compare).map((r) => r.name))
   })
 })
