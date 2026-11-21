@@ -333,7 +333,7 @@ function Categories({ intro }: { intro: string }) {
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className={cn(head, "pl-3")}>Category</TableHead>
-              <TableHead className={cn(head, "text-right")}>Items</TableHead>
+              <TableHead className={cn(head, "text-right")}>In pantry</TableHead>
               <TableHead className={cn(head, "text-right")}>On list</TableHead>
               <TableHead className={head}>Has an aisle number in</TableHead>
               <TableHead className={cn(head, "text-right")}><span className="sr-only">Actions</span></TableHead>
