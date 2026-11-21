@@ -11,7 +11,7 @@
 // Stock, list and recipe rules are the pantry app's own (prototypes/pantry-app/src/model.ts).
 import {
   amountOf, byUseFirst, cap, distance, entryTotal, haveText, isBulk, isStaple, lower, matchesName, namesOf, needOf, normalise, openUnit, plural,
-  recipeInfo, settle, soldAt, stockOf, aisleOrder, categoriesAtoZ, listRows, listTotal, money, withStock, type Items, type Reason,
+  recipeInfo, settle, sells, soldAt, stockOf, aisleNumber, aisleOrder, categoriesAtoZ, listRows, listTotal, money, withStock, type Items, type Reason,
 } from "../../pantry-app/src/model"
 import { unitPair } from "../../shared/src/rows"
 import type { Category, Location, SharedIngredient, SharedItem, SharedRecipe, SharedStore } from "../../shared/src/pantry"
@@ -164,7 +164,9 @@ const aislesSchema = {
 }
 
 const aisleText = (x: SharedStore, cats: Category[]) =>
-  aisleOrder(x, cats).filter((c) => x.aisles[c.id] != null).map((c) => `${x.aisles[c.id]} ${c.name}`).join(", ") || "no aisles set"
+  x.noAisleNumbers
+    ? `no aisle numbers; sells ${aisleOrder(x, cats).filter((c) => sells(x, c.id)).map((c) => c.name).join(", ") || "nothing ticked"}`
+    : aisleOrder(x, cats).filter((c) => x.aisles[c.id] != null).map((c) => `${x.aisles[c.id]} ${c.name}`).join(", ") || "no aisles set"
 
 // ---------- finding things ----------
 
@@ -466,10 +468,10 @@ export const tools: Tool[] = [
       const store = findStore(data, args.store)
       const out: string[] = []
       if (store) {
-        out.push(`${store.name}, in aisle order:`)
+        out.push(store.noAisleNumbers ? `${store.name} (no aisle numbers), A to Z:` : `${store.name}, in aisle order:`)
         for (const c of aisleOrder(store, data.categories)) {
           const here = rows.filter((r) => r.item.categoryId === c.id && soldAt(r.item, store))
-          if (here.length) out.push(`Aisle ${store.aisles[c.id] ?? "?"} · ${c.name}`, ...here.map(line))
+          if (here.length) out.push(store.noAisleNumbers ? c.name : `Aisle ${aisleNumber(store, c.id) ?? "?"} · ${c.name}`, ...here.map(line))
         }
         const elsewhere = rows.filter((r) => !soldAt(r.item, store))
         if (elsewhere.length) out.push(`Not sold at ${store.name} (or no aisle set):`, ...elsewhere.map(line))
@@ -587,8 +589,7 @@ export const tools: Tool[] = [
     annotations: { readOnlyHint: true },
     async run(_args, { data }) {
       const stores = data.stores.map((s) => {
-        const numbered = aisleOrder(s, data.categories).filter((c) => s.aisles[c.id] != null)
-        return `- ${s.name} [id: ${s.id}]${s.kind ? ` · ${s.kind}` : ""}: ${numbered.map((c) => `${s.aisles[c.id]} ${c.name}`).join(", ") || "no aisles set"}`
+        return `- ${s.name} [id: ${s.id}]${s.kind ? ` · ${s.kind}` : ""}: ${aisleText(s, data.categories)}`
       })
       return [`Categories: ${categoriesAtoZ(data.categories).map((c) => `${c.name} [id: ${c.id}]`).join(", ")}`, "Stores:", ...stores].join("\n")
     },

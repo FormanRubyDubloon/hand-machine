@@ -429,20 +429,26 @@ export function listTotal(rows: ListRow[]) {
   return { pence, unpriced, estimated, approximate: unpriced > 0 || estimated > 0 }
 }
 
+/** A category's aisle number in a store; null when it has none, or the store has no aisle numbers. */
+export const aisleNumber = (store: Store, categoryId: string): number | null => (store.noAisleNumbers ? null : store.aisles[categoryId] ?? null)
+
+/** Whether a store sells a category: it has an aisle number there, or (with no aisle numbers) it's ticked. */
+export const sells = (store: Store, categoryId: string) =>
+  store.noAisleNumbers ? (store.sells ?? []).includes(categoryId) : aisleNumber(store, categoryId) !== null
+
 export function soldAt(i: Item, store: Store) {
-  const aisle = store.aisles[i.categoryId]
-  if (aisle === null || aisle === undefined) return false
+  if (!sells(store, i.categoryId)) return false
   return i.where.length === 0 || i.where.includes(store.id)
 }
 
 /** Categories A to Z, for every list and menu that isn't in walking order. */
 export const categoriesAtoZ = (categories: Category[]) => [...categories].sort((a, b) => a.name.localeCompare(b.name))
 
-/** A store's aisles in walking order. Categories with no number go at the end, A to Z. */
+/** A store's aisles in walking order. Categories with no number go at the end, A to Z. With no aisle numbers, all A to Z. */
 export function aisleOrder(store: Store, categories: Category[]) {
-  return categoriesAtoZ(categories).sort((a, b) => (store.aisles[a.id] ?? 999) - (store.aisles[b.id] ?? 999))
+  return categoriesAtoZ(categories).sort((a, b) => (aisleNumber(store, a.id) ?? 999) - (aisleNumber(store, b.id) ?? 999))
 }
-export const numberedAisles = (store: Store) => new Set(Object.values(store.aisles).filter((n) => n !== null)).size
+export const numberedAisles = (store: Store) => (store.noAisleNumbers ? 0 : new Set(Object.values(store.aisles).filter((n) => n !== null)).size)
 
 // ---------- recipes ----------
 

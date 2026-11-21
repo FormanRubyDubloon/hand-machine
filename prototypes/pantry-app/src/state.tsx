@@ -704,7 +704,12 @@ function usePantryState() {
         const top = Math.max(0, ...Object.values(store?.aisles ?? {}).map((n) => n ?? 0))
         return setDb(s, {
           categories: [...s.db.categories, { id, name }],
-          stores: s.db.stores.map((x) => ({ ...x, aisles: { ...x.aisles, [id]: x.id === storeId ? top + 1 : null } })),
+          // Added from a store with no aisle numbers: it's ticked as sold there instead.
+          stores: s.db.stores.map((x) => ({
+            ...x,
+            aisles: { ...x.aisles, [id]: x.id === storeId && !x.noAisleNumbers ? top + 1 : null },
+            ...(x.id === storeId && x.noAisleNumbers ? { sells: [...(x.sells ?? []), id] } : {}),
+          })),
         })
       })
       return id

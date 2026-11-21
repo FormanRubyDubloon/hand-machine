@@ -31,6 +31,13 @@ export default function StorePage() {
         <Field label="Name" value={name} onChangeText={setName} onBlur={() => name.trim() && name.trim() !== store.name && change((s) => renameStore(s, store.id, name), { title: `Renamed a store to ${name.trim()}` })} />
         {current ? <Caption style={{ fontSize: 15 }}>You're shopping here now.</Caption> : <Button kind="secondary" label="Shop here now" onPress={() => { local((s) => chooseStore(s, store.id)); say(`Shopping at ${store.name}.`) }} />}
 
+        {store.noAisleNumbers ? (
+          <View style={{ gap: 4 }}>
+            <Label>No aisle numbers</Label>
+            <Caption>This store's list goes A to Z. Choose what it sells in Collca on the web, under Settings, Stores and aisles.</Caption>
+          </View>
+        ) : (
+        <>
         <View style={{ gap: 4 }}>
           <Label>Aisle numbers</Label>
           <Caption>{plural(new Set(Object.values(store.aisles).filter((n) => n != null && n > 0)).size, "number")} in use. “–” means no number.</Caption>
@@ -49,6 +56,8 @@ export default function StorePage() {
             )
           })}
         </View>
+        </>
+        )}
         <View style={{ gap: 8 }}>
           <Field label="Add an aisle" value={aisle} onChangeText={setAisle} placeholder="e.g. World foods" />
           <Button
@@ -62,7 +71,7 @@ export default function StorePage() {
                 return
               }
               change(() => made.state, { title: `Added an aisle: ${aisle.trim()}` })
-              say(`${aisle.trim()} added as aisle ${highest + 1} here, and to every other store with no number.`)
+              say(store.noAisleNumbers ? `${aisle.trim()} added, and ticked as sold here.` : `${aisle.trim()} added as aisle ${highest + 1} here, and to every other store with no number.`)
               setAisle("")
             }}
           />

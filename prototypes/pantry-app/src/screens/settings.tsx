@@ -8,11 +8,13 @@ import { CSS } from "@dnd-kit/utilities"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { aisleOrder, categoriesAtoZ, isToday, nameList, needOf, numberedAisles, plural, shortDate, timeText, whenText, type Category, type Store } from "../model"
+import { aisleOrder, categoriesAtoZ, isToday, nameList, needOf, numberedAisles, plural, sells, shortDate, timeText, whenText, type Category, type Store } from "../model"
 import { navigate, type SettingsTab } from "../router"
 import { usePantry } from "../state"
 import { signOutOfSupabase } from "../../../shared/src/auth"
@@ -123,7 +125,7 @@ function StoresAndAisles({ initialStore }: { initialStore?: string }) {
                 <span className="text-sm font-semibold">{s.name}</span>
                 <span className={cn("text-xs", on ? "text-primary-foreground/70" : "text-muted-foreground")}>{[s.place, s.id === db.defaultStoreId ? "default" : null].filter(Boolean).join(" · ")}</span>
               </span>
-              <span className={cn("shrink-0 text-xs", on ? "text-primary-foreground/70" : "text-muted-foreground")}>{n > 1 ? plural(n, "aisle") : "No aisles"}</span>
+              <span className={cn("shrink-0 text-xs", on ? "text-primary-foreground/70" : "text-muted-foreground")}>{s.noAisleNumbers ? "No aisle numbers" : n > 1 ? plural(n, "aisle") : "No aisles"}</span>
             </button>
           )
         })}
@@ -153,6 +155,62 @@ function StoresAndAisles({ initialStore }: { initialStore?: string }) {
           </div>
         </div>
 
+        <label className="-mt-1 flex items-center justify-between gap-6 border-y border-border py-3">
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-semibold">This store has no aisle numbers</span>
+            <span className="text-xs text-muted-foreground">
+              {store.noAisleNumbers
+                ? "Its shopping list goes A to Z. Tick what it sells. Its aisle numbers are kept for if you turn this off."
+                : "For a shop you don't walk in aisles, like a greengrocer or butcher."}
+            </span>
+          </span>
+          <Switch
+            checked={!!store.noAisleNumbers}
+            aria-label="This store has no aisle numbers"
+            onCheckedChange={(on) =>
+              save(on
+                // Start from what its aisle numbers said it sells, the first time.
+                ? { noAisleNumbers: true, sells: store.sells?.length ? store.sells : db.categories.filter((c) => store.aisles[c.id] != null).map((c) => c.id) }
+                : { noAisleNumbers: undefined })
+            }
+          />
+        </label>
+
+        {store.noAisleNumbers ? (
+          <div className="flex flex-col">
+            <div className="flex items-center justify-between border-b border-primary pb-2">
+              <Eyebrow className="text-foreground">What it sells · {(store.sells ?? []).length}</Eyebrow>
+              <Button variant="outline" size="sm" onClick={() => setNewAisle("")}><PlusIcon />Add aisle</Button>
+            </div>
+            {newAisle !== null && (
+              <form
+                className="flex items-center gap-3 border-b border-border bg-muted px-3 py-2"
+                onSubmit={(e) => { e.preventDefault(); if (newAisle.trim()) actions.addCategory(store.id, newAisle.trim()); setNewAisle(null) }}
+              >
+                <Input autoFocus value={newAisle} onChange={(e) => setNewAisle(e.target.value)} placeholder="Aisle name, like Snacks" className="h-8 bg-background px-2" aria-label="New aisle name" />
+                <Button type="submit" size="sm">Add</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setNewAisle(null)}>Cancel</Button>
+              </form>
+            )}
+            {categoriesAtoZ(db.categories).map((c) => {
+              const ticked = (store.sells ?? []).includes(c.id)
+              return (
+                <label key={`${store.id}-${c.id}`} className="flex h-13 cursor-pointer items-center gap-3 border-b border-border pr-2 pl-2">
+                  <Checkbox
+                    checked={ticked}
+                    aria-label={`${store.name} sells ${c.name}`}
+                    onCheckedChange={(on) => save({ sells: on ? [...(store.sells ?? []), c.id] : (store.sells ?? []).filter((x) => x !== c.id) })}
+                  />
+                  <span className={cn("flex flex-1 items-center gap-2 text-sm", !ticked && "text-muted-foreground")}><CategoryMark category={c} size="sm" />{c.name}</span>
+                  <span className="w-16 text-right text-xs text-muted-foreground">{plural(countOf(c.id), "item")}</span>
+                </label>
+              )
+            })}
+            <span className="pt-2 text-xs text-muted-foreground">
+              Ticked aisles are on this store's shopping list, A to Z. Anything else goes under Not at {store.name.split(",")[0]}. Aisle names are shared by every store.
+            </span>
+          </div>
+        ) : (
         <div className="flex flex-col">
           <div className="flex items-center justify-between border-b border-primary pb-2">
             <Eyebrow className="text-foreground">Aisles in walking order</Eyebrow>
@@ -186,6 +244,7 @@ function StoresAndAisles({ initialStore }: { initialStore?: string }) {
             Drag to reorder. Aisles with no number aren't in this store and go at the end of the list. Two aisles with the same number are walked together. Aisle names are shared by every store.
           </span>
         </div>
+        )}
 
         <div className="flex items-center justify-between border-t border-border pt-5">
           <span className="text-xs text-muted-foreground">The same stores and aisles the phone edits. Changes here reach it at its next sync.</span>
@@ -216,7 +275,7 @@ const shortStore = (s: Store) => s.name.split(",")[0].trim()
 
 /** Which stores give the category an aisle number: "2 of 2 supermarkets · Greengrocer", "Butcher only". */
 function numberedIn(category: Category, stores: Store[]) {
-  const numbered = stores.filter((s) => s.aisles[category.id] != null)
+  const numbered = stores.filter((s) => sells(s, category.id))
   if (!numbered.length) return null
   if (numbered.length === 1) return `${shortStore(numbered[0])} only`
   const supers = stores.filter((s) => s.kind === "Supermarket")

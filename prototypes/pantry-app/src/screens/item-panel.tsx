@@ -12,8 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import {
-  addListBox, amountOf, cap, categoriesAtoZ, dateText, daysUntil, entryTotal, haveText, isBulk, isStaple, listBox, locationLabel, locations,
-  lower, matchesName, measureText, money, nameList, needOf, normalise, openUnit, plural, recipesUsing, todayIso, unitNames, unitsOf, whenText,
+  addListBox, aisleNumber, amountOf, cap, categoriesAtoZ, dateText, daysUntil, entryTotal, haveText, isBulk, isStaple, listBox, locationLabel, locations,
+  lower, matchesName, measureText, money, nameList, needOf, normalise, openUnit, plural, recipesUsing, sells, todayIso, unitNames, unitsOf, whenText,
   withUnits, type Item, type ListBox, type Location, type Unit,
 } from "../model"
 import { navigate } from "../router"
@@ -450,8 +450,8 @@ function AddPanel({ prefill, seed, onSaved, onClose }: { prefill?: string; seed?
   }
 
   const stores = db.stores.map((s) => {
-    const aisle = i.categoryId ? s.aisles[i.categoryId] : undefined
-    return { id: s.id, label: typeof aisle === "number" ? `${s.name} · aisle ${aisle}` : s.name }
+    const aisle = i.categoryId ? aisleNumber(s, i.categoryId) : null
+    return { id: s.id, label: aisle !== null ? `${s.name} · aisle ${aisle}` : s.name }
   })
 
   if (done) {
@@ -822,10 +822,11 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
     setMenuOpen(false)
   }
 
-  // Stores that sell this aisle, each with its aisle number.
+  // Stores that sell this aisle, each with its aisle number when it has them.
   const stores = db.stores.flatMap((s) => {
-    const aisle = s.aisles[i.categoryId]
-    return typeof aisle === "number" ? [{ id: s.id, name: s.name, label: `${s.name} · aisle ${aisle}` }] : []
+    if (!sells(s, i.categoryId)) return []
+    const aisle = aisleNumber(s, i.categoryId)
+    return [{ id: s.id, name: s.name, label: aisle !== null ? `${s.name} · aisle ${aisle}` : s.name }]
   })
   const store = stores.find((s) => s.id === i.where[0])
   const priceSummary = i.price ? `${money(i.price)}${i.priceEstimate ? " (estimate)" : ""}` : "No price"
@@ -1050,7 +1051,7 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
                   onChange={(e) => {
                     const categoryId = e.target.value
                     // A store that doesn't stock the new aisle goes back to Any store.
-                    const keep = i.where.filter((sid) => typeof db.stores.find((s) => s.id === sid)?.aisles[categoryId] === "number")
+                    const keep = i.where.filter((sid) => { const s = db.stores.find((x) => x.id === sid); return !!s && sells(s, categoryId) })
                     set({ categoryId, where: keep })
                   }}
                 >

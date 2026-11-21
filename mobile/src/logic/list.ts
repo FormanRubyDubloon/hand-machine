@@ -10,6 +10,8 @@ export type Aisle = { key: string; number: number | null; categories: Category[]
 
 /** The aisle number a category has in a store, or null. */
 export const numberOf = (store: Store | undefined, categoryId: string) => {
+  // "This store has no aisle numbers": everything is listed A to Z under "No aisle number".
+  if (store?.noAisleNumbers) return null
   const n = store?.aisles[categoryId]
   return n === null || n === undefined || n <= 0 ? null : n
 }
