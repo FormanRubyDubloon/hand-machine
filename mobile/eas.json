@@ -22,7 +22,10 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "6837621295"
+        "ascAppId": "6837621295",
+        "ascApiKeyPath": "/Users/isaacforman/.appstoreconnect/Authkey_96D5V28768.p8",
+        "ascApiKeyId": "96D5V28768",
+        "ascApiKeyIssuerId": "fcffbc75-1747-42a8-b4cf-5ca90afbea4e"
       }
     }
   }
