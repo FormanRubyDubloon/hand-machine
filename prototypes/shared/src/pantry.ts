@@ -121,8 +121,12 @@ export type SharedRecipe = {
 export type SharedStore = {
   id: string
   name: string
-  /** Aisle number per category. null = not sold here. */
+  /** Aisle number per category. null = not sold here. Kept but not used when noAisleNumbers is on. */
   aisles: Record<string, number | null>
+  /** "This store has no aisle numbers": its list goes A to Z, and `sells` says what it sells. */
+  noAisleNumbers?: boolean
+  /** Category ids the store sells, when it has no aisle numbers. */
+  sells?: string[]
   kind?: string
   place?: string
 }

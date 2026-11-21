@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { FilterChips } from "@/components/ui/filter-chips"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  aisleOrder, cap, containsText, fullOf, haveText, inStockText, isBulk, isStaple, isToday, listRows, listTotal, locationLabel, money, namesOf, needOf, numberedAisles,
+  aisleNumber, aisleOrder, cap, containsText, fullOf, haveText, inStockText, isBulk, isStaple, isToday, listRows, listTotal, locationLabel, money, namesOf, needOf, numberedAisles,
   plural, soldAt, stockOf, timeText, shortDate, unitWord, type Category, type ListRow, type Reason, categoriesAtoZ,
 } from "../model"
 import { navigate, type Route } from "../router"
@@ -122,7 +122,7 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
   // Group by aisle in this store's walking order. Things it doesn't sell go at the end.
   const aisles = store ? aisleOrder(store, db.categories) : categoriesAtoZ(db.categories)
   const groups = [
-    ...aisles.map((c) => ({ key: c.id, name: c.name, category: c as Category | undefined, number: store?.aisles[c.id] ?? null, rows: shown.filter((r) => r.item.categoryId === c.id && (!store || soldAt(r.item, store))) })),
+    ...aisles.map((c) => ({ key: c.id, name: c.name, category: c as Category | undefined, number: store ? aisleNumber(store, c.id) : null, rows: shown.filter((r) => r.item.categoryId === c.id && (!store || soldAt(r.item, store))) })),
     { key: "elsewhere", category: undefined, name: store ? `Not at ${store.name.split(",")[0]}` : "Other", number: null, rows: shown.filter((r) => !store || !soldAt(r.item, store)) },
   ].filter((g) => g.rows.length)
 

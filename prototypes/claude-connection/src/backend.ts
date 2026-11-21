@@ -2,7 +2,7 @@
 // same row-level security applies to Claude as to the apps. Tests use the in-memory version in
 // test/memory-backend.ts instead.
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { ITEM_SELECT, recipeRows, toEntryRow, toItem, toRecipe, toRow, type RecipeRow, type Row } from "../../shared/src/rows"
+import { ITEM_SELECT, recipeRows, storeExtras, toEntryRow, toItem, toRecipe, toRow, type RecipeRow, type Row } from "../../shared/src/rows"
 import type { Category, SharedItem, SharedRecipe, SharedStore } from "../../shared/src/pantry"
 import type { HistoryRow } from "../../shared/src/pantry-remote"
 
@@ -46,7 +46,7 @@ export function supabaseBackend(db: SupabaseClient): Backend {
         db.from("items").select(ITEM_SELECT).order("name"),
         db.from("recipes").select(RECIPE_SELECT).order("name"),
         db.from("categories").select("id, name, sort").order("sort"),
-        db.from("stores").select("id, name, kind, place, sort").order("sort"),
+        db.from("stores").select("id, name, kind, place, sort, no_aisle_numbers, sells").order("sort"),
         db.from("store_aisles").select("store_id, category_id, number"),
       ])
       const rows = check(recipes) as RecipeRow[]
@@ -56,12 +56,13 @@ export function supabaseBackend(db: SupabaseClient): Backend {
         recipes: rows.map(toRecipe),
         recipeRows: Object.fromEntries(rows.map((r) => [r.id, r])),
         categories: (check(categories) as Category[]).map(({ id, name }) => ({ id, name })),
-        stores: (check(stores) as { id: string; name: string; kind: string | null; place: string | null }[]).map((s) => ({
+        stores: (check(stores) as { id: string; name: string; kind: string | null; place: string | null; no_aisle_numbers?: boolean; sells?: string[] }[]).map((s) => ({
           id: s.id,
           name: s.name,
           kind: s.kind ?? "",
           place: s.place ?? "",
           aisles: Object.fromEntries(numbers.filter((a) => a.store_id === s.id).map((a) => [a.category_id, a.number])),
+          ...storeExtras(s),
         })),
       }
     },
@@ -93,7 +94,7 @@ export function supabaseBackend(db: SupabaseClient): Backend {
 
     async saveStores(stores, sort, categories) {
       if (!stores.length) return
-      check(await db.from("stores").upsert(stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id) })), { onConflict: "owner_id,id" }))
+      check(await db.from("stores").upsert(stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id), no_aisle_numbers: !!x.noAisleNumbers, sells: x.sells ?? [] })), { onConflict: "owner_id,id" }))
       check(await db.from("store_aisles").delete().in("store_id", stores.map((x) => x.id)))
       const aisles = stores.flatMap((x) =>
         Object.entries(x.aisles)

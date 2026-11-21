@@ -168,6 +168,7 @@ function recipeRows(recipes, before, items) {
   });
   return { rows, lines };
 }
+var storeExtras = (r) => r.no_aisle_numbers ? { noAisleNumbers: true, sells: r.sells ?? [] } : r.sells?.length ? { sells: r.sells } : {};
 
 // prototypes/claude-connection/src/backend.ts
 var RECIPE_SELECT = "*, recipe_ingredients(position, text, group_name, item_id, need, buy, partial, optional, uses)";
@@ -182,7 +183,7 @@ function supabaseBackend(db) {
         db.from("items").select(ITEM_SELECT).order("name"),
         db.from("recipes").select(RECIPE_SELECT).order("name"),
         db.from("categories").select("id, name, sort").order("sort"),
-        db.from("stores").select("id, name, kind, place, sort").order("sort"),
+        db.from("stores").select("id, name, kind, place, sort, no_aisle_numbers, sells").order("sort"),
         db.from("store_aisles").select("store_id, category_id, number")
       ]);
       const rows = check(recipes);
@@ -197,7 +198,8 @@ function supabaseBackend(db) {
           name: s.name,
           kind: s.kind ?? "",
           place: s.place ?? "",
-          aisles: Object.fromEntries(numbers.filter((a) => a.store_id === s.id).map((a) => [a.category_id, a.number]))
+          aisles: Object.fromEntries(numbers.filter((a) => a.store_id === s.id).map((a) => [a.category_id, a.number])),
+          ...storeExtras(s)
         }))
       };
     },
@@ -224,7 +226,7 @@ function supabaseBackend(db) {
     },
     async saveStores(stores, sort, categories) {
       if (!stores.length) return;
-      check(await db.from("stores").upsert(stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id) })), { onConflict: "owner_id,id" }));
+      check(await db.from("stores").upsert(stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id), no_aisle_numbers: !!x.noAisleNumbers, sells: x.sells ?? [] })), { onConflict: "owner_id,id" }));
       check(await db.from("store_aisles").delete().in("store_id", stores.map((x) => x.id)));
       const aisles = stores.flatMap(
         (x) => Object.entries(x.aisles).filter(([id, n]) => n != null && categories.has(id)).map(([category_id, number]) => ({ store_id: x.id, category_id, number }))
@@ -397,14 +399,15 @@ function listTotal(rows) {
   }
   return { pence, unpriced, estimated, approximate: unpriced > 0 || estimated > 0 };
 }
+var aisleNumber = (store, categoryId) => store.noAisleNumbers ? null : store.aisles[categoryId] ?? null;
+var sells = (store, categoryId) => store.noAisleNumbers ? (store.sells ?? []).includes(categoryId) : aisleNumber(store, categoryId) !== null;
 function soldAt(i, store) {
-  const aisle = store.aisles[i.categoryId];
-  if (aisle === null || aisle === void 0) return false;
+  if (!sells(store, i.categoryId)) return false;
   return i.where.length === 0 || i.where.includes(store.id);
 }
 var categoriesAtoZ = (categories) => [...categories].sort((a, b) => a.name.localeCompare(b.name));
 function aisleOrder(store, categories) {
-  return categoriesAtoZ(categories).sort((a, b) => (store.aisles[a.id] ?? 999) - (store.aisles[b.id] ?? 999));
+  return categoriesAtoZ(categories).sort((a, b) => (aisleNumber(store, a.id) ?? 999) - (aisleNumber(store, b.id) ?? 999));
 }
 function scaleText(text, factor) {
   if (factor === 1) return text;
@@ -631,7 +634,7 @@ var aislesSchema = {
   description: `Aisle number per category, by category name or id: { "Frozen": 12, "Baking": 7 }. null clears a number (the store doesn't sell it). Categories left out stay as they are. Claude can't add or rename categories.`,
   additionalProperties: { type: ["number", "null"] }
 };
-var aisleText = (x, cats) => aisleOrder(x, cats).filter((c) => x.aisles[c.id] != null).map((c) => `${x.aisles[c.id]} ${c.name}`).join(", ") || "no aisles set";
+var aisleText = (x, cats) => x.noAisleNumbers ? `no aisle numbers; sells ${aisleOrder(x, cats).filter((c) => sells(x, c.id)).map((c) => c.name).join(", ") || "nothing ticked"}` : aisleOrder(x, cats).filter((c) => x.aisles[c.id] != null).map((c) => `${x.aisles[c.id]} ${c.name}`).join(", ") || "no aisles set";
 var pantryItems = (items) => Object.values(items).filter((i) => !i.oneOff);
 function nearItems(items, q, max = 5) {
   const ql = q.toLowerCase().trim();
@@ -876,10 +879,10 @@ ${list.map((i) => itemLine(i, data.categories)).join("\n")}`;
       const store = findStore(data, args.store);
       const out = [];
       if (store) {
-        out.push(`${store.name}, in aisle order:`);
+        out.push(store.noAisleNumbers ? `${store.name} (no aisle numbers), A to Z:` : `${store.name}, in aisle order:`);
         for (const c of aisleOrder(store, data.categories)) {
           const here = rows.filter((r) => r.item.categoryId === c.id && soldAt(r.item, store));
-          if (here.length) out.push(`Aisle ${store.aisles[c.id] ?? "?"} \xB7 ${c.name}`, ...here.map(line));
+          if (here.length) out.push(store.noAisleNumbers ? c.name : `Aisle ${aisleNumber(store, c.id) ?? "?"} \xB7 ${c.name}`, ...here.map(line));
         }
         const elsewhere = rows.filter((r) => !soldAt(r.item, store));
         if (elsewhere.length) out.push(`Not sold at ${store.name} (or no aisle set):`, ...elsewhere.map(line));
@@ -990,8 +993,7 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
     annotations: { readOnlyHint: true },
     async run(_args, { data }) {
       const stores = data.stores.map((s) => {
-        const numbered = aisleOrder(s, data.categories).filter((c) => s.aisles[c.id] != null);
-        return `- ${s.name} [id: ${s.id}]${s.kind ? ` \xB7 ${s.kind}` : ""}: ${numbered.map((c) => `${s.aisles[c.id]} ${c.name}`).join(", ") || "no aisles set"}`;
+        return `- ${s.name} [id: ${s.id}]${s.kind ? ` \xB7 ${s.kind}` : ""}: ${aisleText(s, data.categories)}`;
       });
       return [`Categories: ${categoriesAtoZ(data.categories).map((c) => `${c.name} [id: ${c.id}]`).join(", ")}`, "Stores:", ...stores].join("\n");
     }

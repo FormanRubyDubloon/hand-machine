@@ -32,7 +32,7 @@ export default function ListItemSheet() {
 
   const store = state.stores.find((s) => s.id === state.storeId) ?? state.stores[0]
   const cat = state.categories.find((k) => k.id === item.categoryId)
-  const num = store?.aisles[item.categoryId]
+  const num = store?.noAisleNumbers ? null : store?.aisles[item.categoryId]
   const where = `${num ? `Aisle ${num}` : "No aisle number"} · ${cat?.name ?? "No aisle"}`
   const notInPantry = !!row.isNew && item.inStock - row.got <= 0
   const handAdded = (row.item.entries ?? []).length > 0 || !isStaple(item)

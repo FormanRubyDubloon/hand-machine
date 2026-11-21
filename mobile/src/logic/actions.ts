@@ -325,6 +325,11 @@ export function addAisle(s: PhoneState, storeId: string, name: string, number: n
   if (!clean || s.categories.some((c) => c.name.toLowerCase() === clean.toLowerCase())) return null
   const id = slugId(clean, (x) => s.categories.some((c) => c.id === x))
   const categories = [...s.categories, { id, name: clean }]
-  const stores = s.stores.map((x) => ({ ...x, aisles: { ...x.aisles, [id]: x.id === storeId && number ? number : null } }))
+  // A store with no aisle numbers ticks the new aisle as sold there instead of numbering it.
+  const stores = s.stores.map((x) => ({
+    ...x,
+    aisles: { ...x.aisles, [id]: x.id === storeId && number && !x.noAisleNumbers ? number : null },
+    ...(x.id === storeId && x.noAisleNumbers ? { sells: [...(x.sells ?? []), id] } : {}),
+  }))
   return { state: { ...s, categories, stores }, id }
 }

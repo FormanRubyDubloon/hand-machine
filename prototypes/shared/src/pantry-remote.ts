@@ -3,7 +3,7 @@
 // the item policies from supabase/migrations/20261114140000_auth_and_item_writes.sql.
 import { supabase } from "@/lib/supabase"
 import { ITEM_SELECT } from "./supabase-seed"
-import { recipeRows, toEntryRow, toItem, toRecipe, toRow, type RecipeRow, type Row } from "./rows"
+import { recipeRows, storeExtras, toEntryRow, toItem, toRecipe, toRow, type RecipeRow, type Row } from "./rows"
 import type { Category, SharedItem, SharedRecipe, SharedStore } from "./pantry"
 import { isCategoryColour, isCategoryIcon } from "./category-look"
 
@@ -136,21 +136,24 @@ export async function deleteCategories(ids: string[]): Promise<Category[]> {
 // ---------- stores and aisle numbers ----------
 // Tables and policies in supabase/migrations/20261114170000_stores.sql.
 
+type StoreRow = { id: string; name: string; kind: string | null; place: string | null; no_aisle_numbers?: boolean; sells?: string[] }
+
 /** Every store in Supabase, in its saved order, with its aisle numbers. Categories it doesn't number are left out. */
 export async function fetchStores(): Promise<SharedStore[]> {
   const [storesRes, aislesRes] = await Promise.all([
-    supabase.from("stores").select("id, name, kind, place, sort").order("sort"),
+    supabase.from("stores").select("id, name, kind, place, sort, no_aisle_numbers, sells").order("sort"),
     supabase.from("store_aisles").select("store_id, category_id, number"),
   ])
   if (storesRes.error) throw new Error(storesRes.error.message)
   if (aislesRes.error) throw new Error(aislesRes.error.message)
   const aisles = aislesRes.data as { store_id: string; category_id: string; number: number }[]
-  return (storesRes.data as { id: string; name: string; kind: string | null; place: string | null }[]).map((r) => ({
+  return (storesRes.data as StoreRow[]).map((r) => ({
     id: r.id,
     name: r.name,
     kind: r.kind ?? "",
     place: r.place ?? "",
     aisles: Object.fromEntries(aisles.filter((a) => a.store_id === r.id).map((a) => [a.category_id, a.number])),
+    ...storeExtras(r),
   }))
 }
 
@@ -160,7 +163,7 @@ export async function fetchStores(): Promise<SharedStore[]> {
  */
 export async function writeStores(stores: SharedStore[], sort: (id: string) => number, categories: Set<string>) {
   if (!stores.length) return
-  const rows = stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id) }))
+  const rows = stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id), no_aisle_numbers: !!x.noAisleNumbers, sells: x.sells ?? [] }))
   const up = await supabase.from("stores").upsert(rows, { onConflict: "owner_id,id" })
   if (up.error) throw new Error(up.error.message)
   const ids = stores.map((x) => x.id)
