@@ -4,7 +4,7 @@
 import * as React from "react"
 import { toast } from "sonner"
 import {
-  at, DB_KEY, fillAisles, ITEMS_KEY, PHONE_KEY, readJson, seedCategories, seedItems, seedPantryItems, seedRecipes, seedStores, writeJson,
+  at, DB_KEY, fillAisles, ITEMS_KEY, PHONE_KEY, readJson, seedCategories, seedPantryItems, seedRecipes, seedStores, writeJson,
 } from "../../shared/src/pantry"
 import {
   fingerprint, historyFingerprint, pendingCategoryIds, pendingHistoryIds, pendingIds, pendingRecipeIds, pendingStoreIds, recipeFingerprint, storeFingerprint, syncCategories, syncItems,
@@ -14,8 +14,8 @@ import { deleteCategories } from "../../shared/src/pantry-remote"
 import { href } from "./router"
 import type { CategoryColour, CategoryIcon } from "../../shared/src/category-look"
 import {
-  amountOf, cap, haveText, unitText, nameList, isBulk, isToday, lower, needOf, normalise, openUnit, plural, settle, timeText, withStock,
-  type Conflict, type Db, type HistoryEntry, type Item, type Items, type Recipe, type Snapshot, type Store, type Who,
+  amountOf, cap, haveText, unitText, nameList, isBulk, isToday, lower, needOf, normalise, openUnit, plural, settle, withStock,
+  type Db, type HistoryEntry, type Item, type Items, type Recipe, type Snapshot, type Store, type Who,
 } from "./model"
 
 type S = { db: Db; items: Items }
@@ -838,39 +838,6 @@ function usePantryState() {
       const items = normaliseAll(seedPantryItems())
       setState({ items, db: { ...seedDb(items), signedIn: keepSignedIn } })
       setPhoneSyncedAt(at(10, 2))
-    },
-    /**
-     * Pretends the phone synced a shop. Eggs and lemons also changed here since the phone's last
-     * sync, so they wait for you (PAN-19). Everything else from the shop goes through.
-     */
-    simulatePhoneSync() {
-      const s = ref.current
-      const now = new Date().toISOString()
-      const bought: Record<string, number> = { eggs: 6, lemons: 4, sourdough: 1, kimchi: 1, "chicken-thighs": 1 }
-      const conflicting = ["eggs", "lemons"].filter((id) => s.items[id])
-      const base = byId(seedItems)
-      const conflicts: Conflict[] = conflicting.map((id) => {
-        const mine = s.db.history.find((h) => h.who === "you" && isToday(h.at) && h.itemIds?.includes(id) && !h.undone)
-        return {
-          itemId: id,
-          here: s.items[id].inStock,
-          hereNote: mine ? `${lower(mine.title)} at ${timeText(mine.at)}` : "changed here today",
-          phone: (base[id]?.inStock ?? s.items[id].inStock) + bought[id],
-          phoneNote: `you bought ${bought[id]} at ${timeText(now)}`,
-        }
-      })
-      commit(
-        (st) => {
-          let next = st
-          for (const [id, n] of Object.entries(bought)) {
-            if (conflicting.includes(id)) continue
-            next = edit(next, id, (x) => ({ ...withStock(x, x.inStock + n), entries: settle(x.entries, n) }))
-          }
-          return setDb(next, { conflicts })
-        },
-        { who: "phone", title: "Synced a shop", detail: `Sainsbury's · ${plural(Object.keys(bought).length - conflicting.length, "item")} bought, ${plural(conflicting.length, "item")} to check`, itemIds: Object.keys(bought) },
-      )
-      setPhoneSyncedAt(now)
     },
     resolveConflicts(values: Record<string, number>) {
       const names = Object.keys(values).map((id) => ref.current.items[id]?.name).filter(Boolean) as string[]

@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { aisleOrder, categoriesAtoZ, isStaple, isToday, nameList, numberedAisles, plural, shortDate, timeText, whenText, type Category, type Store } from "../model"
+import { aisleOrder, categoriesAtoZ, isToday, nameList, needOf, numberedAisles, plural, shortDate, timeText, whenText, type Category, type Store } from "../model"
 import { navigate, type SettingsTab } from "../router"
 import { usePantry } from "../state"
 import { signOutOfSupabase } from "../../../shared/src/auth"
@@ -121,7 +121,7 @@ function StoresAndAisles({ initialStore }: { initialStore?: string }) {
             >
               <span className="flex flex-col">
                 <span className="text-sm font-semibold">{s.name}</span>
-                <span className={cn("text-xs", on ? "text-primary-foreground/70" : "text-muted-foreground")}>{[s.kind || s.place, s.id === db.defaultStoreId ? "default" : null].filter(Boolean).join(" · ")}</span>
+                <span className={cn("text-xs", on ? "text-primary-foreground/70" : "text-muted-foreground")}>{[s.place, s.id === db.defaultStoreId ? "default" : null].filter(Boolean).join(" · ")}</span>
               </span>
               <span className={cn("shrink-0 text-xs", on ? "text-primary-foreground/70" : "text-muted-foreground")}>{n > 1 ? plural(n, "aisle") : "No aisles"}</span>
             </button>
@@ -139,7 +139,7 @@ function StoresAndAisles({ initialStore }: { initialStore?: string }) {
             <Input key={`${store.id}-name`} defaultValue={store.name} onBlur={(e) => e.target.value.trim() && save({ name: e.target.value.trim() })} />
           </Field>
           <Field label="Where">
-            <Input key={`${store.id}-place`} defaultValue={store.place ?? ""} placeholder="Church Street" onBlur={(e) => save({ place: e.target.value.trim() || undefined })} />
+            <Input key={`${store.id}-place`} defaultValue={store.place ?? ""} placeholder="e.g. Church Street" onBlur={(e) => save({ place: e.target.value.trim() || undefined })} />
           </Field>
           <div className="flex flex-col gap-1">
             <Eyebrow>Default store</Eyebrow>
@@ -314,7 +314,9 @@ function Categories({ intro }: { intro: string }) {
   const pantry = Object.values(items).filter((i) => !i.oneOff)
   const counts = (id: string) => {
     const mine = pantry.filter((i) => i.categoryId === id)
-    return { items: mine.length, staples: mine.filter(isStaple).length }
+    // On the shopping list now, one-offs included: they sit on the list in this aisle too.
+    const onList = Object.values(items).filter((i) => i.categoryId === id && needOf(i) > 0).length
+    return { items: mine.length, onList }
   }
 
   return (
@@ -331,8 +333,8 @@ function Categories({ intro }: { intro: string }) {
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className={cn(head, "pl-3")}>Category</TableHead>
-              <TableHead className={cn(head, "text-right")}>Items</TableHead>
-              <TableHead className={cn(head, "text-right")}>Staples</TableHead>
+              <TableHead className={cn(head, "text-right")}>In pantry</TableHead>
+              <TableHead className={cn(head, "text-right")}>On list</TableHead>
               <TableHead className={head}>Has an aisle number in</TableHead>
               <TableHead className={cn(head, "text-right")}><span className="sr-only">Actions</span></TableHead>
             </TableRow>
@@ -374,7 +376,7 @@ function Categories({ intro }: { intro: string }) {
                     )}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{n.items}</TableCell>
-                  <TableCell className="text-right tabular-nums">{n.staples}</TableCell>
+                  <TableCell className="text-right tabular-nums">{n.onList}</TableCell>
                   <TableCell>
                     {where ? <span className="text-muted-foreground">{where}</span> : <span className="font-semibold">No aisle number yet</span>}
                   </TableCell>
@@ -630,50 +632,14 @@ function Account() {
   )
 }
 
-// ---------- demo ----------
-
-/** What used to be the Demo menu in the header: a fake phone sync, the shopping app, and a reset. */
-function Demo() {
-  const { actions } = usePantry()
-  const row = (title: string, sub: string, action: React.ReactNode) => (
-    <div className="flex items-center justify-between gap-6 border-b border-border py-4">
-      <span className="flex flex-col">
-        <span className="text-sm font-semibold">{title}</span>
-        <span className="max-w-md text-xs text-muted-foreground">{sub}</span>
-      </span>
-      {action}
-    </div>
-  )
-  return (
-    <div className="flex max-w-2xl flex-col">
-      {row(
-        "Simulate a phone sync",
-        "A shop comes in. Eggs and lemons changed in both places.",
-        <Button variant="outline" size="sm" onClick={() => { actions.simulatePhoneSync(); toast("Phone sync simulated") }}>Simulate</Button>,
-      )}
-      {row(
-        "Open the shopping app",
-        "In a new tab. Its syncs show up here.",
-        <Button variant="outline" size="sm" asChild><a href="/prototypes/shopping-list/" target="_blank" rel="noreferrer">Open</a></Button>,
-      )}
-      {row(
-        "Reset demo data",
-        "Both apps go back to the seed.",
-        <Button variant="outline" size="sm" onClick={() => { actions.resetDemo(); toast("Demo data reset") }}>Reset</Button>,
-      )}
-    </div>
-  )
-}
-
 // ---------- shell ----------
 
 const tabs: { tab: SettingsTab; title: string; sub: string; intro: string }[] = [
   { tab: "general", title: "General", sub: "Theme", intro: "Settings for this computer." },
-  { tab: "stores", title: "Stores and aisles", sub: "Aisle order for each shop", intro: "The aisle order sets the order of the shopping list in each shop. You can change it here or in the shopping app." },
+  { tab: "stores", title: "Stores and aisles", sub: "Your shops and their aisle order", intro: "Your shops, where they are, and the order of their aisles. The shopping list follows each shop's aisle order. You can change it here or on your phone." },
   { tab: "categories", title: "Categories", sub: "Groups for items and aisles", intro: "Every item has one. Each store gives a category an aisle number, so the shopping list follows your walk round the shop." },
   { tab: "claude", title: "Claude connection", sub: "What Claude can read and change", intro: "Lets Claude use your pantry from the Claude phone app, desktop or web." },
   { tab: "account", title: "Account", sub: "Sign-in, devices and your data", intro: "One account for the pantry, your phone and Claude." },
-  { tab: "demo", title: "Demo", sub: "Fakes for the prototype", intro: "Things a real backend would do, for trying the prototype. Shares its data with the shopping app." },
 ]
 
 export function Settings({ tab, store }: { tab: SettingsTab; store?: string }) {
@@ -692,7 +658,7 @@ export function Settings({ tab, store }: { tab: SettingsTab; store?: string }) {
         ) : (
           <>
             <PageTitle title={current.title} subtitle={current.intro} />
-            {tab === "general" ? <General /> : tab === "stores" ? <StoresAndAisles key={store} initialStore={store} /> : tab === "claude" ? <ClaudeConnection /> : tab === "demo" ? <Demo /> : <Account />}
+            {tab === "general" ? <General /> : tab === "stores" ? <StoresAndAisles key={store} initialStore={store} /> : tab === "claude" ? <ClaudeConnection /> : <Account />}
           </>
         )}
       </div>
