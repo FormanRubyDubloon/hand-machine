@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { aisleOrder, categoriesAtoZ, isStaple, isToday, nameList, numberedAisles, plural, shortDate, timeText, whenText, type Category, type Store } from "../model"
+import { aisleOrder, categoriesAtoZ, isToday, nameList, needOf, numberedAisles, plural, shortDate, timeText, whenText, type Category, type Store } from "../model"
 import { navigate, type SettingsTab } from "../router"
 import { usePantry } from "../state"
 import { signOutOfSupabase } from "../../../shared/src/auth"
@@ -314,7 +314,9 @@ function Categories({ intro }: { intro: string }) {
   const pantry = Object.values(items).filter((i) => !i.oneOff)
   const counts = (id: string) => {
     const mine = pantry.filter((i) => i.categoryId === id)
-    return { items: mine.length, staples: mine.filter(isStaple).length }
+    // On the shopping list now, one-offs included: they sit on the list in this aisle too.
+    const onList = Object.values(items).filter((i) => i.categoryId === id && needOf(i) > 0).length
+    return { items: mine.length, onList }
   }
 
   return (
@@ -332,7 +334,7 @@ function Categories({ intro }: { intro: string }) {
             <TableRow className="hover:bg-transparent">
               <TableHead className={cn(head, "pl-3")}>Category</TableHead>
               <TableHead className={cn(head, "text-right")}>Items</TableHead>
-              <TableHead className={cn(head, "text-right")}>Staples</TableHead>
+              <TableHead className={cn(head, "text-right")}>On list</TableHead>
               <TableHead className={head}>Has an aisle number in</TableHead>
               <TableHead className={cn(head, "text-right")}><span className="sr-only">Actions</span></TableHead>
             </TableRow>
@@ -374,7 +376,7 @@ function Categories({ intro }: { intro: string }) {
                     )}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{n.items}</TableCell>
-                  <TableCell className="text-right tabular-nums">{n.staples}</TableCell>
+                  <TableCell className="text-right tabular-nums">{n.onList}</TableCell>
                   <TableCell>
                     {where ? <span className="text-muted-foreground">{where}</span> : <span className="font-semibold">No aisle number yet</span>}
                   </TableCell>
