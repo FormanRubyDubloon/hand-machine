@@ -56,6 +56,13 @@ export async function syncItems(local: Items, base: Items | undefined): Promise<
       if (l) merged[id] = l
       continue
     }
+    // First sync on this computer (fresh storage, a reset, another account): there's no record of what
+    // was sent before, so what's here may be the built-in starter data. Supabase's copy wins.
+    if (first && r) {
+      merged[id] = r
+      pulled++
+      continue
+    }
     if (!localChanged) {
       // Only Supabase moved (or deleted it).
       if (r) merged[id] = r
@@ -137,6 +144,14 @@ export async function syncCategories(local: Category[], base: Category[] | undef
       if (l) keep.add(id)
       continue
     }
+    // First sync on this computer (fresh storage, a reset, another account): there's no record of what
+    // was sent before, so what's here may be the built-in starter data. Supabase's copy wins.
+    if (first && r) {
+      keep.add(id)
+      taken[id] = r
+      pulled++
+      continue
+    }
     const localChanged = fp(l) !== fp(b)
     if (!localChanged) {
       // Only Supabase moved: take its version, or drop it here if it was deleted there.
@@ -214,6 +229,13 @@ export async function syncStores(local: Store[], base: Store[] | undefined, cate
       if (l) merged[id] = l
       continue
     }
+    // First sync on this computer (fresh storage, a reset, another account): there's no record of what
+    // was sent before, so what's here may be the built-in starter data. Supabase's copy wins.
+    if (first && r) {
+      merged[id] = r
+      pulled++
+      continue
+    }
     if (storeFingerprint(l) === storeFingerprint(b)) {
       if (r) merged[id] = r
       pulled++
@@ -282,6 +304,13 @@ export async function syncRecipes(local: Recipe[], base: Recipe[] | undefined, i
     const b = was[id]
     if (recipeFingerprint(l) === recipeFingerprint(r)) {
       if (l) merged[id] = l
+      continue
+    }
+    // First sync on this computer (fresh storage, a reset, another account): there's no record of what
+    // was sent before, so what's here may be the built-in starter data. Supabase's copy wins.
+    if (first && r) {
+      merged[id] = r
+      pulled++
       continue
     }
     if (recipeFingerprint(l) === recipeFingerprint(b)) {
