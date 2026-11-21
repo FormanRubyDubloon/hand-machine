@@ -14,7 +14,7 @@ import { deleteCategories } from "../../shared/src/pantry-remote"
 import { href } from "./router"
 import type { CategoryColour, CategoryIcon } from "../../shared/src/category-look"
 import {
-  amountOf, cap, haveText, unitText, nameList, isBulk, isToday, lower, needOf, normalise, plural, settle, timeText, todayIso, withStock,
+  amountOf, cap, haveText, unitText, nameList, isBulk, isToday, lower, needOf, normalise, openUnit, plural, settle, timeText, withStock,
   type Conflict, type Db, type HistoryEntry, type Item, type Items, type Recipe, type Snapshot, type Store, type Who,
 } from "./model"
 
@@ -155,6 +155,31 @@ function diffSnapshot(prev: S, next: S): Snapshot {
 
 type EntryInput = { who?: Who; title: string | ((undo: Snapshot, next: S) => string); detail?: string | ((undo: Snapshot, next: S) => string); itemIds?: string[]; recipeId?: string; key?: string }
 
+/** What changed between two versions of an item, for History. */
+function itemChanges(before: Item, draft: Item) {
+  const changes: string[] = []
+  if (before.inStock !== draft.inStock) changes.push(`stock ${before.inStock} → ${draft.inStock}`)
+  else if ((before.open ?? 0) !== (draft.open ?? 0)) changes.push(`open ${before.open ?? 0} → ${draft.open ?? 0}`)
+  if (before.target !== draft.target) changes.push(`minimum ${before.target} → ${draft.target}`)
+  if (before.name !== draft.name) changes.push(`renamed from ${before.name}`)
+  if (before.type !== draft.type) changes.push(draft.type === "bulk" ? "now Bulk" : "now Counted")
+  if (JSON.stringify(before.unit) !== JSON.stringify(draft.unit)) changes.push("unit type")
+  if (JSON.stringify(before.packSize) !== JSON.stringify(draft.packSize)) changes.push("size")
+  if (before.location !== draft.location) changes.push("location")
+  if (before.categoryId !== draft.categoryId) changes.push("shop aisle")
+  if (JSON.stringify(before.where) !== JSON.stringify(draft.where)) changes.push("store")
+  if (before.price !== draft.price) changes.push("price")
+  else if (!!before.priceEstimate !== !!draft.priceEstimate) changes.push(draft.priceEstimate ? "price marked as an estimate" : "price no longer an estimate")
+  if (before.brand !== draft.brand) changes.push("brand")
+  if (!!before.openCounts !== !!draft.openCounts) changes.push(draft.openCounts ? "open pack counts towards the minimum" : "open pack doesn't count towards the minimum")
+  if (!!before.noExpiry !== !!draft.noExpiry) changes.push(draft.noExpiry ? "no use-by dates" : "use-by dates tracked again")
+  else if (JSON.stringify(before.useBy) !== JSON.stringify(draft.useBy)) changes.push("use-by dates")
+  if (before.useWithinWeeks !== draft.useWithinWeeks) changes.push("use within, once open")
+  if (before.notes !== draft.notes) changes.push("notes")
+  if (JSON.stringify(before.otherNames) !== JSON.stringify(draft.otherNames)) changes.push("other names")
+  return changes
+}
+
 // ---------- the store ----------
 
 function usePantryState() {
@@ -274,30 +299,18 @@ function usePantryState() {
     openPack(id: string) {
       const i = ref.current.items[id]
       if (!i || (i.open ?? 0) >= i.inStock) return
-      commit((s) => edit(s, id, (x) => ({ ...x, open: (x.open ?? 0) + 1, openedAt: [...(x.openedAt ?? []), todayIso()] })), {
+      commit((s) => edit(s, id, (x) => openUnit(x).item), {
         title: `Opened a ${i.unit?.[0] ?? "pack"} of ${lower(i.name)}`, detail: stockDetail(id), itemIds: [id],
       })
     },
 
     // ----- items -----
-    saveItem(draft: Item, isNew: boolean) {
+    /**
+     * Saves an item. The item panel's Edit saves every change as it's made, passing a `key` so a run of
+     * changes to one item merges into one History entry; the detail then lists everything since the run began.
+     */
+    saveItem(draft: Item, isNew: boolean, opts?: { key?: string; title?: string; detail?: string }) {
       const before = ref.current.items[draft.id]
-      const changes: string[] = []
-      if (before) {
-        if (before.inStock !== draft.inStock) changes.push(`stock ${before.inStock} → ${draft.inStock}`)
-        if (before.target !== draft.target) changes.push(`minimum ${before.target} → ${draft.target}`)
-        if (before.name !== draft.name) changes.push(`renamed from ${before.name}`)
-        if (before.location !== draft.location) changes.push("location")
-        if (before.categoryId !== draft.categoryId) changes.push("shop or aisle")
-        if (before.price !== draft.price) changes.push("price")
-        else if (!!before.priceEstimate !== !!draft.priceEstimate) changes.push(draft.priceEstimate ? "price marked as an estimate" : "price no longer an estimate")
-        if (before.brand !== draft.brand) changes.push("brand")
-        if (!!before.openCounts !== !!draft.openCounts) changes.push(draft.openCounts ? "open pack counts towards the minimum" : "open pack doesn't count towards the minimum")
-        if (!!before.noExpiry !== !!draft.noExpiry) changes.push(draft.noExpiry ? "marked as not expiring" : "use-by dates tracked again")
-        else if (JSON.stringify(before.useBy) !== JSON.stringify(draft.useBy)) changes.push("use-by dates")
-        if (before.notes !== draft.notes) changes.push("notes")
-        if (JSON.stringify(before.otherNames) !== JSON.stringify(draft.otherNames)) changes.push("other names")
-      }
       commit(
         (s) => {
           const bought = before ? draft.inStock - before.inStock : 0
@@ -305,9 +318,16 @@ function usePantryState() {
           return setItems(s, { [draft.id]: item })
         },
         {
-          title: isNew ? `Added ${draft.name} to the pantry` : `Changed ${draft.name}`,
-          detail: isNew ? (draft.target > 0 ? `A Staple · ${draft.target} min` : "Not a Staple") : cap(changes.join(", ") || "No changes"),
+          title: opts?.title ?? (isNew ? `Added ${draft.name} to the pantry` : `Changed ${draft.name}`),
+          detail: opts?.detail ?? (isNew
+            ? (draft.target > 0 ? `A Staple · ${draft.target} min` : "Not a Staple")
+            : (undo, next) => {
+                const was = undo.items?.[draft.id]
+                const now = next.items[draft.id]
+                return cap((was && now ? itemChanges(was, now) : []).join(", ") || "No changes")
+              }),
           itemIds: [draft.id],
+          key: opts?.key,
         },
       )
     },

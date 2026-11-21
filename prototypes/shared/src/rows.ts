@@ -43,6 +43,7 @@ export type Row = {
   use_by: string[]
   no_expiry?: boolean
   open_counts?: boolean
+  use_within_weeks?: number | null
   one_off: boolean
   ordered?: boolean
   needs_review?: boolean
@@ -57,8 +58,12 @@ export type Row = {
 export function unitPair(u: string | null): [string, string] | undefined {
   if (!u) return undefined
   if (/\d|^(kg|g|ml|litres?|pound)$/i.test(u) || u.includes(" ")) return [u, u]
-  const one = /[^s]s$/i.test(u) ? u.slice(0, -1) : u
-  return [one, /(ch|sh|x)$/i.test(one) ? `${one}es` : `${one}s`]
+  // "boxes" → "box" (once read as "boxe"), "bags" → "bag", "glass" stays "glass".
+  const one = /(ch|sh|x|ss)es$/i.test(u) ? u.slice(0, -2) : /[^s]s$/i.test(u) ? u.slice(0, -1) : u
+  if (/(ch|sh|x|ss)$/i.test(one)) return [one, `${one}es`]
+  // "loaf" → "loaves".
+  if (/[^f]f$/i.test(one)) return [one, `${one.slice(0, -1)}ves`]
+  return [one, `${one}s`]
 }
 
 export function toItem(r: Row): SharedItem {
@@ -82,6 +87,7 @@ export function toItem(r: Row): SharedItem {
     useBy: r.use_by.length ? r.use_by : undefined,
     noExpiry: r.no_expiry || undefined,
     openCounts: r.open_counts || undefined,
+    useWithinWeeks: r.use_within_weeks ?? undefined,
     oneOff: r.one_off || undefined,
     ordered: r.ordered || undefined,
     review: r.needs_review || undefined,
@@ -170,6 +176,7 @@ export function toRow(i: SharedItem, knownCategories: Set<string>) {
     use_by: i.noExpiry ? [] : (i.useBy ?? []).filter((d): d is string => !!d),
     no_expiry: !!i.noExpiry,
     open_counts: !!i.openCounts,
+    use_within_weeks: i.useWithinWeeks ?? null,
     opened_at: (i.openedAt ?? []).filter((d): d is string => !!d),
     one_off: !!i.oneOff,
     ordered: !!i.ordered,

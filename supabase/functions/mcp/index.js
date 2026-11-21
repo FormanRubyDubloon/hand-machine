@@ -21,8 +21,10 @@ var toEntryRow = (e, position) => ({
 function unitPair(u) {
   if (!u) return void 0;
   if (/\d|^(kg|g|ml|litres?|pound)$/i.test(u) || u.includes(" ")) return [u, u];
-  const one = /[^s]s$/i.test(u) ? u.slice(0, -1) : u;
-  return [one, /(ch|sh|x)$/i.test(one) ? `${one}es` : `${one}s`];
+  const one = /(ch|sh|x|ss)es$/i.test(u) ? u.slice(0, -2) : /[^s]s$/i.test(u) ? u.slice(0, -1) : u;
+  if (/(ch|sh|x|ss)$/i.test(one)) return [one, `${one}es`];
+  if (/[^f]f$/i.test(one)) return [one, `${one.slice(0, -1)}ves`];
+  return [one, `${one}s`];
 }
 function toItem(r) {
   return {
@@ -45,6 +47,7 @@ function toItem(r) {
     useBy: r.use_by.length ? r.use_by : void 0,
     noExpiry: r.no_expiry || void 0,
     openCounts: r.open_counts || void 0,
+    useWithinWeeks: r.use_within_weeks ?? void 0,
     oneOff: r.one_off || void 0,
     ordered: r.ordered || void 0,
     review: r.needs_review || void 0,
@@ -99,6 +102,7 @@ function toRow(i, knownCategories) {
     use_by: i.noExpiry ? [] : (i.useBy ?? []).filter((d) => !!d),
     no_expiry: !!i.noExpiry,
     open_counts: !!i.openCounts,
+    use_within_weeks: i.useWithinWeeks ?? null,
     opened_at: (i.openedAt ?? []).filter((d) => !!d),
     one_off: !!i.oneOff,
     ordered: !!i.ordered,
@@ -243,12 +247,13 @@ var locations = [
   { value: "fridge", label: "Fridge" },
   { value: "freezer", label: "Freezer" },
   { value: "cupboard", label: "Cupboard" },
-  { value: "household", label: "Household" }
+  { value: "counter", label: "Counter" },
+  // Stored as "household" (the database's value), shown as Other since 21 Nov 2026.
+  { value: "household", label: "Other" }
 ];
 var locationLabel = (l) => locations.find((x) => x.value === l)?.label ?? "No location";
 var isStaple = (i) => i.target > 0;
 var isBulk = (i) => i.type === "bulk";
-var perUnitDates = (i) => i.target > 1;
 var fullOf = (i, total = i.inStock) => isBulk(i) && !i.openCounts ? Math.max(0, total - (i.open ?? 0)) : total;
 var shortfall = (i) => Math.max(0, i.target - fullOf(i));
 var entryTotal = (i) => (i.entries ?? []).reduce((n, e) => n + e.qty, 0);
@@ -272,7 +277,7 @@ function haveText(i, sep = " \xB7 ") {
 }
 function normalise(i) {
   const open = isBulk(i) ? Math.min(i.open ?? 0, i.inStock) : void 0;
-  const want = i.noExpiry ? 0 : perUnitDates(i) || isBulk(i) ? i.inStock : Math.min(1, i.inStock);
+  const want = i.noExpiry ? 0 : i.inStock;
   const dates = i.noExpiry ? [] : [...i.useBy ?? []].slice(0, want);
   while (dates.length < want) dates.push(null);
   const opened = [...i.openedAt ?? []].slice(0, open ?? 0);
@@ -286,6 +291,48 @@ function withStock(i, n) {
   let open = i.open ?? 0;
   if (isBulk(i) && next < i.inStock) open = Math.max(0, open - (i.inStock - next));
   return normalise({ ...i, inStock: next, useBy: dates, open: isBulk(i) ? open : void 0, openedAt: i.openedAt?.slice(i.openedAt.length - open) });
+}
+function unitsOf(i) {
+  const open = isBulk(i) ? Math.min(i.open ?? 0, i.inStock) : 0;
+  return Array.from({ length: i.inStock }, (_, k) => ({
+    open: k < open,
+    useBy: i.noExpiry ? null : i.useBy?.[k] ?? null,
+    openedAt: k < open ? i.openedAt?.[k] ?? null : null
+  }));
+}
+var byUseBy = (a, b) => (a.useBy ?? "9999").localeCompare(b.useBy ?? "9999");
+function withUnits(i, units) {
+  const bulk = isBulk(i);
+  const sorted = [...units].sort((a, b) => (bulk ? Number(b.open) - Number(a.open) : 0) || byUseBy(a, b));
+  const open = bulk ? sorted.filter((u) => u.open).length : void 0;
+  return normalise({
+    ...i,
+    inStock: sorted.length,
+    open,
+    useBy: i.noExpiry ? [] : sorted.map((u) => u.useBy),
+    openedAt: bulk ? sorted.slice(0, open).map((u) => u.openedAt) : void 0
+  });
+}
+var addDays = (iso, days) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d + days));
+  return t.toISOString().slice(0, 10);
+};
+function openedUseBy(i, printed, today = todayIso()) {
+  if (i.noExpiry) return null;
+  if (!i.useWithinWeeks) return printed;
+  const limit = addDays(today, i.useWithinWeeks * 7);
+  return !printed || limit < printed ? limit : printed;
+}
+function openUnit(i, index) {
+  const units = unitsOf(i);
+  const k = index ?? units.findIndex((u2) => !u2.open);
+  const u = units[k];
+  if (!isBulk(i) || !u || u.open) return { item: i, movedTo: null };
+  const today = todayIso();
+  const useBy = openedUseBy(i, u.useBy, today);
+  units[k] = { open: true, useBy, openedAt: today };
+  return { item: withUnits(i, units), movedTo: useBy !== u.useBy ? useBy : null };
 }
 function settle(entries, bought) {
   if (!entries?.length || bought <= 0) return entries;
@@ -640,10 +687,11 @@ function findStore(data, ref) {
   if (!s) throw new ToolError(`No store matches "${q}". Stores: ${data.stores.map((x) => x.name).join(", ")}.`);
   return s;
 }
-var LOCATIONS = ["fridge", "freezer", "cupboard", "household"];
+var LOCATIONS = ["fridge", "freezer", "cupboard", "counter", "household"];
 function location(v) {
-  const s = str(v)?.toLowerCase();
-  if (!s) return void 0;
+  const raw = str(v)?.toLowerCase();
+  if (!raw) return void 0;
+  const s = raw === "other" ? "household" : raw;
   if (!LOCATIONS.includes(s)) throw new ToolError(`Location is one of: ${LOCATIONS.join(", ")}.`);
   return s;
 }
@@ -662,7 +710,7 @@ var newItemProps = {
   type: { type: "string", enum: ["counted", "bulk"], description: "counted: tracked by number (eggs, tins, onions). bulk: tracked in whole packs, which can be open (flour, oil, rice, spices)." },
   unit: { type: "string", description: 'Optional, singular: "tin", "bag", "bottle". Leave out for plain counts (3 onions).' },
   category: { type: "string", description: "An existing category's name or id (get_categories_and_stores). Leave out if unsure." },
-  location: { type: "string", enum: LOCATIONS }
+  location: { type: "string", enum: LOCATIONS, description: "household is shown to the user as Other: cleaning things, toiletries, anything not food." }
 };
 var ingredientSchema = {
   type: "object",
@@ -1049,8 +1097,9 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
       if (args.opened_pack === true) {
         if (!isBulk(i)) throw new ToolError(`${i.name} is counted, not bulk: use amount instead.`);
         if ((i.open ?? 0) >= i.inStock) throw new ToolError(`Every ${pack} of ${lower(i.name)} is already open (${haveText(i)}). Ask the user whether one was finished or more came in.`);
-        const next2 = { ...i, open: (i.open ?? 0) + 1, openedAt: [...i.openedAt ?? [], todayIso()] };
+        const { item: next2, movedTo } = openUnit(i);
         await commit(ctx, { items: [next2], title: `Opened a ${pack} of ${lower(i.name)}`, detail: stockDetail(normalise(next2)), itemIds: [i.id] });
+        if (movedTo) return `Done. Its use-by is now ${movedTo} (use within ${i.useWithinWeeks} weeks once open). ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`;
         return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`;
       }
       if (i.inStock <= 0) throw new ToolError(`There's no ${lower(i.name)} in stock already, so nothing was taken off. If the stock is wrong, ask the user and use update_item.`);
@@ -1263,9 +1312,10 @@ ${recipeLine(recipe, ctx.data.items)}`;
               description: 'Bulk only: what one pack holds, e.g. { amount: 1000, measure: "g" }. Used to check a recipe has enough.'
             },
             category: { type: ["string", "null"] },
-            location: { type: ["string", "null"], enum: [...LOCATIONS, null] },
+            location: { type: ["string", "null"], enum: [...LOCATIONS, null], description: "household is shown to the user as Other." },
             use_by: { type: "array", items: { type: "string" }, description: "Replaces every date, one per unit or pack. YYYY-MM-DD. [] clears them." },
             open_counts: { type: "boolean", description: "Bulk only: true if an open pack counts towards the minimum like a full one. false (the default) counts only full packs." },
+            use_within_weeks: { type: ["number", "null"], description: "Bulk only: weeks to use a pack within once it's open (1 to 52). Opening a pack then moves its use-by no later than that. null clears it." },
             no_expiry: { type: "boolean", description: "true for things that never go off (salt, tins, cleaning products): clears every date and stops the item asking for one. false to track dates again." },
             use_by_one: {
               type: "object",
@@ -1357,6 +1407,13 @@ ${recipeLine(recipe, ctx.data.items)}`;
         if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs.`);
         next.openCounts = c.open_counts || void 0;
         said.push(c.open_counts ? "open pack counts towards the minimum" : "open pack doesn't count towards the minimum");
+      }
+      if (has("use_within_weeks")) {
+        if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs.`);
+        const w = cleared("use_within_weeks") ? void 0 : Math.round(num(c.use_within_weeks) ?? 0);
+        if (w !== void 0 && (w < 1 || w > 52)) throw new ToolError("use_within_weeks is a whole number of weeks, 1 to 52, or null.");
+        next.useWithinWeeks = w;
+        said.push(w ? `use within ${w} ${w === 1 ? "week" : "weeks"} once open` : "use-within period cleared");
       }
       if (typeof c.no_expiry === "boolean") {
         next.noExpiry = c.no_expiry || void 0;
