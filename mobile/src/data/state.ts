@@ -4,6 +4,7 @@
 // The shapes are the pantry's own (prototypes/shared/src/pantry.ts), so the phone, Collca on the web and the
 // Claude connection all read and write the same items, recipes, categories and stores.
 import type { Category, HistoryEntry, Item, Items, ListEntry, Recipe, Store } from "../../../prototypes/pantry-app/src/model"
+import type { ListFilter } from "../logic/list"
 
 export type { Category, HistoryEntry, Item, Items, ListEntry, Recipe, Store }
 
@@ -57,6 +58,8 @@ export type PhoneState = {
   /** Which aisle the list is showing: an index into the store's aisles, or "all" for A to Z. */
   aisle: number | "all"
   shop: Shop | null
+  /** The list filters. Kept through a shop; cleared when a new list starts. */
+  filter?: ListFilter
   theme: Theme
   syncedAt?: string
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { demoState } from "../src/data/demo"
 import { clearShop, removeFromList, removeQuestion, restoreTicks, tickAll, tickOne, untick, addNew, setToGet } from "../src/logic/actions"
-import { aislesOf, leftOf, refreshShop, rowsOf, shopAisles, tickedText, type Row } from "../src/logic/list"
+import { aislesOf, filtersOn, leftOf, matchesFilter, NO_FILTER, refreshShop, rowsOf, shopAisles, shownRows, tickedText, type Row } from "../src/logic/list"
 import type { PhoneState } from "../src/data/state"
 
 const start = (): PhoneState => {
@@ -132,5 +132,25 @@ describe("asking before Remove from list", () => {
   it("says something never bought goes altogether", () => {
     const { state, id } = addNew(start(), "Birthday candles", "household")
     expect(removeQuestion(state, id)).toBe("Take birthday candles off the list? It isn't in your pantry, so it goes altogether.")
+  })
+})
+
+describe("the list filters", () => {
+  it("groups rows as the pantry app does, and keeps a ticked row in its group and stock", () => {
+    const s = start()
+    const eggs = rowsOf(s).find((r) => r.id === "eggs")!
+    expect(eggs.group).toBe("staples")
+    // Ticking both eggs brings them to the minimum, but the row still counts as a Staple that was low or out.
+    const after = rowsOf(tickAll(s, "eggs")).find((r) => r.id === "eggs")!
+    expect([after.group, after.status]).toEqual([eggs.group, eggs.status])
+  })
+
+  it("shows only what matches, aisle by aisle, and clears when a new list starts", () => {
+    const s: PhoneState = { ...start(), filter: { show: "staples", stock: "all" } }
+    expect(shownRows(s).every((r) => r.group === "staples")).toBe(true)
+    expect(shopAisles(s).flatMap((a) => a.rows).every((r) => r.group === "staples")).toBe(true)
+    expect(matchesFilter(rowsOf(s)[0], NO_FILTER)).toBe(true)
+    expect(filtersOn(s.filter)).toBe(1)
+    expect(clearShop(s).filter).toBeUndefined()
   })
 })

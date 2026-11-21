@@ -3,13 +3,13 @@
 // Under the tabs, a one-line note shows only when something is waiting: no signal, or a sync that failed.
 import { router, usePathname } from "expo-router"
 import { TabList, TabSlot, TabTrigger, Tabs, type TabTriggerSlotProps } from "expo-router/ui"
-import { BookOpen, CloudOff, List, Menu, Package, type LucideIcon } from "lucide-react-native"
+import { BookOpen, CloudOff, List, Package, type LucideIcon } from "lucide-react-native"
 import * as React from "react"
 import { ActivityIndicator, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useStore } from "../../data/store"
 import { Press } from "../../ui/kit"
-import { font, useColours } from "../../ui/theme"
+import { font, radius, useColours } from "../../ui/theme"
 import { plural } from "../../logic/phrases"
 
 const TABS = [
@@ -31,13 +31,35 @@ export default function TabsLayout() {
         ))}
         <View style={{ flex: 1 }} />
         <SyncSpinner />
-        <Press fade accessibilityLabel="Settings" onPress={() => router.push("/settings")} style={{ width: 40, height: 48, alignItems: "flex-end", justifyContent: "center" }}>
-          <Menu size={24} color={c.ink} strokeWidth={2} />
-        </Press>
+        <AccountButton />
       </TabList>
       <SyncNote />
       <TabSlot style={{ flex: 1 }} />
     </Tabs>
+  )
+}
+
+/**
+ * Settings, shown as the account: the first letter of the signed-in email in a circle. The app has no name or
+ * photo for the account, only the email.
+ */
+function AccountButton() {
+  const c = useColours()
+  const { state } = useStore()
+  const email = state.owner?.email ?? ""
+  const letter = email.trim().charAt(0).toUpperCase() || "?"
+  return (
+    <Press
+      fade
+      accessibilityRole="button"
+      accessibilityLabel={email ? `Settings, signed in as ${email}` : "Settings"}
+      onPress={() => router.push("/settings")}
+      style={{ width: 44, height: 48, alignItems: "flex-end", justifyContent: "center" }}
+    >
+      <View style={{ width: 32, height: 32, borderRadius: radius.pill, backgroundColor: c.olive, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.onOlive }}>{letter}</Text>
+      </View>
+    </Press>
   )
 }
 
@@ -83,7 +105,7 @@ function SyncNote() {
 }
 
 /**
- * A small spinner beside the menu while the app syncs by itself. Hidden while a pulled-down list shows its own
+ * A small spinner beside the account button while the app syncs by itself. Hidden while a pulled-down list shows its own
  * spinner, so there's only ever one.
  */
 function SyncSpinner() {

@@ -10,10 +10,10 @@ import { SignInEmblem } from "../ui/art"
 import { Body, Button, Caption, Field } from "../ui/kit"
 import { font, light, SPLASH } from "../ui/theme"
 
-// The sign-in screen sits on the emblem's tan in both themes, so its text and button use the dark ink, and the
-// fields stay cream so they read as places to type.
+// The sign-in screen sits on the emblem's tan in both themes, so its text, field borders and button use the dark
+// ink whatever the phone's theme. The fields have no fill; the ink border marks them as places to type.
 const INK = light.ink
-const onTan = { style: { backgroundColor: light.bg, color: light.ink, borderColor: INK }, placeholderTextColor: light.placeholder, labelColour: INK }
+const onTan = { style: { backgroundColor: "transparent", color: light.ink, borderColor: INK }, placeholderTextColor: light.placeholder, labelColour: INK }
 
 export default function SignIn() {
   const { signIn } = useStore()
@@ -39,7 +39,7 @@ export default function SignIn() {
         <Field {...onTan} label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" textContentType="emailAddress" />
         <Field {...onTan} label="Password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" textContentType="password" onSubmitEditing={() => email && password && void go()} />
         {error && <Text accessibilityRole="alert" style={{ fontFamily: font.semibold, fontSize: 15, color: light.danger }}>{error}</Text>}
-        <Button style={{ backgroundColor: INK, borderColor: INK }} label={busy ? "Signing in…" : "Sign in"} disabled={!email.trim() || !password || busy} onPress={() => void go()} />
+        <Button style={{ backgroundColor: INK, borderColor: INK }} textColour={light.bg} label={busy ? "Signing in…" : "Sign in"} disabled={!email.trim() || !password || busy} onPress={() => void go()} />
         <Caption colour={INK}>{DEMO ? "This is the demo. Any email and password will do, and nothing reaches your real pantry." : "No account yet? Make one in Collca on the web, then sign in here."}</Caption>
       </ScrollView>
     </KeyboardAvoidingView>

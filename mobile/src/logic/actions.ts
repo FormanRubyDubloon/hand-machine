@@ -164,7 +164,7 @@ export function addNew(s: PhoneState, name: string, categoryId: string): { state
 export function clearShop(s: PhoneState): PhoneState {
   const items = { ...s.items }
   for (const [id, r] of Object.entries(s.shop?.rows ?? {})) if (r.got >= r.need && items[id]?.oneOff) delete items[id]
-  return { ...s, items, shop: refreshShop(null, items), aisle: 0 }
+  return { ...s, items, shop: refreshShop(null, items), aisle: 0, filter: undefined }
 }
 
 // ---------- recipes ----------
