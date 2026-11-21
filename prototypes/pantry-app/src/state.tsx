@@ -653,10 +653,15 @@ function usePantryState() {
       return id
     },
     deleteStore(id: string) {
-      commit((s) => setDb(s, {
-        stores: s.db.stores.filter((x) => x.id !== id),
-        defaultStoreId: s.db.defaultStoreId === id ? s.db.stores.find((x) => x.id !== id)?.id ?? "" : s.db.defaultStoreId,
-      }))
+      commit((s) => {
+        // Items bought at this store go back to any store.
+        const patch: Items = {}
+        for (const i of Object.values(s.items)) if (i.where.includes(id)) patch[i.id] = { ...i, where: i.where.filter((x) => x !== id), editedAt: new Date().toISOString() }
+        return setDb(setItems(s, patch), {
+          stores: s.db.stores.filter((x) => x.id !== id),
+          defaultStoreId: s.db.defaultStoreId === id ? s.db.stores.find((x) => x.id !== id)?.id ?? "" : s.db.defaultStoreId,
+        })
+      })
     },
     setDefaultStore(id: string) {
       commit((s) => setDb(s, { defaultStoreId: id }))

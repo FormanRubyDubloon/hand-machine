@@ -7,8 +7,8 @@
 import { normalise, type Item, type Items } from "../../../prototypes/pantry-app/src/model"
 import type { Conflict } from "../data/state"
 
-/** Fields that aren't the item's own data: when it was edited or added, and which stores sell it. */
-const IGNORED = new Set(["editedAt", "addedAt", "where"])
+/** Fields that aren't the item's own data: when it was edited or added. The chosen store (where) syncs since 21 Nov 2026. */
+const IGNORED = new Set(["editedAt", "addedAt"])
 
 /** Keys in order at every level, undefined dropped (as pantry-remote's sortKeys, without its Supabase import). */
 function sortKeys(v: unknown): unknown {
@@ -135,5 +135,5 @@ export function mergeItems(localRaw: Items, baseRaw: Items | null, remoteRaw: It
 export const FIELD_LABELS: Record<string, string> = {
   inStock: "stock", open: "open packs", target: "minimum", entries: "shopping list", name: "name", notes: "notes",
   categoryId: "aisle", location: "location", useBy: "use-by date", review: "New mark", ordered: "Ordered mark",
-  price: "price", unit: "unit", type: "type",
+  price: "price", unit: "unit", type: "type", where: "store",
 }
