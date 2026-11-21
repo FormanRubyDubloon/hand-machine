@@ -36,7 +36,7 @@ function toItem(r) {
     unit: unitPair(r.unit),
     notes: r.notes ?? void 0,
     categoryId: r.category_id ?? "",
-    where: [],
+    where: r.store_ids ?? [],
     location: r.location ?? void 0,
     otherNames: r.other_names.length ? r.other_names : void 0,
     open: r.open ?? void 0,
@@ -103,6 +103,7 @@ function toRow(i, knownCategories) {
     no_expiry: !!i.noExpiry,
     open_counts: !!i.openCounts,
     use_within_weeks: i.useWithinWeeks ?? null,
+    store_ids: i.where ?? [],
     opened_at: (i.openedAt ?? []).filter((d) => !!d),
     one_off: !!i.oneOff,
     ordered: !!i.ordered,
@@ -1686,6 +1687,8 @@ Now: ${aisleText(next, ctx.data.categories)}.`;
       const x = findStore(ctx.data, args.store);
       needConfirmed(args, `deleting ${x.name}`);
       await commitStores(ctx, { remove: [x.id], title: `Deleted the store ${x.name}`, detail: aisleText(x, ctx.data.categories) });
+      const moved = Object.values(ctx.data.items).filter((i) => i.where.includes(x.id)).map((i) => ({ ...i, where: i.where.filter((s) => s !== x.id) }));
+      if (moved.length) await commit(ctx, { items: moved, title: `${moved.length === 1 ? moved[0].name : `${moved.length} items`} no longer tied to ${x.name}`, itemIds: moved.map((i) => i.id) });
       return `Deleted ${x.name}. It had: ${aisleText(x, ctx.data.categories)}. It can't be undone from History; add_store would recreate it.`;
     }
   }

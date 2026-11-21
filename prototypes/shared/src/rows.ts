@@ -44,6 +44,7 @@ export type Row = {
   no_expiry?: boolean
   open_counts?: boolean
   use_within_weeks?: number | null
+  store_ids?: string[]
   one_off: boolean
   ordered?: boolean
   needs_review?: boolean
@@ -76,7 +77,7 @@ export function toItem(r: Row): SharedItem {
     unit: unitPair(r.unit),
     notes: r.notes ?? undefined,
     categoryId: r.category_id ?? "",
-    where: [],
+    where: r.store_ids ?? [],
     location: r.location ?? undefined,
     otherNames: r.other_names.length ? r.other_names : undefined,
     open: r.open ?? undefined,
@@ -177,6 +178,7 @@ export function toRow(i: SharedItem, knownCategories: Set<string>) {
     no_expiry: !!i.noExpiry,
     open_counts: !!i.openCounts,
     use_within_weeks: i.useWithinWeeks ?? null,
+    store_ids: i.where ?? [],
     opened_at: (i.openedAt ?? []).filter((d): d is string => !!d),
     one_off: !!i.oneOff,
     ordered: !!i.ordered,

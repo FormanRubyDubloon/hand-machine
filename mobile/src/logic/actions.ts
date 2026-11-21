@@ -310,7 +310,10 @@ export function addStore(s: PhoneState, name: string): { state: PhoneState; id: 
 export function removeStore(s: PhoneState, storeId: string): PhoneState {
   if (s.stores.length <= 1) return s
   const stores = s.stores.filter((x) => x.id !== storeId)
-  return { ...s, stores, storeId: s.storeId === storeId ? stores[0].id : s.storeId, aisle: s.storeId === storeId ? 0 : s.aisle }
+  // Items bought at this store go back to any store.
+  const items = { ...s.items }
+  for (const i of Object.values(s.items)) if (i.where.includes(storeId)) items[i.id] = { ...i, where: i.where.filter((x) => x !== storeId), editedAt: now() }
+  return { ...s, items, stores, storeId: s.storeId === storeId ? stores[0].id : s.storeId, aisle: s.storeId === storeId ? 0 : s.aisle }
 }
 
 /**

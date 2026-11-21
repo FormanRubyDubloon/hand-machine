@@ -10,8 +10,9 @@ import { Button, Press } from "./kit"
 import { font, radius, useColours } from "./theme"
 
 /** The clashing field's value, said plainly. */
-function valueOf(item: Item, field: string) {
+function valueOf(item: Item, field: string, storeName: (id: string) => string) {
   switch (field) {
+    case "where": return item.where.length ? item.where.map(storeName).join(", ") : "Any store"
     case "inStock": case "open": return phrase(item)
     case "target": return item.target > 0 ? `Minimum ${item.target}` : "Not a Staple"
     case "entries": return `${(item.entries ?? []).reduce((n, e) => n + e.qty, 0)} on the list`
@@ -31,6 +32,7 @@ export function ConflictDialog() {
   const mine = conflict ? state.items[conflict.itemId] : undefined
   if (!conflict || !mine) return null
   const field = conflict.fields[0]
+  const storeName = (id: string) => state.stores.find((x) => x.id === id)?.name ?? "A deleted store"
   const what = conflict.fields.map((f) => FIELD_LABELS[f] ?? f).join(" and ")
   const option = (title: string, value: string, onPress: () => void) => (
     <Press onPress={onPress} accessibilityLabel={`${title}: ${value}`} style={{ borderWidth: 1, borderColor: c.olive, borderRadius: radius.base, padding: 14, gap: 2 }}>
@@ -44,8 +46,8 @@ export function ConflictDialog() {
         <View accessibilityRole="alert" style={{ backgroundColor: c.bg, borderRadius: radius.dialog, padding: 20, gap: 12 }}>
           <Text accessibilityRole="header" style={{ fontFamily: font.semibold, fontSize: 20, lineHeight: 26, color: c.ink }}>{mine.name} changed in two places</Text>
           <Text style={{ fontFamily: font.regular, fontSize: 16, lineHeight: 22, color: c.ink }}>The rest of your sync went through. Its {what} changed here and elsewhere. Which should {mine.name} keep?</Text>
-          {option("This phone", valueOf(mine, field), () => resolveConflict(conflict.itemId, "phone"))}
-          {option(`Elsewhere${conflict.remoteAt ? `, ${whenText(conflict.remoteAt)}` : ""}`, valueOf(conflict.remote, field), () => resolveConflict(conflict.itemId, "other"))}
+          {option("This phone", valueOf(mine, field, storeName), () => resolveConflict(conflict.itemId, "phone"))}
+          {option(`Elsewhere${conflict.remoteAt ? `, ${whenText(conflict.remoteAt)}` : ""}`, valueOf(conflict.remote, field, storeName), () => resolveConflict(conflict.itemId, "other"))}
           <Button kind="quiet" label="Decide later (keeps this phone's for now)" onPress={() => setLater((l) => [...l, conflict.itemId])} />
         </View>
       </View>

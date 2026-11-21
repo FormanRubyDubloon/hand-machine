@@ -92,3 +92,22 @@ describe("unit plurals read from Supabase", () => {
     expect(unitPair("tube")).toEqual(["tube", "tubes"])
   })
 })
+
+describe("the item's chosen store", () => {
+  it("goes to Supabase and back", () => {
+    const row = toRow(flour({ where: ["sainsburys"] }), new Set(["baking"]))
+    expect(row.store_ids).toEqual(["sainsburys"])
+    expect(toItem({ ...row, unit: "bag", list_entries: null } as unknown as Row).where).toEqual(["sainsburys"])
+  })
+
+  it("reads an old row with no store_ids as any store", () => {
+    const row = toRow(flour(), new Set(["baking"])) as Record<string, unknown>
+    delete row.store_ids
+    expect(toItem({ ...row, unit: "bag", list_entries: null } as unknown as Row).where).toEqual([])
+  })
+
+  it("counts as a change to sync", async () => {
+    const { fingerprint } = await import("../../shared/src/pantry-remote")
+    expect(fingerprint(flour({ where: ["sainsburys"] }))).not.toBe(fingerprint(flour()))
+  })
+})

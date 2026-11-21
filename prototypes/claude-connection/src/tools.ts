@@ -1258,6 +1258,9 @@ export const tools: Tool[] = [
       const x = findStore(ctx.data, args.store)!
       needConfirmed(args, `deleting ${x.name}`)
       await commitStores(ctx, { remove: [x.id], title: `Deleted the store ${x.name}`, detail: aisleText(x, ctx.data.categories) })
+      // Items bought at this store go back to any store.
+      const moved = Object.values(ctx.data.items).filter((i) => i.where.includes(x.id)).map((i) => ({ ...i, where: i.where.filter((s) => s !== x.id) }))
+      if (moved.length) await commit(ctx, { items: moved, title: `${moved.length === 1 ? moved[0].name : `${moved.length} items`} no longer tied to ${x.name}`, itemIds: moved.map((i) => i.id) })
       return `Deleted ${x.name}. It had: ${aisleText(x, ctx.data.categories)}. It can't be undone from History; add_store would recreate it.`
     },
   },

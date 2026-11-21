@@ -30,8 +30,9 @@ export function sortKeys(v: unknown): unknown {
  */
 export function fingerprint(i: SharedItem | undefined): string {
   if (!i) return ""
-  const { editedAt: _e, addedAt: _a, where: _w, ...rest } = i
-  return JSON.stringify(sortKeys(rest))
+  // The chosen store (where) syncs since 21 Nov 2026 (store_ids), so it counts as a change.
+  const { editedAt: _e, addedAt: _a, ...rest } = i
+  return JSON.stringify(sortKeys({ ...rest, where: [...(i.where ?? [])].sort() }))
 }
 
 export { toRow }

@@ -42,7 +42,7 @@ export async function runSync(s: PhoneState): Promise<SyncOutcome> {
   const merge = mergeItems(s.items, base?.items ?? null, fetched.items)
   const back = await writeRemote(merge.push, merge.remove, fetched.categories)
   const items: Items = { ...merge.items }
-  for (const [id, item] of Object.entries(back)) items[id] = { ...item, where: items[id]?.where ?? [] }
+  for (const [id, item] of Object.entries(back)) items[id] = item
   const syncedItems: Items = { ...items }
   for (const c of merge.conflicts) {
     if (base?.items[c.itemId]) syncedItems[c.itemId] = base.items[c.itemId]

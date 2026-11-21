@@ -36,7 +36,7 @@ export type SharedItem = {
   notes?: string
   /** Shop or aisle. */
   categoryId: string
-  /** Store ids that sell it. Empty means any store with the aisle. */
+  /** Store ids to buy it at (Supabase store_ids). Empty means any store with the aisle. */
   where: string[]
   entries?: ListEntry[]
   /** On the list and already ordered, so not to buy in a shop. Clears once it's no longer needed. */
