@@ -121,7 +121,7 @@ function StoresAndAisles({ initialStore }: { initialStore?: string }) {
             >
               <span className="flex flex-col">
                 <span className="text-sm font-semibold">{s.name}</span>
-                <span className={cn("text-xs", on ? "text-primary-foreground/70" : "text-muted-foreground")}>{[s.kind || s.place, s.id === db.defaultStoreId ? "default" : null].filter(Boolean).join(" · ")}</span>
+                <span className={cn("text-xs", on ? "text-primary-foreground/70" : "text-muted-foreground")}>{[s.place, s.id === db.defaultStoreId ? "default" : null].filter(Boolean).join(" · ")}</span>
               </span>
               <span className={cn("shrink-0 text-xs", on ? "text-primary-foreground/70" : "text-muted-foreground")}>{n > 1 ? plural(n, "aisle") : "No aisles"}</span>
             </button>
