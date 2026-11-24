@@ -41,7 +41,8 @@ export default function Home() {
       refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void pullToSync()} tintColor={c.muted} />}
     >
       <View style={{ alignItems: "center" }}>
-        <SignInEmblem width={170} />
+        {/* One colour, in the theme's olive (#7A6840 in light mode), with the jar cut out in the page colour (Isaac's change). */}
+        <SignInEmblem width={170} mono={{ ink: c.olive, cutout: c.bg }} />
       </View>
 
       <View style={{ flexDirection: "row", gap: 10 }}>
