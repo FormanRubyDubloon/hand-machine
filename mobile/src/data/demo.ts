@@ -90,7 +90,7 @@ const recipes: Recipe[] = [
     method: ["Rinse the rice and simmer it for 25 minutes, then drain.", "Season the salmon and roast it at 200°C for 12 minutes.", "Wilt the spinach in a hot pan with a splash of water.", "Serve the salmon on the rice and greens, with lemon squeezed over."] },
   { id: "porridge", name: "Berry porridge", serves: 1, minutes: 10, wantToCook: false, tags: ["Breakfast"], ingredients: [
     ing("50 g oats", "oats", 1, { partial: true, uses: 50 }), ing("250 ml whole milk", "milk", 1, { partial: true, uses: 250 }), ing("80 g frozen berries", "berries", 1, { partial: true, uses: 80 })],
-    method: ["Put the oats and milk in a small pan.", "Simmer for 5 minutes, stirring, until thick.", "Stir in the berries and let them warm through."] },
+    method: ["Put the oats and milk in a small pan.", "Simmer for 5 minutes, stirring, until thick.", "Stir in the berries and let them warm through for 20 seconds."] },
   { id: "keema", name: "Beef keema with sweet potato, carrot & spinach", serves: 4, minutes: 45, wantToCook: false, tags: ["Indian", "dinner"], ingredients: [
     ing("500 g minced beef", "mince", 1), ing("2 sweet potatoes", "sweetpot", 2), ing("2 carrots", "carrots", 2), ing("1 bag spinach", "spinach"),
     ing("1 onion", "onions"), ing("2 tsp garam masala", "garam", 1, { partial: true }), ing("1 × 400 g tin chopped tomatoes", "tomatoes")],

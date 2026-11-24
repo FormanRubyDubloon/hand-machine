@@ -11,6 +11,7 @@ import { useStore } from "../../../data/store"
 import { addAllMissing, addIngredient, setIngredientQty, toggleWant } from "../../../logic/actions"
 import { phrase, plural } from "../../../logic/phrases"
 import { BackLink, Button, Caption, Display, IconButton, Label, Stepper } from "../../../ui/kit"
+import { StepTimers, TimerStrip } from "../../../ui/timers"
 import { font, space, useColours } from "../../../ui/theme"
 
 /** How many of this item the recipe has put on the list. */
@@ -136,10 +137,15 @@ export default function RecipePage() {
 
         <View style={{ gap: 12 }}>
           <Label>Method</Label>
+          {/* Timers running for other recipes (Batch 6); this recipe's show on their own steps. */}
+          <TimerStrip except={(t) => t.recipeId === recipe.id} />
           {recipe.method.length ? recipe.method.map((step, k) => (
             <View key={k} style={{ flexDirection: "row", gap: 12 }}>
               <Text style={{ width: 22, fontFamily: font.bold, fontSize: 17, lineHeight: 24, color: c.muted }}>{k + 1}</Text>
-              <Text style={{ flex: 1, fontFamily: font.regular, fontSize: 17, lineHeight: 24, color: c.ink }}>{step}</Text>
+              <View style={{ flex: 1, gap: 8 }}>
+                <Text style={{ fontFamily: font.regular, fontSize: 17, lineHeight: 24, color: c.ink }}>{step}</Text>
+                <StepTimers recipe={recipe} step={k} text={step} />
+              </View>
             </View>
           )) : <Caption>No method saved for this recipe.</Caption>}
         </View>

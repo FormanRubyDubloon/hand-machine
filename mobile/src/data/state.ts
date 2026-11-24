@@ -5,6 +5,7 @@
 // Claude connection all read and write the same items, recipes, categories and stores.
 import type { Category, HistoryEntry, Item, Items, ListEntry, Recipe, Store } from "../../../prototypes/pantry-app/src/model"
 import type { GroupBy, ListFilter } from "../logic/list"
+import type { Timer } from "../logic/timers"
 
 export type { Category, HistoryEntry, Item, Items, ListEntry, Recipe, Store }
 
@@ -67,6 +68,8 @@ export type PhoneState = {
   noAislePrompt?: boolean
   /** What you've searched for, newest first (Batch 5). Kept on this phone, not synced. */
   recentSearches?: string[]
+  /** Recipe timers running or finished and not yet dismissed (Batch 6). Kept on this phone, not synced. */
+  timers?: Timer[]
   shop: Shop | null
   /** The list filters. Kept through a shop; cleared when a new list starts. */
   filter?: ListFilter
