@@ -60,6 +60,8 @@ export type PhoneState = {
   shop: Shop | null
   /** The list filters. Kept through a shop; cleared when a new list starts. */
   filter?: ListFilter
+  /** The pantry's "In stock only" switch turned off: show everything. Kept on this phone, not synced. */
+  pantryAll?: boolean
   theme: Theme
   syncedAt?: string
 }

@@ -170,6 +170,17 @@ export function addNew(s: PhoneState, name: string, categoryId: string, qty = 1)
   return { state: withShopRow({ ...s, items: { ...s.items, [id]: item } }, id), id }
 }
 
+/**
+ * The store an item is bought at, as Collca on the web's item panel sets it: one store, or none for any store
+ * (Batch 2, 24 Nov 2026). It syncs as `store_ids`.
+ */
+export function setStore(s: PhoneState, id: string, storeId: string | null): PhoneState {
+  const i = s.items[id]
+  const where = storeId ? [storeId] : []
+  if (!i || JSON.stringify(i.where) === JSON.stringify(where)) return s
+  return edit(s, id, (x) => ({ ...x, where }))
+}
+
 /** Starts a new list: ticked rows go, and things added here that were only ever one-offs are tidied away. */
 export function clearShop(s: PhoneState): PhoneState {
   const items = { ...s.items }
