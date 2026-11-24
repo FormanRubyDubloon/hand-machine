@@ -45,6 +45,8 @@ export type Row = {
   open_counts?: boolean
   use_within_weeks?: number | null
   store_ids?: string[]
+  aisles?: Record<string, number | string> | null
+  bought_at?: string | null
   one_off: boolean
   ordered?: boolean
   needs_review?: boolean
@@ -78,6 +80,8 @@ export function toItem(r: Row): SharedItem {
     notes: r.notes ?? undefined,
     categoryId: r.category_id ?? "",
     where: r.store_ids ?? [],
+    aisleAt: r.aisles && Object.keys(r.aisles).length ? r.aisles : undefined,
+    boughtAt: r.bought_at ?? undefined,
     location: r.location ?? undefined,
     otherNames: r.other_names.length ? r.other_names : undefined,
     open: r.open ?? undefined,
@@ -179,6 +183,8 @@ export function toRow(i: SharedItem, knownCategories: Set<string>) {
     open_counts: !!i.openCounts,
     use_within_weeks: i.useWithinWeeks ?? null,
     store_ids: i.where ?? [],
+    aisles: i.aisleAt ?? {},
+    bought_at: i.boughtAt ?? null,
     opened_at: (i.openedAt ?? []).filter((d): d is string => !!d),
     one_off: !!i.oneOff,
     ordered: !!i.ordered,
@@ -261,5 +267,8 @@ export function recipeRows(recipes: SharedRecipe[], before: Record<string, Recip
 }
 
 /** A store row's "no aisle numbers" setting, as the apps keep it: left out when off, ticks kept either way. */
-export const storeExtras = (r: { no_aisle_numbers?: boolean | null; sells?: string[] | null }) =>
-  r.no_aisle_numbers ? { noAisleNumbers: true, sells: r.sells ?? [] } : r.sells?.length ? { sells: r.sells } : {}
+export const storeExtras = (r: { no_aisle_numbers?: boolean | null; sells?: string[] | null; places?: string[] | null; aisle_count?: number | null }) => ({
+  ...(r.no_aisle_numbers ? { noAisleNumbers: true, sells: r.sells ?? [] } : r.sells?.length ? { sells: r.sells } : {}),
+  ...(r.places?.length ? { places: r.places } : {}),
+  ...(r.aisle_count ? { aisleCount: r.aisle_count } : {}),
+})

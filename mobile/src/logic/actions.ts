@@ -1,8 +1,8 @@
 // Every change the phone can make, as a pure function from one state to the next. The store (src/data/store.tsx)
 // runs them, saves the result, writes a History entry and syncs. Rules from intent.md and the PROTO-1 handoff.
 import {
-  cap, guessPlace, ingredientName, isBulk, isListedItem, isStaple, needOf, normalise, openUnit, recipeInfo, withStock,
-  type Category, type Item, type Items, type Location, type Recipe, type Store,
+  cap, DEFAULT_AISLES, guessPlace, ingredientName, withAisle, isBulk, isListedItem, isStaple, needOf, normalise, openUnit, recipeInfo, withStock,
+  type AisleValue, type Category, type Item, type Items, type Location, type Recipe, type Store,
 } from "../../../prototypes/pantry-app/src/model"
 import type { PhoneState, Shop } from "../data/state"
 import { bought, refreshShop, unbought } from "./list"
@@ -66,7 +66,7 @@ export function untick(s: PhoneState, id: string): PhoneState {
   const row = s.shop?.rows[id]
   const item = s.items[id]
   if (!s.shop || !row || !item || row.got === 0) return s
-  return { ...s, shop: { ...s.shop, rows: { ...s.shop.rows, [id]: { ...row, got: 0 } } }, items: { ...s.items, [id]: unbought(item, row.got, row.entries, row.review) } }
+  return { ...s, shop: { ...s.shop, rows: { ...s.shop.rows, [id]: { ...row, got: 0 } } }, items: { ...s.items, [id]: unbought(item, row.got, row.entries, row.review, row.boughtAt) } }
 }
 
 /** Puts the ticks back as they were before a "got all" (the toast's Undo). */
@@ -75,7 +75,7 @@ export function restoreTicks(s: PhoneState, id: string, got: number): PhoneState
   const item = s.items[id]
   if (!s.shop || !row || !item || got >= row.got) return s
   const back = row.got - got
-  const restored = got === 0 ? unbought(item, back, row.entries, row.review) : normalise({ ...item, inStock: Math.max(0, item.inStock - back), useBy: (item.useBy ?? []).slice(0, Math.max(0, (item.useBy ?? []).length - back)), editedAt: now() })
+  const restored = got === 0 ? unbought(item, back, row.entries, row.review, row.boughtAt) : normalise({ ...item, inStock: Math.max(0, item.inStock - back), useBy: (item.useBy ?? []).slice(0, Math.max(0, (item.useBy ?? []).length - back)), editedAt: now() })
   return { ...s, shop: { ...s.shop, rows: { ...s.shop.rows, [id]: { ...row, got } } }, items: { ...s.items, [id]: restored } }
 }
 
@@ -158,12 +158,15 @@ export function gotNow(s: PhoneState, id: string, qty: number): PhoneState {
 
 /**
  * Something that isn't in the pantry. It becomes a pantry item now (minimum 0, none in stock, marked New), so
- * Collca on the web and Claude see it, and it's in stock once you tick it off. Its location is a guess from its aisle.
+ * Collca on the web and Claude see it, and it's in stock once you tick it off. Its location is a guess. Added
+ * from an aisle, it's in that aisle in the store you're in; added from a tag, it has that tag.
  */
-export function addNew(s: PhoneState, name: string, categoryId: string, qty = 1): { state: PhoneState; id: string } {
+export function addNew(s: PhoneState, name: string, categoryId: string, qty = 1, aisle: AisleValue | null = null): { state: PhoneState; id: string } {
   const id = slugId(name, (x) => !!s.items[x])
+  const store = s.stores.find((x) => x.id === s.storeId)
   const item = normalise({
     id, name: cap(name.trim()), type: "counted", target: 0, inStock: 0, categoryId, where: [],
+    aisleAt: aisle !== null && store && !store.noAisleNumbers ? { [store.id]: aisle } : undefined,
     location: locationFor(categoryId, s.categories, s.items), review: true, editedAt: now(),
     entries: [{ source: { kind: "hand" }, qty: Math.max(1, qty), at: now() }],
   })
@@ -334,9 +337,54 @@ export function renameStore(s: PhoneState, storeId: string, name: string): Phone
   return { ...s, stores: s.stores.map((x) => (x.id === storeId ? { ...x, name: name.trim() } : x)) }
 }
 
-/** Sets a category's aisle number in one store. 0 or less means no number. */
-export function setAisleNumber(s: PhoneState, storeId: string, categoryId: string, n: number | null): PhoneState {
-  return { ...s, stores: s.stores.map((x) => (x.id === storeId ? { ...x, aisles: { ...x.aisles, [categoryId]: n && n > 0 ? n : null } } : x)) }
+/**
+ * Sets an item's aisle in one store (Batch 4, 24 Nov 2026): a number, a named place, or null to clear it. A place
+ * the store doesn't have yet is added to its places, after the others.
+ */
+export function setItemAisle(s: PhoneState, id: string, storeId: string, a: AisleValue | null): PhoneState {
+  const i = s.items[id]
+  if (!i) return s
+  const value = typeof a === "string" ? a.trim() || null : a !== null && a > 0 ? Math.round(a) : null
+  if ((i.aisleAt?.[storeId] ?? null) === value) return s
+  const next = edit(s, id, (x) => withAisle(x, storeId, value))
+  return typeof value === "string" ? addPlace(next, storeId, value) : next
+}
+
+/** Sets how many numbered aisles a store has (the aisle question's tiles). 20, the default, is stored as unset. */
+export function setAisleCount(s: PhoneState, storeId: string, n: number): PhoneState {
+  const count = Math.max(1, Math.min(200, Math.round(n)))
+  const value = count === DEFAULT_AISLES ? undefined : count
+  if ((s.stores.find((x) => x.id === storeId)?.aisleCount ?? undefined) === value) return s
+  return { ...s, stores: s.stores.map((x) => (x.id === storeId ? { ...x, aisleCount: value } : x)) }
+}
+
+/** Adds a named place (Freezer, Tills…) to a store, after the others. Nothing changes if it already has it. */
+export function addPlace(s: PhoneState, storeId: string, name: string): PhoneState {
+  const clean = cap(name.trim())
+  const store = s.stores.find((x) => x.id === storeId)
+  if (!clean || !store || (store.places ?? []).some((p) => p.toLowerCase() === clean.toLowerCase())) return s
+  return { ...s, stores: s.stores.map((x) => (x.id === storeId ? { ...x, places: [...(x.places ?? []), clean] } : x)) }
+}
+
+/** Removes a named place from a store. Items in it go back to No aisle there. */
+export function removePlace(s: PhoneState, storeId: string, name: string): PhoneState {
+  const same = (a: unknown) => typeof a === "string" && a.toLowerCase() === name.toLowerCase()
+  const items = { ...s.items }
+  for (const i of Object.values(s.items)) if (same(i.aisleAt?.[storeId])) items[i.id] = { ...withAisle(i, storeId, null), editedAt: now() }
+  return { ...s, items, stores: s.stores.map((x) => (x.id === storeId ? { ...x, places: (x.places ?? []).filter((p) => !same(p)) } : x)) }
+}
+
+/**
+ * Adds a tag (what the code calls a category). Only a new tag: giving items tags stays in Collca on the web
+ * (Isaac's decision, 24 Nov 2026). Returns null when a tag already has that name.
+ */
+export function addTag(s: PhoneState, name: string): { state: PhoneState; id: string } | null {
+  const clean = name.trim()
+  if (!clean || s.categories.some((c) => c.name.toLowerCase() === clean.toLowerCase())) return null
+  const id = slugId(clean, (x) => s.categories.some((c) => c.id === x))
+  // Stores still keep a (retired) number per category, so the old web app sees the new tag too.
+  const stores = s.stores.map((x) => ({ ...x, aisles: { ...x.aisles, [id]: null } }))
+  return { state: { ...s, categories: [...s.categories, { id, name: clean }], stores }, id }
 }
 
 export function addStore(s: PhoneState, name: string): { state: PhoneState; id: string } | null {
@@ -347,30 +395,14 @@ export function addStore(s: PhoneState, name: string): { state: PhoneState; id: 
   return { state: { ...s, stores: [...s.stores, store] }, id }
 }
 
-/** Removes a store and its aisle numbers. The last store can't go. */
+/** Removes a store. The last store can't go. Items lose their store and their aisle there. */
 export function removeStore(s: PhoneState, storeId: string): PhoneState {
   if (s.stores.length <= 1) return s
   const stores = s.stores.filter((x) => x.id !== storeId)
   // Items bought at this store go back to any store.
   const items = { ...s.items }
-  for (const i of Object.values(s.items)) if (i.where.includes(storeId)) items[i.id] = { ...i, where: i.where.filter((x) => x !== storeId), editedAt: now() }
+  for (const i of Object.values(s.items)) {
+    if (i.where.includes(storeId) || i.aisleAt?.[storeId] !== undefined) items[i.id] = { ...withAisle(i, storeId, null), where: i.where.filter((x) => x !== storeId), editedAt: now() }
+  }
   return { ...s, items, stores, storeId: s.storeId === storeId ? stores[0].id : s.storeId, aisle: s.storeId === storeId ? 0 : s.aisle }
-}
-
-/**
- * Adds an aisle (a category). It appears in every store with no number, except the store it was added from,
- * where it gets `number`. Returns null when a category already has that name.
- */
-export function addAisle(s: PhoneState, storeId: string, name: string, number: number | null): { state: PhoneState; id: string } | null {
-  const clean = name.trim()
-  if (!clean || s.categories.some((c) => c.name.toLowerCase() === clean.toLowerCase())) return null
-  const id = slugId(clean, (x) => s.categories.some((c) => c.id === x))
-  const categories = [...s.categories, { id, name: clean }]
-  // A store with no aisle numbers ticks the new aisle as sold there instead of numbering it.
-  const stores = s.stores.map((x) => ({
-    ...x,
-    aisles: { ...x.aisles, [id]: x.id === storeId && number && !x.noAisleNumbers ? number : null },
-    ...(x.id === storeId && x.noAisleNumbers ? { sells: [...(x.sells ?? []), id] } : {}),
-  }))
-  return { state: { ...s, categories, stores }, id }
 }

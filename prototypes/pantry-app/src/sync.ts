@@ -184,11 +184,11 @@ export async function syncCategories(local: Category[], base: Category[] | undef
 
 // ---------- stores ----------
 
-/** What counts as a change to a store: its name, kind, place and aisle numbers (no number = no entry). */
+/** What counts as a change to a store: its name, kind, place, aisle numbers (no number = no entry), named places and number of aisles. */
 export function storeFingerprint(x: Store | undefined): string {
   if (!x) return ""
   const aisles = Object.entries(x.aisles).filter(([, n]) => n != null).sort(([a], [b]) => a.localeCompare(b))
-  return JSON.stringify([x.name, x.kind ?? "", x.place ?? "", aisles, !!x.noAisleNumbers, [...(x.sells ?? [])].sort()])
+  return JSON.stringify([x.name, x.kind ?? "", x.place ?? "", aisles, !!x.noAisleNumbers, [...(x.sells ?? [])].sort(), x.places ?? [], x.aisleCount ?? null])
 }
 
 /** The stores that differ from the last sync. */

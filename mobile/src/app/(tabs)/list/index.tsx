@@ -1,18 +1,23 @@
-// LIST: one aisle at a time, in the order you walk the store you're in (PROTO-1 handoff, "List").
-// Tap the count to get one; hold it to get them all; tap the name for the item sheet. Swipe sideways, or tap the
-// heading for the aisle menu, to change aisle (there are no previous and next links). "Add item" sits under each
-// aisle's rows; the button by the heading opens the list filters. Ticking adds to stock straight away and syncs by itself.
+// LIST: one aisle at a time, in the order you walk the store you're in (PROTO-1 handoff, "List"), or one tag at a
+// time (Batch 4, 24 Nov 2026). Tap the count to get one; hold it to get them all; tap the name for the item sheet.
+// Swipe sideways, or tap the heading for the Aisles and Tags menu, to move on. "Add item" sits under each heading's
+// rows; the button by the heading opens the list filters. Ticking adds to stock straight away and syncs by itself.
+// Ticking something with no aisle in this store asks which aisle it was in (the aisle sheet, /aisle).
 import * as Haptics from "expo-haptics"
-import { router } from "expo-router"
+import { router, useFocusEffect } from "expo-router"
 import { Check, ChevronDown, ChevronRight, Plus, SlidersHorizontal } from "lucide-react-native"
 import * as React from "react"
 import { Animated, PanResponder, Platform, RefreshControl, ScrollView, Text, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import type { PhoneState } from "../../../data/state"
 import { TOAST_UNDO_MS, useStore } from "../../../data/store"
 import { restoreTicks, tickAll, tickOne, untick, clearShop } from "../../../logic/actions"
-import { aisleLabel, filtersOn, leftOf, refreshShop, rowsOf, shopAisles, shownRows, sortRows, tickedText, type AisleView, type Row } from "../../../logic/list"
-import { Body, Button, Caption, Display, IconButton, Label, Press } from "../../../ui/kit"
+import { asksForAisle, filtersOn, leftOf, refreshShop, rowsOf, shopGroups, shownRows, sortRows, tickedText, type Row } from "../../../logic/list"
+import { Body, Button, Caption, Display, IconButton, Press } from "../../../ui/kit"
 import { focus, font, radius, space, useColours, useReduceMotion } from "../../../ui/theme"
+
+/** Bought more than one: how long after the last tap the aisle question waits. */
+const ASK_AFTER_MS = 1500
 
 export default function ListScreen() {
   const { state, change, local, say, status, online, pulling, pullToSync } = useStore()
@@ -26,7 +31,7 @@ export default function ListScreen() {
   }, [state.shop, state.items, local])
 
   const store = state.stores.find((s) => s.id === state.storeId) ?? state.stores[0]
-  const aisles = shopAisles(state)
+  const aisles = shopGroups(state)
   const all = state.aisle === "all"
   const at = all ? 0 : Math.min(Math.max(0, state.aisle as number), Math.max(0, aisles.length - 1))
   const aisle = aisles[at]
@@ -43,6 +48,19 @@ export default function ListScreen() {
 
   const go = React.useCallback((i: number | "all") => local((s) => ({ ...s, aisle: i })), [local])
 
+  // Setting an item's aisle moves it to another heading, which can shift the headings along. Stay on the one you
+  // were looking at.
+  // Only when the headings change under you: moving yourself (swipe, menu, Done here) just remembers the new one.
+  const last = React.useRef<{ aisle: PhoneState["aisle"]; key?: string }>({ aisle: state.aisle })
+  React.useEffect(() => {
+    const was = last.current
+    if (!all && was.aisle === state.aisle && was.key && aisles[at]?.key !== was.key) {
+      const j = aisles.findIndex((g) => g.key === was.key)
+      if (j >= 0 && j !== at) return go(j)
+    }
+    last.current = { aisle: state.aisle, key: all ? undefined : aisles[at]?.key }
+  })
+
   // ----- ticking -----
   // Every tick shows a toast with Undo. Taps in a row on one item while its toast is up share the toast, and
   // Undo puts back all of them (the same run is one History entry too).
@@ -57,8 +75,27 @@ export default function ListScreen() {
       change((s) => restoreTicks(s, r.id, before), { title, key: `shop:${r.id}` })
     })
   }
+  // Asking for the aisle (Batch 4). Bought more than one: it waits until you've stopped tapping. Skipped, it
+  // doesn't ask again for that item until the next time the list opens.
+  const asked = React.useRef(new Set<string>())
+  const waiting = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cancelAsk = React.useCallback(() => {
+    if (waiting.current) clearTimeout(waiting.current)
+    waiting.current = null
+  }, [])
+  useFocusEffect(React.useCallback(() => cancelAsk, [cancelAsk]))
+  const askAisle = (r: Row, wait: boolean) => {
+    cancelAsk()
+    if (asked.current.has(r.id) || !asksForAisle(state, r.item)) return
+    waiting.current = setTimeout(() => {
+      waiting.current = null
+      asked.current.add(r.id)
+      router.push({ pathname: "/aisle", params: { id: r.id, from: "tick" } })
+    }, wait ? ASK_AFTER_MS : 350)
+  }
   const tick = (r: Row) => {
     if (r.done) {
+      cancelAsk()
       run.current = null
       change((s) => untick(s, r.id), { title: `Took ${r.item.name.toLowerCase()} off what you got`, key: `shop:${r.id}` })
       return
@@ -66,16 +103,18 @@ export default function ListScreen() {
     void Haptics.selectionAsync().catch(() => {})
     change((s) => tickOne(s, r.id), { title: `Got ${r.item.name.toLowerCase()} on the phone`, key: `shop:${r.id}` })
     ticked(r, r.got + 1)
+    askAisle(r, r.need > 1 && r.got + 1 < r.need)
   }
   const tickRest = (r: Row) => {
     if (r.done) return
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
     change((s) => tickAll(s, r.id), { title: `Got ${r.item.name.toLowerCase()} on the phone`, key: `shop:${r.id}` })
     ticked(r, r.need)
+    askAisle(r, false)
   }
 
   // ----- the heading -----
-  const names = all ? ["All items"] : empty || noMatch ? ["Shopping list"] : (aisle?.categories.map((k) => k.name) ?? [])
+  const title = all ? "All items" : empty || noMatch ? "Shopping list" : (aisle?.title ?? "")
   const meta = empty
     ? "All done"
     : noMatch
@@ -85,8 +124,6 @@ export default function ListScreen() {
       : aisle
         ? `${aisle.left ? `${aisle.left} of ${aisle.total} left` : `all ${aisle.total} in your basket`}`
         : ""
-  // The aisle number leads the line, bold and in ink, so it can be found at a glance in the shop.
-  const aisleName = !empty && !noMatch && !all && aisle ? aisleLabel(aisle) : null
 
   // ----- moving between aisles -----
   const count = aisles.length
@@ -105,8 +142,12 @@ export default function ListScreen() {
 
   const nextWithItems = !all && aisle && aisle.left === 0 ? aisles.findIndex((a, k) => k > at && a.left > 0) : -1
   const offline = !online || status === "offline"
-  // Adding from an aisle with one category puts a new item in that category.
-  const addTo = !all && aisle?.categories.length === 1 && aisle.categories[0].id ? aisle.categories[0].id : undefined
+  // Adding from an aisle puts a new item in it (in this store); adding from a tag gives it that tag.
+  const addParams = all || !aisle ? undefined
+    : aisle.tag ? { category: aisle.tag }
+    : aisle.aisle !== undefined && aisle.aisle !== null ? { aisle: String(aisle.aisle) }
+    : undefined
+  const byTag = state.groupBy === "tag"
 
   return (
     <View style={{ flex: 1 }}>
@@ -117,16 +158,14 @@ export default function ListScreen() {
         </Press>
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
           <View style={{ flex: 1, gap: 6 }}>
-            <Press fade disabled={empty || noMatch} onPress={() => router.push("/aisles")} accessibilityLabel={`${names.join(" and ")}. All aisles`} style={{ alignSelf: "flex-start", opacity: 1 }}>
-              {names.map((n) => (
-                // An underline 2 pt thick, 6 pt below the name, as in the prototype (text underlines can't be offset).
-                <View key={n} style={{ alignSelf: "flex-start", borderBottomWidth: empty || noMatch ? 0 : 2, borderBottomColor: c.olive, paddingBottom: 2, marginBottom: 4 }}>
-                  <Display size={names.length > 1 ? 26 : 32}>{n}</Display>
-                </View>
-              ))}
+            <Press fade disabled={empty || noMatch} onPress={() => router.push("/aisles")} accessibilityLabel={`${title}. ${byTag ? "All tags" : "All aisles"}`} style={{ alignSelf: "flex-start", opacity: 1 }}>
+              {/* An underline 2 pt thick, 6 pt below the name, as in the prototype (text underlines can't be offset). */}
+              <View style={{ alignSelf: "flex-start", borderBottomWidth: empty || noMatch ? 0 : 2, borderBottomColor: c.olive, paddingBottom: 2, marginBottom: 4 }}>
+                <Display size={32}>{title}</Display>
+              </View>
             </Press>
             <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center" }}>
-              <Caption style={{ fontSize: 15 }}>{aisleName && <><Text style={{ fontFamily: font.bold, color: c.ink }}>{aisleName}</Text> · </>}{meta}</Caption>
+              <Caption style={{ fontSize: 15 }}>{meta}</Caption>
               {/* What's skipped this shop, beside what's left; it opens the Skipped sheet (Isaac's change, 24 Nov 2026). */}
               {skipped.length > 0 && (
                 <Press fade onPress={() => router.push("/skipped")} hitSlop={12} accessibilityRole="button" accessibilityLabel={`${skipped.length} skipped this shop. Show them`}>
@@ -180,24 +219,24 @@ export default function ListScreen() {
           {noMatch ? null : all ? (
             sortRows(rows).map((r) => <ListRow key={r.id} r={r} onTick={tick} onHold={tickRest} />)
           ) : aisle ? (
-            <AisleRows aisle={aisle} onTick={tick} onHold={tickRest} />
+            aisle.rows.map((r) => <ListRow key={r.id} r={r} onTick={tick} onHold={tickRest} />)
           ) : null}
           <Button
             kind="secondary"
             label="Add item"
             icon={<Plus size={20} color={c.ink} strokeWidth={2} />}
-            accessibilityLabel={addTo && aisle ? `Add an item to ${aisle.categories[0].name}` : "Add an item to the list"}
-            onPress={() => router.push(addTo ? { pathname: "/add", params: { category: addTo } } : "/add")}
+            accessibilityLabel={addParams && aisle ? `Add an item to ${aisle.title}` : "Add an item to the list"}
+            onPress={() => router.push(addParams ? { pathname: "/add", params: addParams } : "/add")}
             style={{ marginTop: 16 }}
           />
         </Animated.View>
 
         {!empty && !noMatch && nextWithItems >= 0 && (
           <View style={{ marginTop: 20 }}>
-            <Press onPress={() => go(nextWithItems)} accessibilityLabel={`Done here. Next: ${aisleLabel(aisles[nextWithItems])}, ${aisles[nextWithItems].categories.map((k) => k.name).join(" and ")}`} style={{ minHeight: 64, borderRadius: radius.base, backgroundColor: c.olive, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Press onPress={() => go(nextWithItems)} accessibilityLabel={`Done here. Next: ${aisles[nextWithItems].title}, ${aisles[nextWithItems].left} left`} style={{ minHeight: 64, borderRadius: radius.base, backgroundColor: c.olive, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: font.semibold, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", color: c.onOlive }}>Done here · next {aisleLabel(aisles[nextWithItems])}</Text>
-                <Text style={{ fontFamily: font.medium, fontSize: 18, color: c.onOlive }}>{aisles[nextWithItems].categories.map((k) => k.name).join(" & ")}</Text>
+                <Text style={{ fontFamily: font.semibold, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", color: c.onOlive }}>Done here · next</Text>
+                <Text style={{ fontFamily: font.medium, fontSize: 18, color: c.onOlive }}>{aisles[nextWithItems].title} · {aisles[nextWithItems].left} left</Text>
               </View>
               <ChevronRight size={24} color={c.onOlive} />
             </Press>
@@ -228,31 +267,6 @@ function useSlide(key: number) {
     ]).start()
   }, [key, reduce, width, x, o])
   return { transform: [{ translateX: x }], opacity: o }
-}
-
-/** An aisle's rows. When two categories share the number, each gets a small heading with its own count. */
-function AisleRows({ aisle, onTick, onHold }: { aisle: AisleView; onTick: (r: Row) => void; onHold: (r: Row) => void }) {
-  const c = useColours()
-  const shared = aisle.categories.length > 1
-  if (!shared) return <>{aisle.rows.map((r) => <ListRow key={r.id} r={r} onTick={onTick} onHold={onHold} />)}</>
-  return (
-    <>
-      {aisle.categories.map((k) => {
-        const mine = aisle.rows.filter((r) => (k.id === "" ? !aisle.categories.some((x) => x.id && x.id === r.item.categoryId) : r.item.categoryId === k.id))
-        if (!mine.length) return null
-        const left = leftOf(mine)
-        return (
-          <View key={k.id || "other"} style={{ marginTop: 8 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: c.stone }}>
-              <Label>{k.name}</Label>
-              <Label>{left ? `${left} left` : "Done"}</Label>
-            </View>
-            {mine.map((r) => <ListRow key={r.id} r={r} onTick={onTick} onHold={onHold} />)}
-          </View>
-        )
-      })}
-    </>
-  )
 }
 
 function ListRow({ r, onTick, onHold }: { r: Row; onTick: (r: Row) => void; onHold: (r: Row) => void }) {

@@ -1,19 +1,22 @@
-// The aisle menu (full screen): All items first, then one row per aisle number, with what's left in each.
-// The current aisle's box is filled; finished aisles have a dashed box.
+// The Aisles and Tags menu (full screen; Batch 4, 24 Nov 2026). Two tabs choose how you shop: by aisle, in the order
+// you walk the store (No aisle first), or by tag (A to Z, No tag last). All items first, then one row per heading,
+// with what's left in each. The current one's box is filled; finished ones have a dashed box.
 import { router } from "expo-router"
 import { List, X } from "lucide-react-native"
 import * as React from "react"
 import { ScrollView, Text, View } from "react-native"
 import { useStore } from "../data/store"
-import { filterNames, filtersOn, leftOf, NO_FILTER, shopAisles, shownRows, type ListFilter } from "../logic/list"
-import { Chip, Press } from "../ui/kit"
+import { filterNames, filtersOn, leftOf, NO_FILTER, shopGroups, shownRows, type GroupBy, type ListFilter } from "../logic/list"
+import { Caption, Chip, Press, Segmented } from "../ui/kit"
 import { SheetHeader } from "../ui/sheet"
 import { font, radius, useColours } from "../ui/theme"
 
 export default function Aisles() {
   const { state, local } = useStore()
   const c = useColours()
-  const aisles = shopAisles(state)
+  const aisles = shopGroups(state)
+  const by: GroupBy = state.groupBy ?? "aisle"
+  const store = state.stores.find((x) => x.id === state.storeId) ?? state.stores[0]
   const all = state.aisle === "all"
   // With filters on, only aisles with a match are listed. Each filter shows as a chip, as in the Filters sheet;
   // tapping its X turns that one off.
@@ -39,8 +42,18 @@ export default function Aisles() {
   })
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <SheetHeader title="Aisles" full />
+      <SheetHeader title={by === "tag" ? "Tags" : "Aisles"} full />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+        <View style={{ paddingBottom: 12, gap: 8 }}>
+          <Segmented<GroupBy>
+            label="Shop by"
+            value={by}
+            onChange={(v) => local((s) => ({ ...s, groupBy: v === "aisle" ? undefined : v, aisle: s.aisle === "all" ? "all" : 0 }))}
+            options={[{ value: "aisle", label: "Aisles" }, { value: "tag", label: "Tags" }]}
+          />
+          {by === "aisle" && store?.noAisleNumbers && <Caption>{store.name} has no aisle numbers, so its list goes A to Z.</Caption>}
+          {by === "tag" && <Caption>Each tag's items follow the walk round the store. Something with two tags is under both.</Caption>}
+        </View>
         {filters.length > 0 && (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: c.line }}>
             {filters.map((x) => (
@@ -56,14 +69,15 @@ export default function Aisles() {
         {aisles.map((a, k) => {
           const on = !all && state.aisle === k
           const done = a.left === 0
-          const names = a.categories.map((x) => x.name)
+          // The box shows the aisle number, the first letter of a place or tag, or a dash for No aisle and No tag.
+          const mark = typeof a.aisle === "number" ? String(a.aisle) : a.aisle || a.tag ? a.title.slice(0, 1).toUpperCase() : "–"
           return (
-            <Press key={a.key} onPress={() => go(k)} accessibilityState={{ selected: on }} accessibilityLabel={`${a.number ? `Aisle ${a.number}` : "No aisle number"}: ${names.join(" and ")}. ${done ? "Done" : `${a.left} left`}`} style={{ minHeight: 68, flexDirection: "row", alignItems: "center", gap: 14, borderBottomWidth: 1, borderBottomColor: c.line, paddingVertical: 8 }}>
+            <Press key={a.key} onPress={() => go(k)} accessibilityState={{ selected: on }} accessibilityLabel={`${a.title}. ${done ? "Done" : `${a.left} left`}`} style={{ minHeight: 68, flexDirection: "row", alignItems: "center", gap: 14, borderBottomWidth: 1, borderBottomColor: c.line, paddingVertical: 8 }}>
               <View style={box(on, done && !on)}>
-                <Text style={{ fontFamily: font.bold, fontSize: 17, color: on ? c.onOlive : c.ink }}>{a.number ?? "–"}</Text>
+                <Text style={{ fontFamily: font.bold, fontSize: 17, color: on ? c.onOlive : c.ink }}>{mark}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                {names.map((n) => <Text key={n} style={{ fontFamily: font.medium, fontSize: 19, lineHeight: 24, color: done ? c.muted : c.ink }}>{n}</Text>)}
+                <Text style={{ fontFamily: font.medium, fontSize: 19, lineHeight: 24, color: done ? c.muted : c.ink }}>{a.title}</Text>
               </View>
               <Text style={{ fontFamily: font.regular, fontSize: 15, color: c.muted }}>{done ? "Done" : `${a.left} left`}</Text>
             </Press>

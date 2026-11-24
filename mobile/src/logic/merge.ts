@@ -134,6 +134,6 @@ export function mergeItems(localRaw: Items, baseRaw: Items | null, remoteRaw: It
 /** Labels for the fields a clash can be in, for the "changed in two places" question. */
 export const FIELD_LABELS: Record<string, string> = {
   inStock: "stock", open: "open packs", target: "minimum", entries: "shopping list", name: "name", notes: "notes",
-  categoryId: "aisle", location: "location", useBy: "use-by date", review: "New mark", ordered: "Ordered mark",
+  categoryId: "tag", aisleAt: "aisle", boughtAt: "bought date", location: "location", useBy: "use-by date", review: "New mark", ordered: "Ordered mark",
   price: "price", unit: "unit", type: "type", where: "store",
 }

@@ -454,6 +454,73 @@ export function aisleOrder(store: Store, categories: Category[]) {
 }
 export const numberedAisles = (store: Store) => (store.noAisleNumbers ? 0 : new Set(Object.values(store.aisles).filter((n) => n !== null)).size)
 
+// ---------- aisles on items (Batch 4, 24 Nov 2026) ----------
+// Aisles belong to stores and sit on each item: a number or a named place, blank until set. Tags don't set
+// them. A store walks No aisle first, then the numbers in order, then its named places in their own order.
+
+export type { AisleValue } from "../../shared/src/pantry"
+type Aisle = number | string
+
+/** An item's aisle in a store, or null when it has none there (or the store has no aisle numbers). */
+export const itemAisle = (i: Item, store: Store | undefined): Aisle | null =>
+  !store || store.noAisleNumbers ? null : (i.aisleAt?.[store.id] ?? null)
+
+/** "Aisle 4", "Freezer" or "No aisle". */
+export const aisleTitle = (a: Aisle | null) => (a === null ? "No aisle" : typeof a === "number" ? `Aisle ${a}` : a)
+
+/** Where an aisle comes in a store's walk: No aisle, the numbers, the store's places, then any other place A to Z. */
+export function aisleRank(store: Store | undefined, a: Aisle | null): [number, number, string] {
+  if (a === null) return [0, 0, ""]
+  if (typeof a === "number") return [1, a, ""]
+  const k = (store?.places ?? []).findIndex((p) => p.toLowerCase() === a.toLowerCase())
+  return k >= 0 ? [2, k, ""] : [3, 0, a.toLowerCase()]
+}
+export function compareAisles(store: Store | undefined, a: Aisle | null, b: Aisle | null) {
+  const [x1, x2, x3] = aisleRank(store, a)
+  const [y1, y2, y3] = aisleRank(store, b)
+  return x1 - y1 || x2 - y2 || x3.localeCompare(y3)
+}
+
+/** Sets (or, with null, clears) an item's aisle in one store. */
+export function withAisle(i: Item, storeId: string, a: Aisle | null): Item {
+  const aisleAt = { ...(i.aisleAt ?? {}) }
+  if (a === null || a === "") delete aisleAt[storeId]
+  else aisleAt[storeId] = typeof a === "string" ? a.trim() : a
+  return { ...i, aisleAt: Object.keys(aisleAt).length ? aisleAt : undefined }
+}
+
+/** The aisles a store has used so far, in walking order, each with its items (A to Z). For fixing mistakes. */
+export function storeAisles(store: Store, items: Item[]): { aisle: Aisle; items: Item[] }[] {
+  const groups = new Map<string, { aisle: Aisle; items: Item[] }>()
+  for (const i of items) {
+    const a = i.aisleAt?.[store.id]
+    if (a === undefined || a === null || a === "") continue
+    const key = typeof a === "number" ? `n${a}` : `p${a.toLowerCase()}`
+    const g = groups.get(key) ?? { aisle: a, items: [] }
+    g.items.push(i)
+    groups.set(key, g)
+  }
+  return [...groups.values()]
+    .sort((x, y) => compareAisles(store, x.aisle, y.aisle))
+    .map((g) => ({ ...g, items: g.items.sort((x, y) => x.name.localeCompare(y.name)) }))
+}
+
+/** The highest aisle number a store has used (0 when none). */
+export const highestAisle = (store: Store, items: Item[]) =>
+  Math.max(0, ...items.map((i) => i.aisleAt?.[store.id]).filter((a): a is number => typeof a === "number"))
+
+/** Number tiles when asking for an aisle unless the store says otherwise (Isaac's change, 24 Nov 2026). */
+export const DEFAULT_AISLES = 20
+
+/**
+ * How many number tiles to show for a store: its number of aisles when set in its settings, otherwise 20, or as far as
+ * the store has already gone if that's more. Anything higher is typed in.
+ */
+export const aisleTiles = (store: Store, items: Item[]) => store.aisleCount ?? Math.max(DEFAULT_AISLES, highestAisle(store, items))
+
+/** An item's tags. One today (its category); several once Collca on the web can set them (Batch 4b). */
+export const tagsOf = (i: Item): string[] => (i.categoryId ? [i.categoryId] : [])
+
 // ---------- recipes ----------
 
 /** have: enough. some: an open pack, maybe not enough. listed: on the list. short: neither. little: more than your packs hold. */

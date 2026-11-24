@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { demoState } from "../src/data/demo"
-import { addAllMissing, addAisle, cooked, setIngredientQty, toggleWant, usedOne, openOne } from "../src/logic/actions"
+import { addAllMissing, addTag, cooked, setIngredientQty, toggleWant, usedOne, openOne } from "../src/logic/actions"
 import { phrase, expiryText } from "../src/logic/phrases"
 import { day } from "../../prototypes/shared/src/pantry"
 import { RECIPE_SORTS } from "../src/logic/sort"
@@ -62,11 +62,11 @@ describe("the pantry", () => {
     expect(expiryText(day(-1))).toBe("Past its use-by")
   })
 
-  it("a new aisle joins every store, numbered only where it was added", () => {
-    const made = addAisle(demoState(), "tesco", "World foods", 7)!
-    expect(made.state.stores.find((x) => x.id === "tesco")!.aisles[made.id]).toBe(7)
-    expect(made.state.stores.find((x) => x.id === "sainsburys")!.aisles[made.id]).toBeNull()
-    expect(addAisle(made.state, "tesco", "world foods", 8)).toBeNull()
+  it("a new tag is only a tag: it doesn't number any store", () => {
+    const made = addTag(demoState(), "World foods")!
+    expect(made.state.categories.some((c) => c.id === made.id && c.name === "World foods")).toBe(true)
+    expect(made.state.stores.every((x) => x.aisles[made.id] === null)).toBe(true)
+    expect(addTag(made.state, "world foods")).toBeNull()
   })
 })
 

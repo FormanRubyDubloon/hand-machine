@@ -17,7 +17,7 @@ const C: Record<string, string> = {
 }
 
 const stores: Store[] = [
-  { id: "sainsburys", name: "Sainsbury's Stoke Newington", aisles: { "fruit-and-veg": 1, bakery: 2, "dairy-and-eggs": 4, "meat-and-fish": 5, "tins-and-jars": 9, "pasta-rice-and-grains": 9, "oils-and-sauces": 10, "baking-and-spices": 11, frozen: 14, household: 17 } },
+  { id: "sainsburys", name: "Sainsbury's Stoke Newington", places: ["Freezer", "Tills"], aisles: { "fruit-and-veg": 1, bakery: 2, "dairy-and-eggs": 4, "meat-and-fish": 5, "tins-and-jars": 9, "pasta-rice-and-grains": 9, "oils-and-sauces": 10, "baking-and-spices": 11, frozen: 14, household: 17 } },
   { id: "tesco", name: "Tesco Express Church Street", aisles: { "fruit-and-veg": 1, bakery: 1, "dairy-and-eggs": 2, "meat-and-fish": 2, "tins-and-jars": 3, "pasta-rice-and-grains": 3, "oils-and-sauces": 3, "baking-and-spices": 4, frozen: 5, household: 6 } },
 ]
 
@@ -67,6 +67,14 @@ function items(): Record<string, Item> {
       location: loc.toLowerCase() as Location, useBy: useBy ? Array(Math.max(1, inStock)).fill(rel(useBy)) : undefined,
       otherNames: other?.length ? other : undefined, packSize: pack && measure ? { amount: pack, measure } : undefined,
     })
+  }
+  // Aisles on items (Batch 4): most are known at Sainsbury's, frozen things are in the Freezer, and a few are left
+  // blank so ticking them asks. Tesco has none yet, so everything there starts under No aisle.
+  const blank = new Set(["sardines", "pepper", "binbags", "sourdough"])
+  for (const i of Object.values(out)) {
+    if (blank.has(i.id)) continue
+    const n = stores[0].aisles[i.categoryId]
+    out[i.id] = { ...i, aisleAt: { sainsburys: i.categoryId === "frozen" ? "Freezer" : n! } }
   }
   // Two things that aren't in the pantry yet: one from a recipe, one added by hand.
   out.parsley = normalise({ id: "parsley", name: "Parsley", type: "counted", inStock: 0, target: 0, categoryId: "fruit-and-veg", where: [], location: "fridge", review: true, entries: [{ source: { kind: "recipe", recipe: "Sardine linguine" }, qty: 1 }] })
