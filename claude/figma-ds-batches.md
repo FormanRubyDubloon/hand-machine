@@ -76,7 +76,10 @@ The design system's own components, written for the shopping list and pantry and
 
 - Dark rows (`list-row` `data-tone=current`) come out of the Focus mode if decision 1 goes that way.
 
-## Batch 5: Collca web app pieces
+## Batch 5: Collca web app pieces (done 24 Nov 2026)
+
+Promoted to the Figma library only; the code stays in the pantry app. Details and gaps in `GAPS-COLLCA.md`.
+
 
 From `prototypes/pantry-app/src/components.tsx`. These were built locally in the app; putting them in the library is a promotion, so check the list first.
 

@@ -253,3 +253,46 @@ None of these are in the warm theme's rounding list, so they're square on the we
 
 - **Resizing after setting "hug" fixes the size.** `resize()` quietly turns a hugging frame back to a fixed one. It cut off the store row's description and fixed the sync bar at 80. All Components-page frames were checked for content taller than the frame; none are left.
 - **One long script timed out** (three minutes) with nothing saved; the same work in four smaller scripts took under a second each. Something in the long one stalled; keep scripts short.
+
+## Batch 5: Collca web app pieces (24 November 2026)
+
+A "pantry app" section on the Components page, from `prototypes/pantry-app/src/components.tsx`, `category-look.tsx` and `splash-emblem.tsx`. Checked in Light and Dark.
+
+**These are promoted to the library, not the code.** The components file says to ask before promoting any of them into `src/components/ui`; Isaac's go-ahead for Batch 5 covers the Figma library only. The code stays in the pantry app.
+
+### What's built
+
+- **Headings:** `eyebrow`, `page-title` (Dejanire title, 13px subtitle, an action on the right; 900 wide), `zig-zag` (the rule under a page header), `section-title`, `heading-tip` (a column heading with a dotted underline; Figma has no dotted underline, so it's a 1/2 dashed line).
+- **Marks and pills:** `expiry-alert` (14px red triangle), `estimate-mark` (sm 16, lg 24, boxed ≈), `tag-pill` (plain: Staple, Recipe, Claude, One-off; ordered: check and Ordered), `new-pill`, `stock-mark` (have, some, listed, little, missing). Out and Low are the badge's `solid` and `outlined` variants, so StockPill isn't separate.
+- **Tags:** `category-mark` (42: the twelve tints, none and empty, at sm 20, md 28, lg 36; rounded-sm; icon stroke 1.75, swappable from the tag icons) and `category-label`.
+- **Controls:** `stepper` (sm 28, md 40), `segmented` (default, sm), `field` (label, an exposed control, optional hint), `sort-select` (190 wide).
+- **Filters and panels:** `filter-option` (default, hover, selected), `filter-check`, `filter-sidebar` (240 wide, 640 tall here), `side-panel` (560 × 760; header with eyebrow, title, badges and description; body; footer; close).
+- **Rows:** `history-row` (default, undone, compact), `unit-row` (in stock, empty), `nav-row` (default, hover, current), `empty`.
+- **Brand:** `collca-emblem`, `surface` panel (as on the splash: primary fill, ink in primary-foreground, cut-outs in primary) or page (ink in primary, cut-outs in background).
+
+### Gaps
+
+- **New pill uses fixed colours in code** (`#7A6840`, `#C2A86A`, `#2A1D15`, glow `rgb(194 168 106 / 0.6)`), not tokens, so it's bound to the primitives and doesn't change with the mode. The glow is a static colour.
+- **Groups of buttons round as a whole.** The warm theme rounds a `role=group` of buttons and squares its buttons, so the stepper and segmented control round only their outer corners. Their buttons and toggles have their radius overridden to 0 in the instance.
+- **Segmented choice is set by hand.** Its items are toggle instances; the chosen one has its fill and text recoloured, since the code's `data-[state=on]:bg-primary` isn't a toggle variant.
+- **Side panel title** is the card-title style overridden to 22px, leading-tight, tracking 0.04em (SheetTitle with the panel's classes). Header actions (absolute, top right) aren't built.
+- **Filter option icon** is a category mark here; the code takes any icon.
+- **Zig-zag** is a vector 612 wide clipped to 600; in code it's a CSS mask repeated to any width. Stretching the component shows the end of the line.
+- **Tooltips** (expiry alert, estimate mark, stock pill, New pill, heading tip) aren't attached; use the tooltip component.
+- **History links** (the title and item names as links) aren't built.
+
+### The emblem
+
+- The drawing is the code's own SVG: the React component was rendered to static markup with React's server renderer and imported. Ink and cut-out colours are bound to tokens.
+- **Figma has no text on a path.** COLLCA (Dejanire Bold 80, letter spacing 2) and WHAT TO BUY (Stevie Sans Bold 15, letter spacing 4) are single letters placed and rotated along the code's arc (radius 146) and curve. The spacing follows the SVG rule (spacing after every letter, the run centred on the path), so it should match within a pixel or two, but it hasn't been compared with the browser side by side.
+- The other lines are live text set on the code's baselines. Baselines were measured from a capital H's ink in each font: 0.972 × size for Dejanire Bold and 0.95 for Stevie Sans, from the top of an auto-height text box.
+- `font-weight` 500 (WHAT TO COOK) renders the 400 face on the web, so it's Regular; 600 and 700 are Bold.
+- The intro illustration (`IntroIllustration`) isn't built.
+
+### Figma limits and slips found
+
+- **Spacing steps 14 (56), 20 and 24 were missing** and were added.
+- **An instance can only be exposed once it's inside a component.** Setting it first fails.
+- **Swapping an instance renames it** to the new component, so finding it by its old name fails; find it by position.
+- **The jar came out solid** on the first emblem build: the test for the cut-out marker colour was wrong (magenta has no green, and the test looked for green). Fixed by rebuilding.
+- One call took 103 seconds for no clear reason; the rest took under half a second.
