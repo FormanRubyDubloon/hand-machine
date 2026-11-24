@@ -148,3 +148,215 @@ Spacing `8_25` (33) and `6_25` (25) for the switch. Text styles `role/badge`, `r
 ### Not in Batch 2
 
 `input-otp`, `kbd` and `field` aren't in the repo. Prototype interactions and transitions aren't built.
+
+## Batch 3: Containers and overlays (24 November 2026)
+
+On the Components page: card (with `card-header`, `card-content`, `card-footer`), alert, skeleton, progress, avatar and `avatar-group`, `dialog-content` and `dialog`, sheet, `drawer-content`, `popover-content`, `tabs-trigger` and `tabs-list`, `table-row` and `table`, `command-item` and `command`, and `toast` (Sonner). Checked in Light and Dark.
+
+### Which pieces the warm theme rounds
+
+Card, dialog, popover, command, the table container and the toast are rounded to `radius` (4). Alert, sheet, drawer, tabs, skeleton and progress aren't in the theme's list, so they stay square. The toast's action button stays square (`!rounded-none`). Titles stay in Stevie Sans: `font-heading` is the sans in the warm theme, which only moves display, title and lead to Dejanire.
+
+### Tokens and styles added
+
+- `state/`: `foreground-5` (card ring), `overlay` (black 20%), `destructive-90`, `muted-50`, `primary-foreground-70`, `tab-text`, `tab-active-bg`, `tab-active-border` (transparent in Light, `input` in Dark). Raw values, invented names.
+- `spacing/card-spacing` (aliases `spacing-8`) and `spacing/card-spacing-sm` (aliases `spacing-5`); the second name is invented, since the code switches one variable with `data-[size=sm]`.
+- Text styles: `role/card-title` (also sheet and drawer titles), `role/card-description` (all the leading-relaxed descriptions), `role/dialog-title`, `role/popover-title`, `role/tabs-trigger`, `role/table-head`, `role/shortcut`, `role/alert-title`, `role/toast-title`, `role/toast-description`.
+- Effect styles: `card` (shadow-sm plus a 1px foreground/5 ring), `toast` (Sonner's own 0 4px 12px shadow).
+
+### Card
+
+- `card` (size default, sm) holds instances of `card-header`, `card-content` and `card-footer` of the same size; `header`, `content` and `footer` toggles. The header instance is exposed, so its `title`, `description`, `show-description` and `action` show on the card.
+- Width 380 (code: fluid). The header is a grid in code (`1fr auto`); auto layout here. Not built: the optional header and footer borders, images, container queries.
+
+### Alert
+
+- `variant` × `action`; action is a variant because it changes the right padding (`pr-18`). The 2px indicator runs down the left edge over the border. Width 420.
+- **Linked properties share one starting value.** The destructive variants start with the default text and info icon; change them on the instance. (Same with the pill samples in Batch 2.)
+
+### Skeleton, Progress, Avatar
+
+- Skeleton: one muted rectangle, no pulse.
+- Progress: five steps (0 to 100), 2px tall, width 320.
+- Avatar: `size` (sm 24, default 32, lg 40), `initials`, `badge`. A plain border here; the code blends it (`mix-blend-darken`, `dark:mix-blend-lighten`), which Figma can't switch by mode. No image. Avatar group overlaps by 8 with a 2px background ring, later avatars on top as in the browser.
+
+### Dialog, Sheet, Drawer, Popover
+
+- `dialog-content`: 448 wide, header (gap-2 plus the description's `mt-0.5`, so 10), footer in its `sm:` layout (row, right-aligned), close button (ghost icon-sm on `bg-secondary`, `x` icon). `dialog`: the content centred on a 1200 × 760 overlay (20% black, 8px background blur; Figma's blur doesn't match a CSS pixel blur exactly).
+- `sheet`: right (384 wide, 760 tall) and bottom (1200 wide, hugs). Left and top not built. Footer buttons fill the width (`flex-col`).
+- `drawer-content`: bottom only, 390 wide (phone), centred header, muted handle. `md:text-left` not built.
+- `popover-content`: 288 wide, header and a body placeholder.
+- In each, the description's `mt-0.5` is folded into the header gap: Figma text layers can't take padding.
+
+### Tabs
+
+- `tabs-trigger`: `variant` (default, line) × `state` (default, hover, active, focus-visible, disabled), horizontal only, 31 high. Line's active bar is 2px, 5px below the trigger. Focus uses the control focus style; the code's `ring-[3px] ring-ring/50` and 1px outline are approximated.
+- `tabs-list`: three triggers, first active. Triggers hug their labels here; in code they share the width (`flex-1`). Vertical tabs not built.
+
+### Table
+
+- `table-row`: header, body (default, hover, selected) and footer, four cells with `col-1` to `col-4` text properties (body rows only). Cell widths are fixed placeholders; HTML tables size columns to content.
+- `table`: header, three rows, caption. The last row drops its border by hand (code: `[&_tr:last-child]:border-0`).
+
+### Command
+
+- `command-item`: default, selected, disabled; `icon`, `label`, `shortcut` properties. `command`: search (an `input-group` instance), two groups with headings, a separator. 320 wide. No shadow (CommandDialog puts it in dialog-content). Empty state and checked items not built.
+
+### Toast (Sonner)
+
+- Dark toast: primary fill and border, primary-foreground text, description at 70%. In Dark mode that's gold with dark text, as the code says.
+- Sonner's own CSS sets the layout (356 wide, 16 padding, 6 gap, 13px text); these numbers come from Sonner's defaults, not this repo, so they aren't bound to tokens.
+- Only the info icon is in the set (Sonner also uses circle-check, triangle-alert, octagon-x and a spinner). Cancel button not built.
+
+### Figma limit found
+
+- **Text layers can't take padding.** Setting it threw "object is not extensible"; spacing that the code puts on text (`mt-0.5`) goes into the parent's gap.
+
+## Batch 4: Collca rows and counters (24 November 2026)
+
+One section, "rows and counters", on the Components page: `count-box`, `tick-box`, `list-row-text`, `list-row`, `item-row`, `swipe-row`, `segment-bar`, `summary-stat` and `summary-stats`, `sync-bar`, `keypad-key` and `keypad`, `filter-chip` and `filter-chips`, `store-row`, `choice-row`. All at phone width (390). Checked in Light, Dark and Focus.
+
+These were written for the phone web app, which is switched off; the native app has its own kit (Batch 6). They're still the design system's components, and the pantry app uses some.
+
+### The "current" row isn't Focus
+
+The plan said dark rows would come from the Focus mode. They don't: a current row (`tone=current`) uses `bg-primary text-primary-foreground`, so it's olive in Light and gold in Dark and Focus, not dark brown. Count box, list-row text and tick box have a `tone` (or `inverse`) variant for a current row instead; the code flips them with `group-data-[tone=current]`, which Figma can't read from a parent.
+
+### Shape
+
+None of these are in the warm theme's rounding list, so they're square on the web, except the filter chips, which are `rounded-full` pills. (The native app rounds its own count boxes; that's Batch 6.)
+
+### Tokens and styles added
+
+- `state/primary-foreground-10`, `-20`, `-40` (things on a current row). Raw values, invented names.
+- Spacing `13` (52, count box), `15` (60, keypad key), `21` (84) and `23` (92) (row heights).
+- Icons `delete` (keypad), `circle-check` and `octagon-x` (the toast types Batch 3 was missing).
+- Text styles under `row/`: `count`, `count-sm`, `count-wide`, `title-lg`, `title-md`, `title-sm`, `description`, `description-sm`, `stat-value`, `keypad`, `chip-count`, `sync-note`. `font-medium` titles render the 400 face, as elsewhere.
+
+### Components
+
+- **count-box** (30): `variant` (default, filled, done, skipped, add) × `size` (default 52, sm 40, wide 44 × at least 56) × `tone`. The code's `inverse` variant is the same as default on a current row, so it isn't separate. Dashes are 3/3 (browsers draw their own). Done's check is stroke 2.5.
+- **tick-box** (4): `checked` × `inverse`. 28px, 18px check.
+- **list-row-text** (6): `title-size` (lg 22, md 20, sm 17) × `tone`, with `eyebrow` and `description` toggles. The code widens the gap to 6 when there's an eyebrow; one component can't, so it stays 4.
+- **list-row** (12): `tone` (default, current, muted, quiet) × `size` (min height 64, 84, 92). The text and count box are exposed instances; `trailing` hides the box. Focus ring not built.
+- **item-row** (6): to get (no pill, Out, Low), partly got, got (struck through, grey, done box, no pill), skipped (muted row, struck through, eyebrow-style sub-line, skipped box). A badge can replace the pill. The name and box are separate buttons in code; their focus rings aren't built.
+- **swipe-row** (3): still frames of a gesture. `left` shows Got 1 (primary) on the right, `right` shows Undo (muted) on the left, the row moved 104px. The icon's 125% "armed" scale isn't shown.
+- **segment-bar** (5): four 2px segments, `filled` 0 to 4.
+- **summary-stat** (2) and **summary-stats**: three equal cells, the third clickable with a chevron. The last cell's right border is turned off by hand.
+- **sync-bar** (2): two progress positions; the refresh icon spins in code.
+- **keypad-key** (6): digit, label (Clear) or delete × default or pressed (hover and active are both bg-muted; the 1px press isn't built). **keypad**: 1 to 9, Clear, 0, Delete in a 3-column wrap, 350 wide.
+- **filter-chip** (3): off, hover, on, with an optional count. **filter-chips**: All, Out, Low with the first on.
+- **store-row** (2): tick box and name (one button), and an outline icon-lg Edit button (18px pencil). On a current row the button's border is primary-foreground/20.
+- **choice-row** (2): a whole-row button (size lg) with tick box, eyebrow, md title and description; selected is a muted row.
+
+### Figma limit found (again)
+
+- **Resizing after setting "hug" fixes the size.** `resize()` quietly turns a hugging frame back to a fixed one. It cut off the store row's description and fixed the sync bar at 80. All Components-page frames were checked for content taller than the frame; none are left.
+- **One long script timed out** (three minutes) with nothing saved; the same work in four smaller scripts took under a second each. Something in the long one stalled; keep scripts short.
+
+## Batch 5: Collca web app pieces (24 November 2026)
+
+A "pantry app" section on the Components page, from `prototypes/pantry-app/src/components.tsx`, `category-look.tsx` and `splash-emblem.tsx`. Checked in Light and Dark.
+
+**These are promoted to the library, not the code.** The components file says to ask before promoting any of them into `src/components/ui`; Isaac's go-ahead for Batch 5 covers the Figma library only. The code stays in the pantry app.
+
+### What's built
+
+- **Headings:** `eyebrow`, `page-title` (Dejanire title, 13px subtitle, an action on the right; 900 wide), `zig-zag` (the rule under a page header), `section-title`, `heading-tip` (a column heading with a dotted underline; Figma has no dotted underline, so it's a 1/2 dashed line).
+- **Marks and pills:** `expiry-alert` (14px red triangle), `estimate-mark` (sm 16, lg 24, boxed ≈), `tag-pill` (plain: Staple, Recipe, Claude, One-off; ordered: check and Ordered), `new-pill`, `stock-mark` (have, some, listed, little, missing). Out and Low are the badge's `solid` and `outlined` variants, so StockPill isn't separate.
+- **Tags:** `category-mark` (42: the twelve tints, none and empty, at sm 20, md 28, lg 36; rounded-sm; icon stroke 1.75, swappable from the tag icons) and `category-label`.
+- **Controls:** `stepper` (sm 28, md 40), `segmented` (default, sm), `field` (label, an exposed control, optional hint), `sort-select` (190 wide).
+- **Filters and panels:** `filter-option` (default, hover, selected), `filter-check`, `filter-sidebar` (240 wide, 640 tall here), `side-panel` (560 × 760; header with eyebrow, title, badges and description; body; footer; close).
+- **Rows:** `history-row` (default, undone, compact), `unit-row` (in stock, empty), `nav-row` (default, hover, current), `empty`.
+- **Brand:** `collca-emblem`, `surface` panel (as on the splash: primary fill, ink in primary-foreground, cut-outs in primary) or page (ink in primary, cut-outs in background).
+
+### Gaps
+
+- **New pill uses fixed colours in code** (`#7A6840`, `#C2A86A`, `#2A1D15`, glow `rgb(194 168 106 / 0.6)`), not tokens, so it's bound to the primitives and doesn't change with the mode. The glow is a static colour.
+- **Groups of buttons round as a whole.** The warm theme rounds a `role=group` of buttons and squares its buttons, so the stepper and segmented control round only their outer corners. Their buttons and toggles have their radius overridden to 0 in the instance.
+- **Segmented choice is set by hand.** Its items are toggle instances; the chosen one has its fill and text recoloured, since the code's `data-[state=on]:bg-primary` isn't a toggle variant.
+- **Side panel title** is the card-title style overridden to 22px, leading-tight, tracking 0.04em (SheetTitle with the panel's classes). Header actions (absolute, top right) aren't built.
+- **Filter option icon** is a category mark here; the code takes any icon.
+- **Zig-zag** is a vector 612 wide clipped to 600; in code it's a CSS mask repeated to any width. Stretching the component shows the end of the line.
+- **Tooltips** (expiry alert, estimate mark, stock pill, New pill, heading tip) aren't attached; use the tooltip component.
+- **History links** (the title and item names as links) aren't built.
+
+### The emblem
+
+- The drawing is the code's own SVG: the React component was rendered to static markup with React's server renderer and imported. Ink and cut-out colours are bound to tokens.
+- **Figma has no text on a path.** COLLCA (Dejanire Bold 80, letter spacing 2) and WHAT TO BUY (Stevie Sans Bold 15, letter spacing 4) are single letters placed and rotated along the code's arc (radius 146) and curve. The spacing follows the SVG rule (spacing after every letter, the run centred on the path), so it should match within a pixel or two, but it hasn't been compared with the browser side by side.
+- The other lines are live text set on the code's baselines. Baselines were measured from a capital H's ink in each font: 0.972 × size for Dejanire Bold and 0.95 for Stevie Sans, from the top of an auto-height text box.
+- `font-weight` 500 (WHAT TO COOK) renders the 400 face on the web, so it's Regular; 600 and 700 are Bold.
+- The intro illustration (`IntroIllustration`) isn't built.
+
+### Figma limits and slips found
+
+- **Spacing steps 14 (56), 20 and 24 were missing** and were added.
+- **An instance can only be exposed once it's inside a component.** Setting it first fails.
+- **Swapping an instance renames it** to the new component, so finding it by its old name fails; find it by position.
+- **The jar came out solid** on the first emblem build: the test for the cut-out marker colour was wrong (magenta has no green, and the test looked for green). Fixed by rebuilding.
+- One call took 103 seconds for no clear reason; the rest took under half a second.
+
+## Batch 6: Phone kit (24 November 2026)
+
+A **Phone** page, "phone kit" section, from `mobile/src/ui/` (`kit.tsx`, `sheet.tsx`, `toast.tsx`, `conflict.tsx`, `tags.tsx`, `timers.tsx`) and the tab bar in `src/app/(tabs)/_layout.tsx`. 390 wide. Checked in Light, Dark and Focus with a mock screen built from the kit.
+
+### The Focus mode is the kit's `dark` prop
+
+Most kit components take `dark` for the always-dark screens (list item sheet, cooking view), which swaps `theme.ts` colours for the `focus` palette. Those map onto the Semantic Focus mode: olive becomes gold (primary), ink the light ink (foreground), the field fill `focus.field`, lines `focus.line`. So each component is built once; set an instance (or its screen) to Focus for the dark version. The code's `gold` and `goldOutline` button kinds are primary and secondary in Focus, so they aren't separate variants. The toast is always dark, so its component is fixed to Focus.
+
+### Tokens and styles added
+
+- `phone/on-danger` (white in Light; the web uses cream), `phone/field` (the page colour, or `focus.field` in Focus), `phone/field-line` (stone, or the Focus line), `phone/overlay` (black 40%), `phone/place` (`focus.place`, the aisle name; not used by a component yet).
+- Text styles `phone/button`, `segment`, `segment-on`, `chip`, `chip-on`, `pill`, `field`, `picker`, `number`, `title`, `toast`, `tab`, `back`, `timer`, `dialog-title`, `option-value`, beside the five from Batch 1. The app draws **Figtree** for now (Stevie Sans licence not checked); Figma shows Stevie Sans as planned, with 500 as Medium and 600 and 700 as Bold. Letter spacing is in points, as in React Native.
+
+### Components
+
+- **phone-button** (15): primary, secondary, quiet, danger, danger-fill × default, pressed, disabled. Min height 56, full width (350). Pressed shows the press tint; the app also scales to 0.97 (not with Reduce Motion), which Figma can't show.
+- **phone-icon-button** (6): outline, filled, plain × default, pressed. 48 square.
+- **phone-back-link**, **phone-stepper** (44 boxes, at-min), **phone-toggle** (on, off; the iOS switch drawn at 51 × 31, though iOS 26 draws its own shape and may ignore the thumb colour), **phone-segment** and **phone-segmented**, **phone-chip** (off, on, dashed), **phone-pill** (panel, olive), **phone-info-box**.
+- **phone-field** (placeholder, filled, focused), **phone-picker** (closed, open in place), **phone-aisle-field** (with a value, none yet), **phone-row** (chevron or nothing), **phone-divider**, **phone-tag-mark** (tint, plain, empty × 22, 32, 44; radius 4, where the web uses rounded-sm).
+- **phone-sheet-header** (title or back link, Done), **phone-toast** (with or without Undo; Focus), **phone-conflict-dialog** (the card; the backdrop isn't built), **phone-timer-button** (idle, running, done), **phone-timer-row** (running, done), **phone-tab-bar** (home, list, recipes, pantry).
+
+### Gaps
+
+- **Hairlines.** The code draws rows and dividers two hairlines thick (`StyleSheet.hairlineWidth * 2`), which is 1pt on a 2× or 3× screen. Figma uses 1.
+- **Press states** show the tint only; the scale and the 60% fade (tabs, Done, back link) aren't shown.
+- **Safe areas** aren't built; the tab bar and full-screen sheet headers sit under the status bar in the app.
+- **Not built:** the item sheet and cooking view screens (they're compositions), the Home tiles, the aisle question, the sync note under the tab bar, art and location illustrations (`art.tsx`, `locations.tsx`), and the conflict backdrop.
+- **Spacing** in the phone kit is in points and mostly not on the 4px scale (14, 18, 6, 10); those values are typed, not bound. Radii are bound (`radius`, `radius-pill`, `radius-dialog`).
+
+### Figma limit found (again)
+
+- The resize-after-hug trap squashed the tab bar's labels to one letter each. Fixed, and every fixed-width frame on the Phone page was checked for content wider than the frame; none are left.
+
+## Batch 7: Check (24 November 2026)
+
+### Web: measured in Storybook
+
+Every web component that has a story was loaded in Storybook with `theme-warm.css` added and the `theme-warm` class set (Storybook itself has no warm theme), and its computed size, padding, radius, gap, fill, border and type were read in the browser. 38 measurements in Light and 12 colour checks in Dark (through Storybook's own theme setting, since toggling the class by hand was undone by its decorator).
+
+**They match Figma**, value for value: button sizes, padding, gaps and 4px corners; badge pills (20 high, pill radius); underline fields (40 high, 4px vertical padding, square); checkbox and switch (18, 33 × 18, thumb 14 with radius 2); select trigger; card (32 padding and gap, radius 4, shadow); tabs list and triggers (40 and 31, the active trigger's 30% fill in Dark); alert (square, card fill); tooltip; progress; count box (52, square); tick box; list rows; filter chips (36, pill); keypad keys (60); sync bar (88); summary value (40px). Type sizes, weights and letter spacing (in em, so 1.2px on a 12px button) match the text styles. Dark colours match the Dark mode values.
+
+**One fix:** the item row and store row are 85 high in the browser, not 84: the 84px minimum is on the inner button, and the row adds a 1px bottom border. Both component sets now have an 85 minimum height (unbound).
+
+**Storybook doesn't load the Adobe Fonts kit.** `.storybook/` has no `preview-head.html`, so stories render in a fallback sans-serif, not Stevie Sans. Sizes, spacing and colours are unaffected, but text widths and letterforms in Storybook aren't the real ones. The apps (`index.html`, the pantry app, the shopping list) load the kit. Fix: add `.storybook/preview-head.html` with the kit's link (a code change, not done here).
+
+**Not measured:** the pantry app's own pieces (Batch 5) have no stories; they were built from the code and checked by eye. Focus rings, hover and pressed states weren't measured (they need interaction).
+
+### Phone: compared with the simulator
+
+Compared by eye with the simulator screenshots taken earlier the same day (dark mode, demo data, after the phone's dark colours were changed to the web's): the tab bar (emblem as Home, word tabs with the olive underline, search, the initial in an olive circle), Home rows (name and caption with a chevron) and the In stock only toggle match the Phone page. The native app can't be measured the way the browser can.
+
+**Gaps found:** several pieces the phone shows are in its screens, not in `mobile/src/ui`, so Batch 6 didn't build them:
+
+- the phone's list row and its count box (rounded, gold-bordered in Dark) and the aisle header with its filter button (`app/(tabs)/list`);
+- the Home tiles (to buy, to use soon, to review) and the Home emblem (`app/(tabs)/home`);
+- the Pantry location cards with their icon squares (`locations.tsx`, used by the Pantry tab).
+
+These would be a Batch 6b if they should be in the library. The list screen was being changed by another session at the time, so it was left alone.
+
+### Not done
+
+- **Code Connect** (optional in the plan): not set up.
+- **Prototype interactions and motion:** not built in any batch.

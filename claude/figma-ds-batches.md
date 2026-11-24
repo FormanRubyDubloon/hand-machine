@@ -56,13 +56,19 @@ The shadcn primitives everything else is built from, in the warm theme.
 - Button: start with `state` default, hover, focus-visible and disabled only, to avoid the 240-variant problem. Add `aria-invalid` if you want it.
 - Icons: a real swappable Lucide icon component (instance swap), not the placeholder vector the old mirror used. That needs a small icon set first: the ones the apps use most.
 
-## Batch 3: Containers and overlays (web)
+## Batch 3: Containers and overlays (web) (done 24 Nov 2026)
+
+Details and gaps in `GAPS-COLLCA.md`.
+
 
 `card`, `alert`, `dialog`, `sheet`, `drawer`, `popover`, `command`, `tabs`, `table`, `sonner` (dark toast), `skeleton`, `progress`, `avatar`.
 
 Most of these are composition. Build parts (header, content, footer) as their own components so instances stay editable.
 
-## Batch 4: Collca rows and counters (web)
+## Batch 4: Collca rows and counters (web) (done 24 Nov 2026)
+
+Details and gaps in `GAPS-COLLCA.md`. The current row is primary, not Focus, so it has its own tone variants.
+
 
 The design system's own components, written for the shopping list and pantry and never built in Figma.
 
@@ -70,7 +76,10 @@ The design system's own components, written for the shopping list and pantry and
 
 - Dark rows (`list-row` `data-tone=current`) come out of the Focus mode if decision 1 goes that way.
 
-## Batch 5: Collca web app pieces
+## Batch 5: Collca web app pieces (done 24 Nov 2026)
+
+Promoted to the Figma library only; the code stays in the pantry app. Details and gaps in `GAPS-COLLCA.md`.
+
 
 From `prototypes/pantry-app/src/components.tsx`. These were built locally in the app; putting them in the library is a promotion, so check the list first.
 
@@ -81,7 +90,10 @@ From `prototypes/pantry-app/src/components.tsx`. These were built locally in the
 - **Rows:** `HistoryRow` (who: you, phone, Claude, Collca), `UnitRow`, `NavRow`, `Empty`.
 - **Brand:** the Collca emblem and splash emblem.
 
-## Batch 6: Phone kit
+## Batch 6: Phone kit (done 24 Nov 2026)
+
+On a Phone page. The kit's `dark` prop is the Focus mode. Details and gaps in `GAPS-COLLCA.md`.
+
 
 From `mobile/src/ui/kit.tsx` and its neighbours, on a Phone page, at iPhone sizes.
 
@@ -90,7 +102,10 @@ From `mobile/src/ui/kit.tsx` and its neighbours, on a Phone page, at iPhone size
 - Focus-mode screens (item sheet, cooking view) use the Focus mode.
 - Press states are the `press` overlay, not a colour change.
 
-## Batch 7: Check and record
+## Batch 7: Check and record (done 24 Nov 2026)
+
+Web measured in Storybook (all matched but one row height, fixed); phone compared with the simulator. Gaps found: Storybook doesn't load the font kit, and the phone's list row, count box, Home tiles and location cards aren't in the kit. Details in `GAPS-COLLCA.md`.
+
 
 - Screenshot every component set in each mode and compare with Storybook (web) and the simulator (phone).
 - Start a Collca section in `GAPS.md`, or a new `GAPS-COLLCA.md`, for where this file and the code differ. Recommendation: a new file, so the old mirror's notes stay readable.
