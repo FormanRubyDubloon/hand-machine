@@ -44,7 +44,10 @@ No components. Everything else binds to these.
 
 Check: screenshot each mode against the Storybook Foundations stories (with the warm class on).
 
-## Batch 2: Core controls (web)
+## Batch 2: Core controls (web) (done 24 Nov 2026)
+
+Built with an Icons page (28 interface icons, 63 tag icons). Details and gaps in `GAPS-COLLCA.md`.
+
 
 The shadcn primitives everything else is built from, in the warm theme.
 

@@ -67,3 +67,84 @@ Figma file: "Collca DS components" (`b87ZMgtHyvpfWpvqgR4WdN`), built through the
 ### Foundations page
 
 Swatches for every semantic colour in all three modes, the tag tints, every text style, radius, spacing and effects. All bound to variables, so it updates when a token changes.
+
+## Batch 2: Core controls (24 November 2026)
+
+Pages: **Icons** (91 components) and **Components** (15 component sets, 347 variants, plus `select-label`, `select-separator` and `select-content`). All in the warm theme, checked in Light and Dark.
+
+### Icons
+
+- Lucide 1.70.0 (the version in `node_modules`), 24 × 24, stroke 2. 28 interface icons (the ones the apps use most) as `icon/*`, and the 63 tag icons from `category-look.ts` as `tag-icon/*`. Strokes are bound to `foreground`; override the colour in an instance.
+- **Stroke width doesn't scale.** In code a 14px icon draws a 1.17px stroke (the SVG scales). In Figma the stroke stays 2 when an instance is resized, so the components here set it by hand (2 × size ÷ 24). Do the same when resizing an icon instance.
+- Lucide 1.x renamed some icons; `trash-2` is an alias for `trash`. The Figma names follow the code's imports.
+- The plugin has no network access, so the paths were read from `node_modules` and passed in.
+
+### Tokens added
+
+In `Semantic`, under `state/`, all raw values (an alias can't carry alpha) with invented names: `primary-80`, `ring-30`, `outline-hover`, `secondary-hover`, `ghost-hover`, `destructive-bg`, `destructive-bg-hover`, `destructive-40`, `destructive-invalid`, `destructive-ring`, `foreground-70`, `destructive-70`, `foreground-10`, `input-50`, `border-50`, `switch-thumb`, `switch-thumb-checked`. Each description has the code. `secondary-hover` is an oklch `color-mix` in code, worked out once in sRGB here. In Focus, alpha tokens over `input` (`outline-hover`, `input-50`) use the Focus line colour.
+
+Spacing `8_25` (33) and `6_25` (25) for the switch. Text styles `role/badge`, `role/label-control`, `role/select-label`. Effect styles `focus-ring-control`, `invalid-ring`, `popover`.
+
+### Focus in the warm theme
+
+`theme-warm.css` draws a solid 2px outline at 2px offset on every `:focus-visible` element, on top of each component's own focus classes. So:
+
+- **Buttons, toggles, checkboxes, radios and switches** (`focus-ring-control`): the component's `ring-2 ring-ring/30` fills the first 2px, the outline the next 2px. Built as three spread shadows: ring at 4px, background at 2px, ring/30 at 2px. The border also turns `ring`.
+- **Inputs, textarea, select trigger** (`focus-ring`): underline turns `ring`, and the outline draws round the whole field, square.
+- **Input group:** the outline goes round the focused input inside the group, not the group.
+
+**Figma limits found:**
+- **Shadow spread only draws on a frame that clips its content.** Every component with a ring has clip content on.
+- **Spread also needs a fill to cast from.** Variants with no fill (outline, ghost and link buttons, unchecked checkbox and radio, unpressed toggles, inputs) get a `background` fill in their focus or invalid state. On a normal page it looks the same; on another surface (a card, a muted panel) it will show as a background-coloured box.
+- An exported single node leaves its shadows out. Check rings in a parent frame.
+
+### Button (192 variants)
+
+- `variant` × `size` (default, xs, sm, lg, icon, icon-xs, icon-sm, icon-lg) × `state` (default, hover, focus-visible, disabled). `aria-invalid` isn't built; add it if a screen needs it.
+- Properties: `label`, `icon-start` and `icon-end` (booleans), `icon-start-swap` and `icon-end-swap` (instance swap). Icon sizes show the start icon only.
+- Not built: the smaller padding beside an icon (`has-data-[icon=inline-start]:pl-4`), the 1px press (`active:translate-y-px`), `aria-expanded`.
+- **`bg-clip-padding` isn't modelled.** The 1px transparent border sits over the fill here; in code the fill stops inside it.
+- `link` doesn't use the `label` property (Figma copies text formatting across every linked text, so the underline spread). Edit its text directly.
+
+### Badge (14 variants)
+
+- `variant` (the six text variants, plus `solid` and `outlined`, the Out and Low pills) × `state` (default, hover). Pills have no hover in code. Hover on default, secondary, destructive and outline only happens when the badge is a link. Focus ring not modelled.
+
+### Label, Separator
+
+- Label `beside` = none or control (the sentence-case style next to a checkbox, radio or switch) × `state`. Figma can't see a neighbouring input, so pick disabled by hand.
+- Separator lengths are placeholders (code: full width or stretch).
+
+### Input, Textarea, Input group (8 variants each)
+
+- `value` (placeholder, filled) × `state` (default, focus-visible, aria-invalid, disabled). Two text properties, `placeholder` and `value`.
+- **Desktop size only:** `text-sm` (`md:text-sm`). The base `text-base` is for phone widths, and the phone uses the native app.
+- Width 320 (code: full width). Input `type=file` not built. Textarea hugs its text with `min-h-16`.
+- Input group: `addon-start` (an icon, swappable) and `addon-end` (text) toggles. Block-start and block-end addons and `InputGroupButton` aren't built.
+
+### Checkbox, Radio, Switch (8, 8, 16 variants)
+
+- `checked` × `state` (default, focus-visible, aria-invalid, disabled); Switch also `size`. Checkbox is rounded by the warm theme; radio is always round.
+- Unchecked checkbox and radio have a `background` fill (code: transparent), for the rings.
+- Checked + invalid keeps the checked border with the red ring (the code sets both; output order decides, as noted in `GAPS.md`).
+- Switch thumb corners are 2 (code: `calc(var(--radius) - 2px)`); the track binds `radius`. The thumb sits 1px inside the border at each end.
+- Hit areas (`after:-inset-*`) and the Field-group rules aren't modelled.
+
+### Toggle (48), Toggle group (2)
+
+- Toggle: `variant` × `size` × `pressed` × `state`. Focus is drawn with the 2px control ring (code: `ring-[3px]`).
+- Toggle group: joined (`spacing=0`) only, three toggle instances, first pressed. The group is rounded and clips; the items are square, and outline items drop their left border except the first. Edit `pressed` and `label` on each item.
+
+### Select
+
+- `select-trigger` (16): `size` × `value` × `state`. Fixed 220 wide (code: `w-fit`) so the chevron sits at the right. Square.
+- `select-item` (6): `checked` × `state` (default, focus, disabled); focus is CSS `:focus`, the highlight.
+- `select-label`, `select-separator` (`border/50`; the `-mx-1.5` bleed isn't modelled), and `select-content`: an example menu, 260 wide (code: `min-w-36`, grows to fit), popover fill, rounded, `shadow-md ring-1 ring-foreground/10`. Scroll buttons not built.
+
+### Tooltip (4)
+
+- `side` (top, bottom, left, right) is where the tooltip sits. The arrow is a 10px square at 45°, its centre 2px inside the edge facing the trigger. Rounded by the warm theme. `max-w-xs` not enforced.
+
+### Not in Batch 2
+
+`input-otp`, `kbd` and `field` aren't in the repo. Prototype interactions and transitions aren't built.
