@@ -111,6 +111,10 @@ Web measured in Storybook (all matched but one row height, fixed); phone compare
 - Start a Collca section in `GAPS.md`, or a new `GAPS-COLLCA.md`, for where this file and the code differ. Recommendation: a new file, so the old mirror's notes stay readable.
 - Optional: Code Connect, so Dev Mode shows the real component code.
 
+## Batch 6b: Phone screen pieces (done 24 Nov 2026)
+
+The pieces Batch 7 found in the phone's screens rather than `mobile/src/ui`: the list row and its count box, the list heading (aisle header with the filter button), the Home tiles and the Pantry location cards. On the Phone page, under the phone kit. Details in `GAPS-COLLCA.md`.
+
 ## Not included
 
 - The shopping-list web app's own components (`RecipePill`, `SyncReminder` and others): the app is switched off.
