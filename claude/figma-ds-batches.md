@@ -102,7 +102,10 @@ From `mobile/src/ui/kit.tsx` and its neighbours, on a Phone page, at iPhone size
 - Focus-mode screens (item sheet, cooking view) use the Focus mode.
 - Press states are the `press` overlay, not a colour change.
 
-## Batch 7: Check and record
+## Batch 7: Check and record (done 24 Nov 2026)
+
+Web measured in Storybook (all matched but one row height, fixed); phone compared with the simulator. Gaps found: Storybook doesn't load the font kit, and the phone's list row, count box, Home tiles and location cards aren't in the kit. Details in `GAPS-COLLCA.md`.
+
 
 - Screenshot every component set in each mode and compare with Storybook (web) and the simulator (phone).
 - Start a Collca section in `GAPS.md`, or a new `GAPS-COLLCA.md`, for where this file and the code differ. Recommendation: a new file, so the old mirror's notes stay readable.

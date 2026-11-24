@@ -329,3 +329,34 @@ Most kit components take `dark` for the always-dark screens (list item sheet, co
 ### Figma limit found (again)
 
 - The resize-after-hug trap squashed the tab bar's labels to one letter each. Fixed, and every fixed-width frame on the Phone page was checked for content wider than the frame; none are left.
+
+## Batch 7: Check (24 November 2026)
+
+### Web: measured in Storybook
+
+Every web component that has a story was loaded in Storybook with `theme-warm.css` added and the `theme-warm` class set (Storybook itself has no warm theme), and its computed size, padding, radius, gap, fill, border and type were read in the browser. 38 measurements in Light and 12 colour checks in Dark (through Storybook's own theme setting, since toggling the class by hand was undone by its decorator).
+
+**They match Figma**, value for value: button sizes, padding, gaps and 4px corners; badge pills (20 high, pill radius); underline fields (40 high, 4px vertical padding, square); checkbox and switch (18, 33 × 18, thumb 14 with radius 2); select trigger; card (32 padding and gap, radius 4, shadow); tabs list and triggers (40 and 31, the active trigger's 30% fill in Dark); alert (square, card fill); tooltip; progress; count box (52, square); tick box; list rows; filter chips (36, pill); keypad keys (60); sync bar (88); summary value (40px). Type sizes, weights and letter spacing (in em, so 1.2px on a 12px button) match the text styles. Dark colours match the Dark mode values.
+
+**One fix:** the item row and store row are 85 high in the browser, not 84: the 84px minimum is on the inner button, and the row adds a 1px bottom border. Both component sets now have an 85 minimum height (unbound).
+
+**Storybook doesn't load the Adobe Fonts kit.** `.storybook/` has no `preview-head.html`, so stories render in a fallback sans-serif, not Stevie Sans. Sizes, spacing and colours are unaffected, but text widths and letterforms in Storybook aren't the real ones. The apps (`index.html`, the pantry app, the shopping list) load the kit. Fix: add `.storybook/preview-head.html` with the kit's link (a code change, not done here).
+
+**Not measured:** the pantry app's own pieces (Batch 5) have no stories; they were built from the code and checked by eye. Focus rings, hover and pressed states weren't measured (they need interaction).
+
+### Phone: compared with the simulator
+
+Compared by eye with the simulator screenshots taken earlier the same day (dark mode, demo data, after the phone's dark colours were changed to the web's): the tab bar (emblem as Home, word tabs with the olive underline, search, the initial in an olive circle), Home rows (name and caption with a chevron) and the In stock only toggle match the Phone page. The native app can't be measured the way the browser can.
+
+**Gaps found:** several pieces the phone shows are in its screens, not in `mobile/src/ui`, so Batch 6 didn't build them:
+
+- the phone's list row and its count box (rounded, gold-bordered in Dark) and the aisle header with its filter button (`app/(tabs)/list`);
+- the Home tiles (to buy, to use soon, to review) and the Home emblem (`app/(tabs)/home`);
+- the Pantry location cards with their icon squares (`locations.tsx`, used by the Pantry tab).
+
+These would be a Batch 6b if they should be in the library. The list screen was being changed by another session at the time, so it was left alone.
+
+### Not done
+
+- **Code Connect** (optional in the plan): not set up.
+- **Prototype interactions and motion:** not built in any batch.
