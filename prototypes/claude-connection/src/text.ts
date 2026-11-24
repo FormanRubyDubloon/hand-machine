@@ -1,11 +1,14 @@
 // How the pantry reads to Claude: one line per item, recipe or list row, in plain words. Claude
 // rephrases for the chat, so these favour being unambiguous (ids, ISO dates) over being pretty.
 import {
-  daysUntil, haveText, isBulk, money, isStaple, locationLabel, needOf, normalise, recipeInfo, shortNames, soonest, stockOf, type IngredientRow, type Items,
+  aisleTitle, daysUntil, haveText, isBulk, itemAisle, money, isStaple, locationLabel, needOf, normalise, recipeInfo, shortNames, soonest, stockOf, tagsOf,
+  type IngredientRow, type Items,
 } from "../../pantry-app/src/model"
-import { minutesText, type Category, type SharedItem, type SharedRecipe } from "../../shared/src/pantry"
+import { minutesText, type Category, type SharedItem, type SharedRecipe, type SharedStore } from "../../shared/src/pantry"
 
-export const categoryName = (categories: Category[], id: string) => categories.find((c) => c.id === id)?.name ?? "No category"
+/** An item's tags by name (what the code calls categories). */
+export const tagNames = (categories: Category[], i: SharedItem) =>
+  tagsOf(i).map((t) => categories.find((c) => c.id === t)?.name).filter((n): n is string => !!n)
 
 /** "2026-11-17 (in 2 days)", "2026-11-14 (1 day ago)". */
 export function dateWithDays(iso: string) {
@@ -14,7 +17,7 @@ export function dateWithDays(iso: string) {
   return `${iso.slice(0, 10)} (${rel})`
 }
 
-export function itemLine(i: SharedItem, categories: Category[]) {
+export function itemLine(i: SharedItem, categories: Category[], stores: SharedStore[] = []) {
   const parts = [`${i.name} [id: ${i.id}]`, `have ${haveText(i)}`]
   if (isBulk(i)) parts.push("bulk (counted in whole packs)")
   parts.push(isStaple(i) ? `Staple, keep ${i.target}` : "not a Staple")
@@ -36,7 +39,12 @@ export function itemLine(i: SharedItem, categories: Category[]) {
   const opened = (i.openedAt ?? []).filter((x): x is string => !!x)
   if (opened.length) parts.push(`opened ${opened.join(", ")}`)
   if (i.location) parts.push(locationLabel(i.location).toLowerCase())
-  parts.push(categoryName(categories, i.categoryId))
+  const tags = tagNames(categories, i)
+  parts.push(tags.length ? `tags: ${tags.join(", ")}` : "no tags")
+  // Its aisle in each store that has one (Batch 4c).
+  const aisles = stores.flatMap((s) => { const a = itemAisle(i, s); return a === null ? [] : [`${s.name} ${aisleTitle(a).toLowerCase()}`] })
+  if (aisles.length) parts.push(`aisles: ${aisles.join(", ")}`)
+  if (i.boughtAt) parts.push(`last bought ${i.boughtAt}`)
   if (i.otherNames?.length) parts.push(`also called ${i.otherNames.join(", ")}`)
   if (i.brand) parts.push(`brand: ${i.brand}`)
   if (!i.oneOff) parts.push(priceText(i))

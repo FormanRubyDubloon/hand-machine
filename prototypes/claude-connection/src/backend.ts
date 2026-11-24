@@ -46,7 +46,7 @@ export function supabaseBackend(db: SupabaseClient): Backend {
         db.from("items").select(ITEM_SELECT).order("name"),
         db.from("recipes").select(RECIPE_SELECT).order("name"),
         db.from("categories").select("id, name, sort").order("sort"),
-        db.from("stores").select("id, name, kind, place, sort, no_aisle_numbers, sells").order("sort"),
+        db.from("stores").select("id, name, kind, place, sort, no_aisle_numbers, sells, places, aisle_count, aisle_labels").order("sort"),
         db.from("store_aisles").select("store_id, category_id, number"),
       ])
       const rows = check(recipes) as RecipeRow[]
@@ -56,7 +56,7 @@ export function supabaseBackend(db: SupabaseClient): Backend {
         recipes: rows.map(toRecipe),
         recipeRows: Object.fromEntries(rows.map((r) => [r.id, r])),
         categories: (check(categories) as Category[]).map(({ id, name }) => ({ id, name })),
-        stores: (check(stores) as { id: string; name: string; kind: string | null; place: string | null; no_aisle_numbers?: boolean; sells?: string[] }[]).map((s) => ({
+        stores: (check(stores) as { id: string; name: string; kind: string | null; place: string | null; no_aisle_numbers?: boolean; sells?: string[]; places?: string[]; aisle_count?: number | null; aisle_labels?: Record<string, string> | null }[]).map((s) => ({
           id: s.id,
           name: s.name,
           kind: s.kind ?? "",
@@ -94,7 +94,7 @@ export function supabaseBackend(db: SupabaseClient): Backend {
 
     async saveStores(stores, sort, categories) {
       if (!stores.length) return
-      check(await db.from("stores").upsert(stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id), no_aisle_numbers: !!x.noAisleNumbers, sells: x.sells ?? [] })), { onConflict: "owner_id,id" }))
+      check(await db.from("stores").upsert(stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id), no_aisle_numbers: !!x.noAisleNumbers, sells: x.sells ?? [], places: x.places ?? [], aisle_count: x.aisleCount ?? null, aisle_labels: x.aisleLabels ?? {} })), { onConflict: "owner_id,id" }))
       check(await db.from("store_aisles").delete().in("store_id", stores.map((x) => x.id)))
       const aisles = stores.flatMap((x) =>
         Object.entries(x.aisles)

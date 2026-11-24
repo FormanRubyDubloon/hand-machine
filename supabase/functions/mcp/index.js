@@ -200,7 +200,7 @@ function supabaseBackend(db) {
         db.from("items").select(ITEM_SELECT).order("name"),
         db.from("recipes").select(RECIPE_SELECT).order("name"),
         db.from("categories").select("id, name, sort").order("sort"),
-        db.from("stores").select("id, name, kind, place, sort, no_aisle_numbers, sells").order("sort"),
+        db.from("stores").select("id, name, kind, place, sort, no_aisle_numbers, sells, places, aisle_count, aisle_labels").order("sort"),
         db.from("store_aisles").select("store_id, category_id, number")
       ]);
       const rows = check(recipes);
@@ -243,7 +243,7 @@ function supabaseBackend(db) {
     },
     async saveStores(stores, sort, categories) {
       if (!stores.length) return;
-      check(await db.from("stores").upsert(stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id), no_aisle_numbers: !!x.noAisleNumbers, sells: x.sells ?? [] })), { onConflict: "owner_id,id" }));
+      check(await db.from("stores").upsert(stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id), no_aisle_numbers: !!x.noAisleNumbers, sells: x.sells ?? [], places: x.places ?? [], aisle_count: x.aisleCount ?? null, aisle_labels: x.aisleLabels ?? {} })), { onConflict: "owner_id,id" }));
       check(await db.from("store_aisles").delete().in("store_id", stores.map((x) => x.id)));
       const aisles = stores.flatMap(
         (x) => Object.entries(x.aisles).filter(([id, n]) => n != null && categories.has(id)).map(([category_id, number]) => ({ store_id: x.id, category_id, number }))
@@ -416,15 +416,49 @@ function listTotal(rows) {
   }
   return { pence, unpriced, estimated, approximate: unpriced > 0 || estimated > 0 };
 }
-var aisleNumber = (store, categoryId) => store.noAisleNumbers ? null : store.aisles[categoryId] ?? null;
-var sells = (store, categoryId) => store.noAisleNumbers ? (store.sells ?? []).includes(categoryId) : aisleNumber(store, categoryId) !== null;
 function soldAt(i, store) {
   return i.where.length === 0 || i.where.includes(store.id);
 }
 var categoriesAtoZ = (categories) => [...categories].sort((a, b) => a.name.localeCompare(b.name));
-function aisleOrder(store, categories) {
-  return categoriesAtoZ(categories).sort((a, b) => (aisleNumber(store, a.id) ?? 999) - (aisleNumber(store, b.id) ?? 999));
+var itemAisle = (i, store) => !store || store.noAisleNumbers ? null : i.aisleAt?.[store.id] ?? null;
+var aisleTitle = (a) => a === null ? "No aisle" : typeof a === "number" ? `Aisle ${a}` : a;
+var aisleKey = (a) => typeof a === "number" ? String(a) : a.trim().toLowerCase();
+var aisleLabel = (store, a) => a === null ? void 0 : store?.aisleLabels?.[aisleKey(a)] || void 0;
+function aisleRank(store, a) {
+  if (a === null) return [0, 0, ""];
+  if (typeof a === "number") return [1, a, ""];
+  const k = (store?.places ?? []).findIndex((p) => p.toLowerCase() === a.toLowerCase());
+  return k >= 0 ? [2, k, ""] : [3, 0, a.toLowerCase()];
 }
+function compareAisles(store, a, b) {
+  const [x1, x2, x3] = aisleRank(store, a);
+  const [y1, y2, y3] = aisleRank(store, b);
+  return x1 - y1 || x2 - y2 || x3.localeCompare(y3);
+}
+function withAisle(i, storeId, a) {
+  const aisleAt = { ...i.aisleAt ?? {} };
+  if (a === null || a === "") delete aisleAt[storeId];
+  else aisleAt[storeId] = typeof a === "string" ? a.trim() : a;
+  return { ...i, aisleAt: Object.keys(aisleAt).length ? aisleAt : void 0 };
+}
+function storeAisles(store, items) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const i of items) {
+    const a = i.aisleAt?.[store.id];
+    if (a === void 0 || a === null || a === "") continue;
+    const key = typeof a === "number" ? `n${a}` : `p${a.toLowerCase()}`;
+    const g = groups.get(key) ?? { aisle: a, items: [] };
+    g.items.push(i);
+    groups.set(key, g);
+  }
+  return [...groups.values()].sort((x, y) => compareAisles(store, x.aisle, y.aisle)).map((g) => ({ ...g, items: g.items.sort((x, y) => x.name.localeCompare(y.name)) }));
+}
+var DEFAULT_AISLES = 20;
+var tagsOf = (i) => i.tagIds ?? (i.categoryId ? [i.categoryId] : []);
+var withTags = (i, tags) => {
+  const unique = [...new Set(tags.filter(Boolean))];
+  return { ...i, tagIds: unique, categoryId: unique[0] ?? "" };
+};
 function scaleText(text, factor) {
   if (factor === 1) return text;
   const fractions = { "\xBD": 0.5, "\xBC": 0.25, "\xBE": 0.75, "\u2153": 1 / 3, "\u2154": 2 / 3 };
@@ -487,13 +521,13 @@ function byUseFirst(a, b) {
 var minutesText = (m) => m > 0 ? `${m} min` : "No time";
 
 // prototypes/claude-connection/src/text.ts
-var categoryName = (categories, id) => categories.find((c) => c.id === id)?.name ?? "No category";
+var tagNames = (categories, i) => tagsOf(i).map((t) => categories.find((c) => c.id === t)?.name).filter((n) => !!n);
 function dateWithDays(iso) {
   const n = daysUntil(iso);
   const rel = n === 0 ? "today" : n === 1 ? "tomorrow" : n === -1 ? "yesterday" : n > 0 ? `in ${n} days` : `${-n} days ago`;
   return `${iso.slice(0, 10)} (${rel})`;
 }
-function itemLine(i, categories) {
+function itemLine(i, categories, stores = []) {
   const parts = [`${i.name} [id: ${i.id}]`, `have ${haveText(i)}`];
   if (isBulk(i)) parts.push("bulk (counted in whole packs)");
   parts.push(isStaple(i) ? `Staple, keep ${i.target}` : "not a Staple");
@@ -514,7 +548,14 @@ function itemLine(i, categories) {
   const opened = (i.openedAt ?? []).filter((x) => !!x);
   if (opened.length) parts.push(`opened ${opened.join(", ")}`);
   if (i.location) parts.push(locationLabel(i.location).toLowerCase());
-  parts.push(categoryName(categories, i.categoryId));
+  const tags = tagNames(categories, i);
+  parts.push(tags.length ? `tags: ${tags.join(", ")}` : "no tags");
+  const aisles = stores.flatMap((s) => {
+    const a = itemAisle(i, s);
+    return a === null ? [] : [`${s.name} ${aisleTitle(a).toLowerCase()}`];
+  });
+  if (aisles.length) parts.push(`aisles: ${aisles.join(", ")}`);
+  if (i.boughtAt) parts.push(`last bought ${i.boughtAt}`);
   if (i.otherNames?.length) parts.push(`also called ${i.otherNames.join(", ")}`);
   if (i.brand) parts.push(`brand: ${i.brand}`);
   if (!i.oneOff) parts.push(priceText(i));
@@ -633,24 +674,27 @@ async function commitStores(ctx, change) {
   });
   data.stores = next;
 }
-function aisleChanges(data, v) {
-  if (v === void 0) return {};
-  if (!v || typeof v !== "object" || Array.isArray(v)) throw new ToolError('aisles is an object of category name \u2192 aisle number, for example { "Frozen": 12 }. Use null to clear a number.');
-  const out = {};
-  for (const [ref, n] of Object.entries(v)) {
-    const id = findCategory(data, ref);
-    if (n === null) out[id] = null;
-    else if (typeof n === "number" && Number.isInteger(n) && n > 0) out[id] = n;
-    else throw new ToolError(`The aisle number for ${ref} has to be a whole number above 0, or null to clear it.`);
-  }
-  return out;
+function storeText(x, items) {
+  if (x.noAisleNumbers) return "no aisle numbers: its list goes A to Z";
+  const known = storeAisles(x, pantryItems(items));
+  const labels = Object.entries(x.aisleLabels ?? {}).map(([k, v]) => `${/^\d+$/.test(k) ? `aisle ${k}` : k}: ${v}`);
+  return [
+    `${x.aisleCount ?? DEFAULT_AISLES} aisles`,
+    (x.places ?? []).length ? `places (after the numbers, in order): ${(x.places ?? []).join(", ")}` : "no places",
+    labels.length ? `labels: ${labels.join("; ")}` : "",
+    known.length ? `aisles known so far: ${known.map((g) => `${aisleTitle(g.aisle)} (${plural(g.items.length, "item")})`).join(", ")}` : "no aisles known yet"
+  ].filter(Boolean).join(" \xB7 ");
 }
-var aislesSchema = {
-  type: "object",
-  description: `Aisle number per category, by category name or id: { "Frozen": 12, "Baking": 7 }. null clears a number (the store doesn't sell it). Categories left out stay as they are. Claude can't add or rename categories.`,
-  additionalProperties: { type: ["number", "null"] }
-};
-var aisleText = (x, cats) => x.noAisleNumbers ? `no aisle numbers; sells ${aisleOrder(x, cats).filter((c) => sells(x, c.id)).map((c) => c.name).join(", ") || "nothing ticked"}` : aisleOrder(x, cats).filter((c) => x.aisles[c.id] != null).map((c) => `${x.aisles[c.id]} ${c.name}`).join(", ") || "no aisles set";
+function parseAisle(store, v) {
+  if (v === null || v === "") return null;
+  if (store.noAisleNumbers) throw new ToolError(`${store.name} has no aisle numbers, so its items have no aisle there.`);
+  if (typeof v === "number" && Number.isInteger(v) && v > 0) return v;
+  if (typeof v === "string" && /^\s*\d+\s*$/.test(v) && Number(v) > 0) return Number(v);
+  const place = str(v);
+  if (place) return (store.places ?? []).find((p) => p.toLowerCase() === place.toLowerCase()) ?? cap(place);
+  throw new ToolError("An aisle is a whole number above 0, or the name of a place such as Freezer. null clears it.");
+}
+var withPlace = (store, a) => typeof a === "string" && !(store.places ?? []).some((p) => p.toLowerCase() === a.toLowerCase()) ? { ...store, places: [...store.places ?? [], a] } : store;
 var pantryItems = (items) => Object.values(items).filter((i) => !i.oneOff);
 function nearItems(items, q, max = 5) {
   const ql = q.toLowerCase().trim();
@@ -691,14 +735,19 @@ function findRecipe(recipes, ref) {
   if (near.length) throw new ToolError(`"${q}" could be: ${near.map((r) => `${r.name} [id: ${r.id}]`).join(", ")}. Use the id.`);
   throw new ToolError(`No recipe is called "${q}". Use find_recipes to see what's saved.`);
 }
-function findCategory(data, ref) {
+function findTag(data, ref) {
   const q = str(ref);
   if (!q) return "";
   const c = data.categories.find((x) => x.id === q || x.name.toLowerCase() === q.toLowerCase());
   if (c) return c.id;
   throw new ToolError(
-    `There's no category "${q}". Use one that exists (${categoriesAtoZ(data.categories).map((x) => x.name).join(", ")}). Claude can't add categories yet.`
+    `There's no tag "${q}". Use ones that exist (${categoriesAtoZ(data.categories).map((x) => x.name).join(", ")}). Claude can't add tags: the user adds them in Collca or on the phone.`
   );
+}
+function tagIds(data, v, legacy) {
+  if (Array.isArray(v)) return [...new Set(v.map((t) => findTag(data, t)).filter(Boolean))];
+  if (typeof v === "string") return [findTag(data, v)].filter(Boolean);
+  return legacy === void 0 ? [] : [findTag(data, legacy)].filter(Boolean);
 }
 function findStore(data, ref) {
   const q = str(ref);
@@ -729,7 +778,7 @@ var newItemProps = {
   name: { type: "string", description: 'As the user would say it, capitalised: "Chopped tomatoes".' },
   type: { type: "string", enum: ["counted", "bulk"], description: "counted: tracked by number (eggs, tins, onions). bulk: tracked in whole packs, which can be open (flour, oil, rice, spices)." },
   unit: { type: "string", description: 'Optional, singular: "tin", "bag", "bottle". Leave out for plain counts (3 onions).' },
-  category: { type: "string", description: "An existing category's name or id (get_categories_and_stores). Leave out if unsure." },
+  tags: { type: "array", items: { type: "string" }, description: 'Optional: existing tags by name or id (get_categories_and_stores), such as ["Dairy"]. An item can have several, or none. Leave out if unsure.' },
   location: { type: "string", enum: LOCATIONS, description: "household is shown to the user as Other: cleaning things, toiletries, anything not food." }
 };
 var ingredientSchema = {
@@ -788,8 +837,11 @@ function newItem(data, n, items, now) {
     inStock: stock,
     open: type === "bulk" ? 0 : void 0,
     unit: unitPair(str(n.unit) ?? null),
-    categoryId: findCategory(data, n.category),
+    // Several tags, or none (Batch 4c). categoryId is kept as the first, for apps that know one.
+    categoryId: tagIds(data, n.tags, n.category)[0] ?? "",
+    tagIds: tagIds(data, n.tags, n.category),
     where: [],
+    boughtAt: stock > 0 ? now.toISOString().slice(0, 10) : void 0,
     location: location(n.location),
     otherNames: strs(n.other_names)?.length ? strs(n.other_names) : void 0,
     notes: str(n.notes),
@@ -843,11 +895,11 @@ var tools = [
   {
     name: "search_pantry",
     title: "Search the pantry",
-    description: `Look up pantry items and their stock. Each line gives the id, what's in stock, whether it's a Staple (an item with a minimum to keep), whether it's low or out, how many are on the shopping list, the soonest use-by date, location, category and price each (marked "(estimate)" when it's a guess rather than one the user gave). With no query and no filter it lists everything.`,
+    description: `Look up pantry items and their stock. Each line gives the id, what's in stock, whether it's a Staple (an item with a minimum to keep), whether it's low or out, how many are on the shopping list, the soonest use-by date, location, tags, its aisle in each store, when it was last bought and price each (marked "(estimate)" when it's a guess rather than one the user gave). With no query and no filter it lists everything.`,
     inputSchema: {
       type: "object",
       properties: {
-        query: { type: "string", description: "Part of a name, another name, or a category name." },
+        query: { type: "string", description: "Part of a name, another name, or a tag." },
         filter: { type: "string", enum: ["all", "staples", "low_or_out", "out", "use_soon", "not_staples", "no_price", "estimated_price"], description: "low_or_out: Out, or Low (half the minimum or fewer). use_soon: has a use-by date in the next 7 days. no_price: no price set. estimated_price: the price is an estimate." }
       }
     },
@@ -857,7 +909,7 @@ var tools = [
       const filter = str(args.filter) ?? "all";
       let list = pantryItems(data.items);
       if (q) {
-        list = list.filter((i) => namesOf(i).some((n) => n.toLowerCase().includes(q)) || categoryName(data.categories, i.categoryId).toLowerCase().includes(q));
+        list = list.filter((i) => namesOf(i).some((n) => n.toLowerCase().includes(q)) || tagNames(data.categories, i).some((t) => t.toLowerCase().includes(q)));
       }
       list = list.filter((i) => {
         if (filter === "staples") return isStaple(i);
@@ -878,13 +930,13 @@ var tools = [
         return near.length ? `Nothing matches. Did you mean: ${idList(near)}?` : "Nothing matches.";
       }
       return `${plural(list.length, "item")}:
-${list.map((i) => itemLine(i, data.categories)).join("\n")}`;
+${list.map((i) => itemLine(i, data.categories, data.stores)).join("\n")}`;
     }
   },
   {
     name: "get_shopping_list",
     title: "Get the shopping list",
-    description: "What's on the shopping list and why: Staples below their minimum, things for recipes the user wants to cook, and things added by hand or by Claude. Lines marked ORDERED are already ordered (online, say), so not to buy in a shop; they stay on the list until they arrive. Give a store to get it in that store's aisle order, with anything the store doesn't sell listed apart. Each line has its cost (price each times how many), and the list starts with an estimated total: it leaves out lines with no price and says how many there are, and it's approximate when any line is unpriced or uses an estimated price.",
+    description: "What's on the shopping list and why: Staples below their minimum, things for recipes the user wants to cook, and things added by hand or by Claude. Lines marked ORDERED are already ordered (online, say), so not to buy in a shop; they stay on the list until they arrive. Give a store to get it in the order the user walks it: No aisle first, then the numbered aisles, then its places, each item in its own aisle there, with things for other stores listed apart. Without a store it's A to Z. Each line has its cost (price each times how many), and the list starts with an estimated total: it leaves out lines with no price and says how many there are, and it's approximate when any line is unpriced or uses an estimated price.",
     inputSchema: { type: "object", properties: { store: { type: "string", description: "A store's name or id (get_categories_and_stores)." } } },
     annotations: { readOnlyHint: true },
     async run(args, { data }) {
@@ -895,19 +947,27 @@ ${list.map((i) => itemLine(i, data.categories)).join("\n")}`;
       const store = findStore(data, args.store);
       const out = [];
       if (store) {
-        out.push(store.noAisleNumbers ? `${store.name} (no aisle numbers), A to Z:` : `${store.name}, in aisle order:`);
-        for (const c of aisleOrder(store, data.categories)) {
-          const here = rows.filter((r) => r.item.categoryId === c.id && soldAt(r.item, store));
-          const n = aisleNumber(store, c.id);
-          if (here.length) out.push(n === null ? `${c.name} (no aisle number)` : `Aisle ${n} \xB7 ${c.name}`, ...here.map(line));
+        const here = rows.filter((r) => soldAt(r.item, store));
+        if (store.noAisleNumbers) out.push(`${store.name} (no aisle numbers), A to Z:`, ...here.map(line));
+        else {
+          out.push(`${store.name}, in the order it's walked:`);
+          const groups = /* @__PURE__ */ new Map();
+          for (const r of here) {
+            const a = itemAisle(r.item, store);
+            const k = a === null ? "" : aisleKey(a);
+            const g = groups.get(k) ?? { aisle: a, rows: [] };
+            g.rows.push(r);
+            groups.set(k, g);
+          }
+          for (const g of [...groups.values()].sort((x, y) => compareAisles(store, x.aisle, y.aisle))) {
+            const label = aisleLabel(store, g.aisle);
+            out.push(`${aisleTitle(g.aisle)}${label ? ` (${label})` : ""}:`, ...g.rows.map(line));
+          }
         }
-        const elsewhere = rows.filter((r) => !soldAt(r.item, store) || !data.categories.some((c) => c.id === r.item.categoryId));
-        if (elsewhere.length) out.push(`For other stores, or with no category:`, ...elsewhere.map(line));
+        const elsewhere = rows.filter((r) => !soldAt(r.item, store));
+        if (elsewhere.length) out.push(`For other stores:`, ...elsewhere.map(line));
       } else {
-        for (const c of [...categoriesAtoZ(data.categories), { id: "", name: "No category" }]) {
-          const here = rows.filter((r) => (r.item.categoryId || "") === c.id || c.id === "" && !data.categories.some((x) => x.id === r.item.categoryId));
-          if (here.length) out.push(`${c.name}:`, ...here.map(line));
-        }
+        out.push("A to Z:", ...[...rows].sort((a, b) => a.item.name.localeCompare(b.item.name)).map(line));
       }
       return `${plural(rows.length, "thing")} on the list.
 ${totalText(listTotal(rows))}
@@ -1004,15 +1064,15 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
   },
   {
     name: "get_categories_and_stores",
-    title: "Get categories and stores",
-    description: "The categories (shop sections) items can go in, and the stores with their aisle numbers.",
+    title: "Get tags and stores",
+    description: "The tags items can have (labels such as Dairy or Breakfast; what older versions called categories), and the stores: each one's number of aisles, its places (named aisles such as Freezer, walked after the numbers), its aisle labels and the aisles known so far. Tags don't set aisles: each item has its own aisle in each store.",
     inputSchema: { type: "object", properties: {} },
     annotations: { readOnlyHint: true },
     async run(_args, { data }) {
       const stores = data.stores.map((s) => {
-        return `- ${s.name} [id: ${s.id}]${s.kind ? ` \xB7 ${s.kind}` : ""}: ${aisleText(s, data.categories)}`;
+        return `- ${s.name} [id: ${s.id}]${s.kind ? ` \xB7 ${s.kind}` : ""}: ${storeText(s, data.items)}`;
       });
-      return [`Categories: ${categoriesAtoZ(data.categories).map((c) => `${c.name} [id: ${c.id}]`).join(", ")}`, "Stores:", ...stores].join("\n");
+      return [`Tags: ${categoriesAtoZ(data.categories).map((c) => `${c.name} [id: ${c.id}]`).join(", ")}`, "Stores:", ...stores].join("\n");
     }
   },
   // ----- add (no asking) -----
@@ -1064,7 +1124,7 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
           detail: one ? one.target > 0 ? `A Staple \xB7 ${one.target} min` : "Not a Staple" : added.map((i) => i.name).join(", ")
         });
       }
-      const out = added.map((i) => `Added: ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`);
+      const out = added.map((i) => `Added: ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`);
       if (skipped.length) out.push(`Already in the pantry, not added: ${idList(skipped)}`);
       return out.join("\n");
     }
@@ -1091,9 +1151,9 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
       const old = [...i.useBy ?? []].slice(0, i.inStock);
       while (old.length < i.inStock) old.push(null);
       const fresh = Array.from({ length: amount }, (_, n) => dates[n] ?? null);
-      const next = { ...withStock(i, i.inStock + amount), useBy: [...old, ...fresh].sort(byDate), entries: settle(i.entries, amount) };
+      const next = { ...withStock(i, i.inStock + amount), useBy: [...old, ...fresh].sort(byDate), entries: settle(i.entries, amount), boughtAt: ctx.now().toISOString().slice(0, 10) };
       await commit(ctx, { items: [next], title: `Added ${amountOf(i, amount)}`, detail: stockDetail(normalise(next)), itemIds: [i.id] });
-      return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`;
+      return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`;
     }
   },
   {
@@ -1119,8 +1179,8 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
         if ((i.open ?? 0) >= i.inStock) throw new ToolError(`Every ${pack} of ${lower(i.name)} is already open (${haveText(i)}). Ask the user whether one was finished or more came in.`);
         const { item: next2, movedTo } = openUnit(i);
         await commit(ctx, { items: [next2], title: `Opened a ${pack} of ${lower(i.name)}`, detail: stockDetail(normalise(next2)), itemIds: [i.id] });
-        if (movedTo) return `Done. Its use-by is now ${movedTo} (use within ${i.useWithinWeeks} weeks once open). ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`;
-        return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`;
+        if (movedTo) return `Done. Its use-by is now ${movedTo} (use within ${i.useWithinWeeks} weeks once open). ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`;
+        return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`;
       }
       if (i.inStock <= 0) throw new ToolError(`There's no ${lower(i.name)} in stock already, so nothing was taken off. If the stock is wrong, ask the user and use update_item.`);
       const used = args.all === true ? i.inStock : Math.round(num(args.amount) ?? 1);
@@ -1130,7 +1190,7 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
       const title = args.all === true ? `Used all the ${lower(i.name)}` : isBulk(i) ? taken === 1 ? `Finished a ${pack} of ${lower(i.name)}` : `Finished ${amountOf(i, taken)}` : next.inStock === 0 ? `Used the last ${lower(i.name)}` : `Used ${amountOf(i, taken)}`;
       await commit(ctx, { items: [next], title, detail: stockDetail(normalise(next)), itemIds: [i.id] });
       const note = used > taken ? ` Only ${taken} were in stock, so it's now at 0.` : "";
-      return `Done.${note} ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`;
+      return `Done.${note} ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`;
     }
   },
   {
@@ -1313,7 +1373,7 @@ ${recipeLine(recipe, ctx.data.items)}`;
   {
     name: "update_item",
     title: "Change a pantry item",
-    description: "Changes any property of an item: name, type, minimum, stock, open packs, unit, pack size, category, location, use-by (best before) dates, when packs were opened, other names, brand, price, notes, and whether it's been ordered (only for something on the shopping list). Set a property to null to clear it. Use-by dates are numbered soonest first, undated last, as search_pantry lists them; change one with use_by_one, or replace them all with use_by. An edit: ask the user first, then call with confirmed: true. To record something used, use record_used instead (no asking needed).",
+    description: "Changes any property of an item: name, type, minimum, stock, open packs, unit, pack size, tags, its aisle in a store, location, use-by (best before) dates, when packs were opened, other names, brand, price, notes, the day it was last bought, and whether it's been ordered (only for something on the shopping list). Set a property to null to clear it. Use-by dates are numbered soonest first, undated last, as search_pantry lists them; change one with use_by_one, or replace them all with use_by. An edit: ask the user first, then call with confirmed: true. To record something used, use record_used instead (no asking needed).",
     inputSchema: {
       type: "object",
       properties: {
@@ -1331,7 +1391,17 @@ ${recipeLine(recipe, ctx.data.items)}`;
               anyOf: [{ type: "object", properties: { amount: { type: "number" }, measure: { type: "string", enum: ["g", "ml"] } }, required: ["amount", "measure"] }, { type: "null" }],
               description: 'Bulk only: what one pack holds, e.g. { amount: 1000, measure: "g" }. Used to check a recipe has enough.'
             },
-            category: { type: ["string", "null"] },
+            tags: { type: ["array", "null"], items: { type: "string" }, description: "Replaces its tags: existing tags by name or id. [] or null clears them. Claude can't add new tags." },
+            aisle: {
+              type: "object",
+              properties: {
+                store: { type: "string", description: "The store's id or name." },
+                aisle: { type: ["number", "string", "null"], description: "A whole number, or a place's name (Freezer, Tills). A place the store doesn't have is added to it. null clears it." }
+              },
+              required: ["store", "aisle"],
+              description: "Its aisle in one store. Say the store and the old and new aisle when asking."
+            },
+            bought: { type: ["string", "null"], description: "The day it was last bought, YYYY-MM-DD. Stock added sets it by itself." },
             location: { type: ["string", "null"], enum: [...LOCATIONS, null], description: "household is shown to the user as Other." },
             use_by: { type: "array", items: { type: "string" }, description: "Replaces every date, one per unit or pack. YYYY-MM-DD. [] clears them." },
             open_counts: { type: "boolean", description: "Bulk only: true if an open pack counts towards the minimum like a full one. false (the default) counts only full packs." },
@@ -1411,9 +1481,25 @@ ${recipeLine(recipe, ctx.data.items)}`;
           said.push(`pack size ${amount} ${p.measure}`);
         }
       }
-      if (has("category")) {
-        next.categoryId = cleared("category") ? "" : findCategory(ctx.data, c.category);
-        said.push(next.categoryId ? "shop or aisle" : "category cleared");
+      if (has("tags") || has("category")) {
+        next = withTags(next, has("tags") ? cleared("tags") ? [] : tagIds(ctx.data, c.tags) : cleared("category") ? [] : tagIds(ctx.data, void 0, c.category));
+        said.push(tagsOf(next).length ? `tags: ${tagNames(ctx.data.categories, next).join(", ")}` : "tags cleared");
+      }
+      let storeChange;
+      if (c.aisle !== void 0) {
+        const a = c.aisle ?? {};
+        const store = findStore(ctx.data, a.store);
+        if (!store) throw new ToolError("Say which store the aisle is in.");
+        const was = itemAisle(i, store);
+        const value = parseAisle(store, a.aisle);
+        next = withAisle(next, store.id, value);
+        const added = withPlace(store, value);
+        if (added !== store) storeChange = added;
+        said.push(`aisle at ${store.name}: ${was === null ? "none" : aisleTitle(was)} \u2192 ${value === null ? "none" : aisleTitle(value)}`);
+      }
+      if (has("bought")) {
+        next.boughtAt = cleared("bought") ? void 0 : isoDate(c.bought);
+        said.push(next.boughtAt ? `last bought ${next.boughtAt}` : "bought date cleared");
       }
       if (has("location")) {
         next.location = cleared("location") ? void 0 : location(c.location);
@@ -1489,7 +1575,8 @@ ${recipeLine(recipe, ctx.data.items)}`;
       }
       if (!said.length) return "Nothing to change.";
       await commit(ctx, { items: [next], title: `Changed ${next.name}`, detail: cap(said.join(", ")), itemIds: [i.id] });
-      return `Changed. ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`;
+      if (storeChange) await commitStores(ctx, { save: [storeChange], title: `${storeChange.name}: added the place ${(storeChange.places ?? []).at(-1)}` });
+      return `Changed. ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`;
     }
   },
   {
@@ -1636,14 +1723,16 @@ ${recipeLine(next, ctx.data.items)}`;
   {
     name: "add_store",
     title: "Add a store",
-    description: "Adds a store with its aisle numbers, so the shopping list follows its layout. Needs no asking. Categories you don't number aren't sold there. To change a store that already exists, use update_store.",
+    description: "Adds a store. Needs no asking. Its items' aisles fill in as the user shops there with the phone (it asks after each tick-off), so there's nothing to set up. To change a store that already exists, use update_store.",
     inputSchema: {
       type: "object",
       properties: {
         name: { type: "string", description: `"Sainsbury's, Stoke Newington".` },
         kind: { type: "string", description: 'Optional: "Supermarket", "Butcher".' },
         place: { type: "string", description: "Optional: the street or area." },
-        aisles: aislesSchema
+        no_aisle_numbers: { type: "boolean", description: "true for a shop that isn't walked in aisles (a greengrocer, a butcher): its list goes A to Z." },
+        aisle_count: { type: "number", description: "Optional: how many numbered aisles it has. The phone offers that many when it asks. Default 20." },
+        places: { type: "array", items: { type: "string" }, description: "Optional: named aisles such as Freezer or Tills, in the order they're walked, after the numbers." }
       },
       required: ["name"]
     },
@@ -1654,21 +1743,42 @@ ${recipeLine(next, ctx.data.items)}`;
       const clash = ctx.data.stores.find((x) => x.name.toLowerCase() === name.toLowerCase());
       if (clash) throw new ToolError(`There's already a store called ${clash.name} [id: ${clash.id}]. To change it, use update_store.`);
       const id = freshId(slug(name), (x) => ctx.data.stores.some((s) => s.id === x));
-      const aisles = Object.fromEntries(Object.entries(aisleChanges(ctx.data, args.aisles)).filter(([, n]) => n !== null));
-      const store = { id, name, kind: str(args.kind) ?? "", place: str(args.place) ?? "", aisles };
-      await commitStores(ctx, { save: [store], title: `Added the store ${name}`, detail: aisleText(store, ctx.data.categories) });
-      return `Added ${name} [id: ${id}]: ${aisleText(store, ctx.data.categories)}.`;
+      const count = aisleCount(args.aisle_count);
+      const store = {
+        id,
+        name,
+        kind: str(args.kind) ?? "",
+        place: str(args.place) ?? "",
+        // Stores still keep a retired number per tag (null), so older apps see the store.
+        aisles: Object.fromEntries(ctx.data.categories.map((c) => [c.id, null])),
+        ...args.no_aisle_numbers === true ? { noAisleNumbers: true, sells: [] } : {},
+        ...count ? { aisleCount: count } : {},
+        ...(strs(args.places) ?? []).length ? { places: [...new Set((strs(args.places) ?? []).map(cap))] } : {}
+      };
+      await commitStores(ctx, { save: [store], title: `Added the store ${name}`, detail: storeText(store, ctx.data.items) });
+      return `Added ${name} [id: ${id}]: ${storeText(store, ctx.data.items)}.`;
     }
   },
   {
     name: "update_store",
-    title: "Change a store or its aisle numbers",
-    description: "Renames a store or changes its kind, place or aisle numbers. Only the aisles you give change. An edit: ask the user first, saying the store and the old and new numbers, then call with confirmed: true. This can't be undone from History, so the reply lists the old numbers.",
+    title: "Change a store",
+    description: `Renames a store, or changes its kind, place, whether it has aisle numbers, its number of aisles, its places (named aisles such as Freezer, in walking order) or its aisle labels ("Dairy and eggs" for aisle 4). To move an item to another aisle, use update_item. An edit: ask the user first, saying what changes, then call with confirmed: true. This can't be undone from History, so the reply says what it was.`,
     inputSchema: {
       type: "object",
       properties: {
         store: { type: "string", description: "The store's id or name (get_categories_and_stores)." },
-        changes: { type: "object", properties: { name: { type: "string" }, kind: { type: "string" }, place: { type: "string" }, aisles: aislesSchema } },
+        changes: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            kind: { type: "string" },
+            place: { type: "string" },
+            no_aisle_numbers: { type: "boolean" },
+            aisle_count: { type: ["number", "null"], description: "How many numbered aisles. null goes back to 20." },
+            places: { type: "array", items: { type: "string" }, description: "Replaces its places, in walking order. Items in a place that's left out go back to No aisle there." },
+            aisle_labels: { type: "object", additionalProperties: { type: ["string", "null"] }, description: 'Labels by aisle: { "4": "Dairy and eggs", "Freezer": "Back wall" }. null removes a label. Others stay.' }
+          }
+        },
         confirmed
       },
       required: ["store", "changes", "confirmed"]
@@ -1677,41 +1787,79 @@ ${recipeLine(next, ctx.data.items)}`;
     async run(args, ctx) {
       const x = findStore(ctx.data, args.store);
       const c = args.changes ?? {};
-      const aisles = aisleChanges(ctx.data, c.aisles);
       const name = str(c.name) ?? x.name;
       const clash = ctx.data.stores.find((y) => y.id !== x.id && y.name.toLowerCase() === name.toLowerCase());
       if (clash) throw new ToolError(`There's already a store called ${clash.name}.`);
       needConfirmed(args, `changing ${x.name}`);
-      const next = {
-        ...x,
-        name,
-        kind: c.kind === void 0 ? x.kind : str(c.kind) ?? "",
-        place: c.place === void 0 ? x.place : str(c.place) ?? "",
-        aisles: Object.fromEntries(Object.entries({ ...x.aisles, ...aisles }).filter(([, n]) => n != null))
-      };
-      const moved = Object.entries(aisles).map(([id, n]) => `${categoryName(ctx.data.categories, id)} ${x.aisles[id] ?? "none"} \u2192 ${n ?? "none"}`);
-      const detail = [name !== x.name ? `Renamed from ${x.name}` : "", ...moved].filter(Boolean).join("; ") || void 0;
+      const next = { ...x, name, kind: c.kind === void 0 ? x.kind : str(c.kind) ?? "", place: c.place === void 0 ? x.place : str(c.place) ?? "" };
+      const said = name !== x.name ? [`renamed from ${x.name}`] : [];
+      if (typeof c.no_aisle_numbers === "boolean" && c.no_aisle_numbers !== !!x.noAisleNumbers) {
+        if (c.no_aisle_numbers) Object.assign(next, { noAisleNumbers: true, sells: x.sells ?? [] });
+        else next.noAisleNumbers = void 0;
+        said.push(c.no_aisle_numbers ? "now no aisle numbers (A to Z)" : "aisle numbers again");
+      }
+      if ("aisle_count" in c) {
+        const n = c.aisle_count === null ? void 0 : aisleCount(c.aisle_count);
+        if (n !== x.aisleCount) {
+          next.aisleCount = n;
+          said.push(`aisles ${x.aisleCount ?? DEFAULT_AISLES} \u2192 ${n ?? DEFAULT_AISLES}`);
+        }
+      }
+      let cleared = [];
+      if (Array.isArray(c.places)) {
+        const places = [...new Set((strs(c.places) ?? []).map(cap))];
+        const gone = (x.places ?? []).filter((p) => !places.some((q) => q.toLowerCase() === p.toLowerCase()));
+        next.places = places.length ? places : void 0;
+        cleared = pantryItems(ctx.data.items).filter((i) => {
+          const a = i.aisleAt?.[x.id];
+          return typeof a === "string" && gone.some((p) => p.toLowerCase() === a.toLowerCase());
+        }).map((i) => withAisle(i, x.id, null));
+        if (JSON.stringify(places) !== JSON.stringify(x.places ?? [])) said.push(`places: ${(x.places ?? []).join(", ") || "none"} \u2192 ${places.join(", ") || "none"}`);
+      }
+      if (c.aisle_labels !== void 0) {
+        if (!c.aisle_labels || typeof c.aisle_labels !== "object" || Array.isArray(c.aisle_labels)) throw new ToolError('aisle_labels is an object of aisle \u2192 label, such as { "4": "Dairy and eggs" }.');
+        const labels = { ...x.aisleLabels ?? {} };
+        for (const [k, v] of Object.entries(c.aisle_labels)) {
+          const key = aisleKey(/^\d+$/.test(k.trim()) ? Number(k) : k);
+          const was = labels[key];
+          if (v === null || v === "") delete labels[key];
+          else if (typeof v === "string") labels[key] = v.trim();
+          else throw new ToolError("Each label is text, or null to remove it.");
+          if ((labels[key] ?? "") !== (was ?? "")) said.push(`${aisleTitle(/^\d+$/.test(key) ? Number(key) : k.trim())} label: ${was ?? "none"} \u2192 ${labels[key] ?? "none"}`);
+        }
+        next.aisleLabels = Object.keys(labels).length ? labels : void 0;
+      }
+      if (!said.length) return "Nothing to change.";
+      const detail = cap(said.join("; "));
       await commitStores(ctx, { save: [next], title: `Changed ${name}`, detail });
-      return `Changed ${name}.${detail ? ` ${detail}.` : ""} It can't be undone from History, so to go back, change it again.
-Now: ${aisleText(next, ctx.data.categories)}.`;
+      if (cleared.length) await commit(ctx, { items: cleared, title: `${plural(cleared.length, "item")} back to No aisle at ${name}`, itemIds: cleared.map((i) => i.id) });
+      return `Changed ${name}. ${detail}. It can't be undone from History, so to go back, change it again.
+Now: ${storeText(next, ctx.data.items)}.`;
     }
   },
   {
     name: "delete_store",
     title: "Delete a store",
-    description: "Deletes a store and its aisle numbers. Items stay. A delete: ask the user first, then call with confirmed: true. It can't be undone from History.",
+    description: "Deletes a store, its places and labels. Items stay, but lose their aisle there. A delete: ask the user first, then call with confirmed: true. It can't be undone from History.",
     inputSchema: { type: "object", properties: { store: { type: "string", description: "The store's id or name." }, confirmed }, required: ["store", "confirmed"] },
     annotations: { readOnlyHint: false, destructiveHint: true },
     async run(args, ctx) {
       const x = findStore(ctx.data, args.store);
       needConfirmed(args, `deleting ${x.name}`);
-      await commitStores(ctx, { remove: [x.id], title: `Deleted the store ${x.name}`, detail: aisleText(x, ctx.data.categories) });
-      const moved = Object.values(ctx.data.items).filter((i) => i.where.includes(x.id)).map((i) => ({ ...i, where: i.where.filter((s) => s !== x.id) }));
+      const had = storeText(x, ctx.data.items);
+      await commitStores(ctx, { remove: [x.id], title: `Deleted the store ${x.name}`, detail: had });
+      const moved = Object.values(ctx.data.items).filter((i) => i.where.includes(x.id) || i.aisleAt?.[x.id] !== void 0).map((i) => ({ ...withAisle(i, x.id, null), where: i.where.filter((s) => s !== x.id) }));
       if (moved.length) await commit(ctx, { items: moved, title: `${moved.length === 1 ? moved[0].name : `${moved.length} items`} no longer tied to ${x.name}`, itemIds: moved.map((i) => i.id) });
-      return `Deleted ${x.name}. It had: ${aisleText(x, ctx.data.categories)}. It can't be undone from History; add_store would recreate it.`;
+      return `Deleted ${x.name}. It had: ${had}. It can't be undone from History; add_store would recreate it, but not its items' aisles.`;
     }
   }
 ];
+function aisleCount(v) {
+  if (v === void 0 || v === null) return void 0;
+  const n = num(v);
+  if (n === void 0 || !Number.isInteger(n) || n < 1 || n > 200) throw new ToolError("aisle_count is a whole number from 1 to 200.");
+  return n === DEFAULT_AISLES ? void 0 : n;
+}
 function nameListShort(names) {
   if (names.length <= 3) return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
   return `${names.slice(0, 3).join(", ")} and ${names.length - 3} more`;

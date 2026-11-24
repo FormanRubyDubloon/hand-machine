@@ -75,11 +75,15 @@ describe("reading", () => {
     expect(r.text).not.toContain("LOW")
   })
 
-  it("lists the shopping list in a store's aisle order", async () => {
-    const { call } = setup()
-    const r = await call("get_shopping_list", { store: "tesco" })
-    expect(r.text).toContain("Aisle 1 · Fruit & veg")
-    expect(r.text).toContain("2 eggs [id: eggs] · Staple, have 4, keep 6")
+  it("lists the shopping list in a store's walk, by each item's own aisle there (Batch 4c)", async () => {
+    const { call, mem } = setup()
+    // No aisle yet: under No aisle, whatever its tag.
+    let r = await call("get_shopping_list", { store: "tesco" })
+    expect(r.text).toContain("No aisle:\n- 2 eggs [id: eggs] · Staple, have 4, keep 6")
+    mem.state.stores[0] = { ...mem.state.stores[0], aisleLabels: { "4": "Dairy" } }
+    await call("update_item", { item: "eggs", changes: { aisle: { store: "tesco", aisle: 4 } }, confirmed: true })
+    r = await call("get_shopping_list", { store: "tesco" })
+    expect(r.text).toContain("Aisle 4 (Dairy):\n- 2 eggs")
   })
 
   it("says what a recipe is short of", async () => {
@@ -291,42 +295,87 @@ describe("edits and deletes need asking", () => {
   })
 })
 
-describe("stores and aisle numbers", () => {
-  it("adds a store without asking, numbering categories by name", async () => {
+describe("stores (Batch 4c: aisles sit on items)", () => {
+  it("adds a store without asking, with its number of aisles and places", async () => {
     const { call, mem } = setup()
-    const r = await call("add_store", { name: "Lidl", aisles: { "Tins & jars": 3, baking: 5 } })
+    const r = await call("add_store", { name: "Lidl", aisle_count: 12, places: ["freezer", "Tills"] })
     expect(r.isError).toBe(false)
-    expect(mem.state.stores.find((s) => s.id === "lidl")?.aisles).toEqual({ "tins-and-jars": 3, baking: 5 })
+    expect(mem.state.stores.find((s) => s.id === "lidl")).toMatchObject({ aisleCount: 12, places: ["Freezer", "Tills"] })
+    expect(r.text).toContain("12 aisles")
     expect(mem.history[0]).toMatchObject({ who: "claude", undo: null })
   })
 
   it("refuses to change a store without confirmed", async () => {
     const { call, mem } = setup()
-    const r = await call("update_store", { store: "tesco", changes: { aisles: { "Tins & jars": 9 } } })
+    const r = await call("update_store", { store: "tesco", changes: { aisle_count: 9 } })
     expect(r.isError).toBe(true)
-    expect(mem.state.stores[0].aisles["tins-and-jars"]).toBe(6)
+    expect(mem.state.stores[0].aisleCount).toBeUndefined()
   })
 
-  it("changes only the aisles it is given, and null clears one", async () => {
+  it("changes its number of aisles, places and labels", async () => {
     const { call, mem } = setup()
-    const r = await call("update_store", { store: "Tesco Express", changes: { aisles: { "Tins & jars": 9, "Fruit & veg": null } }, confirmed: true })
+    const r = await call("update_store", { store: "Tesco Express", changes: { aisle_count: 9, places: ["Freezer"], aisle_labels: { "4": "Dairy", Freezer: "Back wall" } }, confirmed: true })
     expect(r.isError).toBe(false)
-    expect(mem.state.stores[0].aisles).toEqual({ "tins-and-jars": 9, "grains-and-pulses": 5 })
-    expect(r.text).toContain("Tins & jars 6 → 9")
+    expect(mem.state.stores[0]).toMatchObject({ aisleCount: 9, places: ["Freezer"], aisleLabels: { "4": "Dairy", freezer: "Back wall" } })
+    expect(r.text).toContain("Aisles 20 → 9")
+    // 20 is the default, kept as unset; null clears a label.
+    await call("update_store", { store: "tesco", changes: { aisle_count: 20, aisle_labels: { "4": null } }, confirmed: true })
+    expect(mem.state.stores[0].aisleCount).toBeUndefined()
+    expect(mem.state.stores[0].aisleLabels).toEqual({ freezer: "Back wall" })
   })
 
-  it("rejects an unknown category and a bad number", async () => {
+  it("moves items in a place that's taken away back to No aisle", async () => {
     const { call, mem } = setup()
-    expect((await call("update_store", { store: "tesco", changes: { aisles: { Cheese: 2 } }, confirmed: true })).isError).toBe(true)
-    expect((await call("update_store", { store: "tesco", changes: { aisles: { Baking: 0 } }, confirmed: true })).isError).toBe(true)
-    expect(mem.state.stores[0].aisles.baking).toBeUndefined()
+    await call("update_item", { item: "eggs", changes: { aisle: { store: "tesco", aisle: "Freezer" } }, confirmed: true })
+    expect(mem.state.stores[0].places).toEqual(["Freezer"])
+    expect(mem.state.items.eggs.aisleAt).toEqual({ tesco: "Freezer" })
+    await call("update_store", { store: "tesco", changes: { places: [] }, confirmed: true })
+    expect(mem.state.items.eggs.aisleAt).toBeUndefined()
+  })
+
+  it("rejects a bad number of aisles and a bad aisle", async () => {
+    const { call, mem } = setup()
+    expect((await call("update_store", { store: "tesco", changes: { aisle_count: 0 }, confirmed: true })).isError).toBe(true)
+    expect((await call("update_item", { item: "eggs", changes: { aisle: { store: "tesco", aisle: 0 } }, confirmed: true })).isError).toBe(true)
+    expect(mem.state.items.eggs.aisleAt).toBeUndefined()
   })
 
   it("deletes a store only once confirmed", async () => {
     const { call, mem } = setup()
     expect((await call("delete_store", { store: "tesco" })).isError).toBe(true)
     expect(mem.state.stores).toHaveLength(1)
+    await call("update_item", { item: "eggs", changes: { aisle: { store: "tesco", aisle: 3 } }, confirmed: true })
     await call("delete_store", { store: "tesco", confirmed: true })
     expect(mem.state.stores).toHaveLength(0)
+    expect(mem.state.items.eggs.aisleAt).toBeUndefined()
+  })
+})
+
+describe("tags and items (Batch 4c)", () => {
+  it("gives an item several tags, or none, and only ones that exist", async () => {
+    const { call, mem } = setup()
+    const r = await call("update_item", { item: "eggs", changes: { tags: ["Baking", "Tins & jars"] }, confirmed: true })
+    expect(r.isError).toBe(false)
+    expect(mem.state.items.eggs).toMatchObject({ tagIds: ["baking", "tins-and-jars"], categoryId: "baking" })
+    expect(r.text).toContain("tags: Baking, Tins & jars")
+    expect((await call("update_item", { item: "eggs", changes: { tags: ["Cheese"] }, confirmed: true })).isError).toBe(true)
+    await call("update_item", { item: "eggs", changes: { tags: null }, confirmed: true })
+    expect(mem.state.items.eggs).toMatchObject({ tagIds: [], categoryId: "" })
+  })
+
+  it("adds items with tags, and sets the bought date when they come in", async () => {
+    const { call, mem } = setup()
+    await call("add_items", { items: [{ name: "Flour", tags: ["Baking"], stock: 1, location: "cupboard" }] })
+    const flour = Object.values(mem.state.items).find((i) => i.name === "Flour")!
+    expect(flour.tagIds).toEqual(["baking"])
+    expect(flour.boughtAt).toBeTruthy()
+    await call("add_stock", { item: "eggs", amount: 2 })
+    expect(mem.state.items.eggs.boughtAt).toBeTruthy()
+  })
+
+  it("finds items by any of their tags", async () => {
+    const { call } = setup()
+    await call("update_item", { item: "eggs", changes: { tags: ["Baking", "Tins & jars"] }, confirmed: true })
+    expect((await call("search_pantry", { query: "tins" })).text).toContain("Eggs [id: eggs]")
   })
 })

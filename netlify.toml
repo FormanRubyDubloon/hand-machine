@@ -7,8 +7,8 @@
   [build.environment]
     NODE_VERSION = "22"
 
-# The site root goes straight to Collca (the pantry app), so a shared link opens it. The phone shopping
-# list, the fallback until the iPhone app, stays at /prototypes/shopping-list/.
+# The site root goes straight to Collca (the pantry app), so a shared link opens it. The old phone shopping
+# list at /prototypes/shopping-list/ was switched off on 24 Nov 2026: it's a page pointing to the Collca app.
 # The repo root page is the component showcase, which isn't part of the deployed app.
 [[redirects]]
   from = "/"
