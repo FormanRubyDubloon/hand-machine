@@ -66,7 +66,7 @@ export function refreshShop(shop: Shop | null, items: Items, now = new Date()): 
         delete rows[id]
         changed = true
       } else if (need !== row.need || JSON.stringify(row.entries ?? []) !== JSON.stringify(item.entries ?? [])) {
-        rows[id] = { need, got: 0, entries: item.entries, review: item.review }
+        rows[id] = { need, got: 0, entries: item.entries, review: item.review, skipped: row.skipped }
         changed = true
       }
     }
@@ -116,22 +116,32 @@ export type Row = {
   group: Exclude<ListFilter["show"], "all">
   /** Ordered, or the stock it had before this shop (so ticking doesn't move it out of a filter). */
   status: "low" | "out" | "ordered" | null
+  /** Skipped this shop: hidden from the list, still to buy another time (Batch 3, 24 Nov 2026). */
+  skipped: boolean
 }
 
-/** The list filters, the same two as the pantry app's shopping list: why it's there, and how much is left. */
-export type ListFilter = { show: "all" | "staples" | "recipes" | "added"; stock: "all" | "low" | "out" | "ordered" }
+/**
+ * The list filters: the same two as the pantry app's shopping list (why it's there, and how much is left), and
+ * Only items for this store (Batch 3, 24 Nov 2026), which hides things you buy at another store. Items with no
+ * store chosen are for every store, so they stay.
+ */
+export type ListFilter = { show: "all" | "staples" | "recipes" | "added"; stock: "all" | "low" | "out" | "ordered"; thisStore?: boolean }
 export const NO_FILTER: ListFilter = { show: "all", stock: "all" }
 
 const FILTER_NAMES: Record<string, string> = { staples: "Staples", recipes: "For recipes", added: "Added", low: "Low", out: "Out", ordered: "Ordered" }
 
 /** The filters that are on, by name: ["Staples", "Out"]. */
-export const filterNames = (f: ListFilter | undefined) => (f ? [f.show, f.stock].filter((v) => v !== "all").map((v) => FILTER_NAMES[v]) : [])
+export const filterNames = (f: ListFilter | undefined) =>
+  f ? [...[f.show, f.stock].filter((v) => v !== "all").map((v) => FILTER_NAMES[v]), ...(f.thisStore ? ["This store"] : [])] : []
 
-/** How many filters are on (0, 1 or 2). */
-export const filtersOn = (f: ListFilter | undefined) => (f ? Number(f.show !== "all") + Number(f.stock !== "all") : 0)
+/** How many filters are on (0 to 3). */
+export const filtersOn = (f: ListFilter | undefined) => (f ? Number(f.show !== "all") + Number(f.stock !== "all") + Number(!!f.thisStore) : 0)
 
-export const matchesFilter = (r: Row, f: ListFilter | undefined) =>
-  !f || ((f.show === "all" || r.group === f.show) && (f.stock === "all" || r.status === f.stock))
+/** Whether an item is for this store: no store chosen (every store), or this one. */
+export const forStore = (i: Item, storeId: string | undefined) => !storeId || i.where.length === 0 || i.where.includes(storeId)
+
+export const matchesFilter = (r: Row, f: ListFilter | undefined, storeId?: string) =>
+  !f || ((f.show === "all" || r.group === f.show) && (f.stock === "all" || r.status === f.stock) && (!f.thisStore || forStore(r.item, storeId)))
 
 /** Why it's on the list, said plainly. */
 export function reasonOf(i: Item, startEntries = i.entries) {
@@ -163,12 +173,13 @@ export function rowsOf(state: Pick<PhoneState, "items" | "shop">): Row[] {
     const before = got > 0 ? unbought(item, got, r.entries, r.review) : item
     const group = shortfall(before) > 0 ? "staples" : before.entries?.[0]?.source.kind === "recipe" ? "recipes" : "added"
     const status = item.ordered ? "ordered" : stockOf(before)
-    return [{ id, item, need: r.need, got, left, done, ordered: !!item.ordered, isNew: !!r.review, note, group, status }]
+    return [{ id, item, need: r.need, got, left, done, ordered: !!item.ordered, isNew: !!r.review, note, group, status, skipped: !!r.skipped && !done }]
   })
 }
 
-/** The rows the list filters let through. */
-export const shownRows = (state: Pick<PhoneState, "items" | "shop" | "filter">) => rowsOf(state).filter((r) => matchesFilter(r, state.filter))
+/** The rows on screen: not skipped this shop, and let through by the filters. */
+export const shownRows = (state: Pick<PhoneState, "items" | "shop" | "filter" | "storeId">) =>
+  rowsOf(state).filter((r) => !r.skipped && matchesFilter(r, state.filter, state.storeId))
 
 /** Unticked first, then ticked; A to Z within each. */
 export const sortRows = (rows: Row[]) =>

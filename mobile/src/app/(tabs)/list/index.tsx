@@ -35,9 +35,11 @@ export default function ListScreen() {
   const rows = shownRows(state)
   const totalLeft = leftOf(rows)
   const empty = allRows.length === 0
-  const shopDone = !empty && allRows.every((r) => r.done || r.ordered)
+  // Skipped rows still need buying, but not in this shop, so they don't keep it from being done.
+  const skipped = allRows.filter((r) => r.skipped)
+  const shopDone = !empty && allRows.every((r) => r.done || r.ordered || r.skipped)
   const filtered = filtersOn(state.filter)
-  const noMatch = !empty && rows.length === 0
+  const noMatch = !empty && rows.length === 0 && skipped.length < allRows.length
 
   const go = React.useCallback((i: number | "all") => local((s) => ({ ...s, aisle: i })), [local])
 
@@ -123,7 +125,15 @@ export default function ListScreen() {
                 </View>
               ))}
             </Press>
-            <Caption style={{ fontSize: 15 }}>{aisleName && <><Text style={{ fontFamily: font.bold, color: c.ink }}>{aisleName}</Text> · </>}{meta}</Caption>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center" }}>
+              <Caption style={{ fontSize: 15 }}>{aisleName && <><Text style={{ fontFamily: font.bold, color: c.ink }}>{aisleName}</Text> · </>}{meta}</Caption>
+              {/* What's skipped this shop, beside what's left; it opens the Skipped sheet (Isaac's change, 24 Nov 2026). */}
+              {skipped.length > 0 && (
+                <Press fade onPress={() => router.push("/skipped")} hitSlop={12} accessibilityRole="button" accessibilityLabel={`${skipped.length} skipped this shop. Show them`}>
+                  <Caption style={{ fontSize: 15 }}> · <Text style={{ fontFamily: font.semibold, color: c.olive }}>{skipped.length} skipped</Text></Caption>
+                </Press>
+              )}
+            </View>
           </View>
           <IconButton
             label={filtered ? `Filters, ${filtered} on` : "Filters"}
@@ -193,6 +203,7 @@ export default function ListScreen() {
             </Press>
           </View>
         )}
+
       </ScrollView>
     </View>
   )

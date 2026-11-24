@@ -18,6 +18,8 @@ export type ShopRow = {
   entries?: ListEntry[]
   /** Whether it was New before anything was ticked. */
   review?: boolean
+  /** Skipped this shop: off the list until you change store or start a new list. Still needs buying. */
+  skipped?: boolean
 }
 
 /**
