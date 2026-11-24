@@ -15,10 +15,11 @@ import { font, space, useColours } from "../../../ui/theme"
 const bySoonest = (a: Item, b: Item) => (soonest(a) ?? "9999").localeCompare(soonest(b) ?? "9999") || a.name.localeCompare(b.name)
 
 export default function Browse() {
-  const { loc, q, review, all: seeAll } = useLocalSearchParams<{ loc?: string; q?: string; review?: string; all?: string }>()
+  // `show` opens See all with a Show filter on (Home's Use soon and Low or out counts, Batch 5).
+  const { loc, q, review, all: seeAll, show } = useLocalSearchParams<{ loc?: string; q?: string; review?: string; all?: string; show?: string }>()
   const { state, local } = useStore()
   const c = useColours()
-  const [view, setView] = React.useState<PantryView>(defaultView)
+  const [view, setView] = React.useState<PantryView>(() => ({ ...defaultView, show: SHOWS.find((x) => x.value === show)?.value ?? null }))
   const only = inStockOnly(state)
   const setOnly = (on: boolean) => local((s) => ({ ...s, pantryAll: !on }))
   const everything = pantryItems(state.items, true)
@@ -34,7 +35,8 @@ export default function Browse() {
     list = everything.filter((i) => namesOf(i).some((n) => containsText(n, q))).sort((a, b) => a.name.localeCompare(b.name))
   } else if (seeAll) {
     title = "All items"
-    list = viewOf(shown, view)
+    // Out means none in stock, so it looks at everything whatever the switch says.
+    list = viewOf(view.show === "out" ? everything : shown, view)
     caption = `sorted ${SORTS.find((x) => x.value === view.sort)!.label}`
   } else {
     title = LOCATIONS.find((l) => l.value === loc)?.label ?? "Pantry"

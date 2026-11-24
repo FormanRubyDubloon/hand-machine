@@ -1,22 +1,22 @@
 // RECIPES: every recipe, with ✓ when you can cook it now or −n when you're short of n. "This shop" shows
-// recipes with something on the current list (handoff: a working title, see open question 3).
+// recipes with something on the current list (handoff: a working title, see open question 3). Its search field went
+// in Batch 5: search is the header's, across the list, the pantry and recipes.
 import { router } from "expo-router"
-import { ArrowUpDown, Check, Search } from "lucide-react-native"
+import { ArrowUpDown, Check } from "lucide-react-native"
 import * as React from "react"
 import { FlatList, Modal, RefreshControl, Text, View } from "react-native"
-import { containsText, needOf, recipeInfo } from "../../../../../prototypes/pantry-app/src/model"
+import { needOf, recipeInfo } from "../../../../../prototypes/pantry-app/src/model"
 import { minutesText } from "../../../../../prototypes/shared/src/pantry"
 import { useStore } from "../../../data/store"
 import { plural } from "../../../logic/phrases"
 import { RECIPE_SORTS as SORTS, type RecipeSort as Sort } from "../../../logic/sort"
-import { Caption, Field, IconButton, Press, Segmented } from "../../../ui/kit"
+import { Caption, IconButton, Press, Segmented } from "../../../ui/kit"
 import { font, radius, space, useColours } from "../../../ui/theme"
 
 type Show = "all" | "shop"
 export default function Recipes() {
   const { state, status, pulling, pullToSync } = useStore()
   const c = useColours()
-  const [q, setQ] = React.useState("")
   const [show, setShow] = React.useState<Show>("all")
   const [sort, setSort] = React.useState<Sort>("name")
   const [sorting, setSorting] = React.useState(false)
@@ -24,7 +24,6 @@ export default function Recipes() {
 
   const rows = React.useMemo(() => {
     return state.recipes
-      .filter((r) => !q.trim() || containsText(r.name, q) || r.ingredients.some((g) => containsText(g.text, q)))
       .map((r) => {
         const info = recipeInfo(r, state.items)
         const onList = new Set(r.ingredients.map((g) => g.itemId).filter((id) => id && state.items[id] && needOf(state.items[id]) > 0)).size
@@ -32,15 +31,11 @@ export default function Recipes() {
       })
       .filter((x) => show === "all" || x.onList > 0)
       .sort((a, b) => (show === "shop" ? b.onList - a.onList : 0) || current.compare(a.r, b.r))
-  }, [state.recipes, state.items, q, show, current])
+  }, [state.recipes, state.items, show, current])
 
   return (
     <View style={{ flex: 1 }}>
       <View style={{ paddingHorizontal: space.screen, paddingTop: 14, paddingBottom: 10, gap: 10 }}>
-        <View>
-          <Field value={q} onChangeText={setQ} placeholder="Find a recipe" accessibilityLabel="Find a recipe" style={{ paddingLeft: 42 }} returnKeyType="search" />
-          <Search size={18} color={c.muted} style={{ position: "absolute", left: 14, top: 15 }} pointerEvents="none" />
-        </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <View style={{ flex: 1 }}>
             <Segmented<Show> label="Show" value={show} onChange={setShow} options={[{ value: "all", label: "All" }, { value: "shop", label: "This shop" }]} />
@@ -73,7 +68,7 @@ export default function Recipes() {
             </Press>
           )
         }}
-        ListEmptyComponent={<Caption style={{ paddingVertical: 20 }}>{q.trim() ? `No recipes match “${q.trim()}”.` : show === "shop" ? "Nothing on your list is in a recipe." : "No recipes yet."}</Caption>}
+        ListEmptyComponent={<Caption style={{ paddingVertical: 20 }}>{show === "shop" ? "Nothing on your list is in a recipe." : "No recipes yet."}</Caption>}
         ListFooterComponent={<Caption style={{ paddingVertical: 20 }}>To add a recipe, give it to Claude: paste it, share a link or send a file.</Caption>}
       />
       <SortMenu open={sorting} value={sort} onPick={(v) => { setSort(v); setSorting(false) }} onClose={() => setSorting(false)} />
