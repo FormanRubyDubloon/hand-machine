@@ -11,12 +11,13 @@
 // Stock, list and recipe rules are the pantry app's own (prototypes/pantry-app/src/model.ts).
 import {
   amountOf, byUseFirst, cap, distance, entryTotal, haveText, isBulk, isStaple, lower, matchesName, namesOf, needOf, normalise, openUnit, plural,
-  recipeInfo, settle, sells, soldAt, stockOf, aisleNumber, aisleOrder, categoriesAtoZ, listRows, listTotal, money, withStock, type Items, type Reason,
+  recipeInfo, settle, soldAt, stockOf, categoriesAtoZ, listRows, listTotal, money, withStock, type Items, type Reason,
+  aisleKey, aisleLabel, aisleTitle, compareAisles, DEFAULT_AISLES, itemAisle, storeAisles, tagsOf, withAisle, withTags, type AisleValue,
 } from "../../pantry-app/src/model"
 import { unitPair } from "../../shared/src/rows"
-import type { Category, Location, SharedIngredient, SharedItem, SharedRecipe, SharedStore } from "../../shared/src/pantry"
+import type { Location, SharedIngredient, SharedItem, SharedRecipe, SharedStore } from "../../shared/src/pantry"
 import type { Backend, HistoryRow, PantryData } from "./backend"
-import { categoryName, dateWithDays, ingredientLine, itemLine, recipeLine } from "./text"
+import { dateWithDays, ingredientLine, itemLine, recipeLine, tagNames } from "./text"
 
 // ---------- plumbing ----------
 
@@ -143,30 +144,37 @@ async function commitStores(ctx: Ctx, change: { save?: SharedStore[]; remove?: s
   data.stores = next
 }
 
-/** `{ "Frozen": 12, "Baking": null }` → category ids to numbers. null clears a number. */
-function aisleChanges(data: PantryData, v: unknown): Record<string, number | null> {
-  if (v === undefined) return {}
-  if (!v || typeof v !== "object" || Array.isArray(v)) throw new ToolError("aisles is an object of category name → aisle number, for example { \"Frozen\": 12 }. Use null to clear a number.")
-  const out: Record<string, number | null> = {}
-  for (const [ref, n] of Object.entries(v as Json)) {
-    const id = findCategory(data, ref)
-    if (n === null) out[id] = null
-    else if (typeof n === "number" && Number.isInteger(n) && n > 0) out[id] = n
-    else throw new ToolError(`The aisle number for ${ref} has to be a whole number above 0, or null to clear it.`)
-  }
-  return out
+/**
+ * A store in words for Claude (Batch 4c, 24 Nov 2026): aisles belong to stores and sit on each item, learned when
+ * the user ticks things off on the phone. A store has a number of aisles, named places walked after the numbers, and
+ * labels for its aisles.
+ */
+function storeText(x: SharedStore, items: Items) {
+  if (x.noAisleNumbers) return "no aisle numbers: its list goes A to Z"
+  const known = storeAisles(x, pantryItems(items))
+  const labels = Object.entries(x.aisleLabels ?? {}).map(([k, v]) => `${/^\d+$/.test(k) ? `aisle ${k}` : k}: ${v}`)
+  return [
+    `${x.aisleCount ?? DEFAULT_AISLES} aisles`,
+    (x.places ?? []).length ? `places (after the numbers, in order): ${(x.places ?? []).join(", ")}` : "no places",
+    labels.length ? `labels: ${labels.join("; ")}` : "",
+    known.length ? `aisles known so far: ${known.map((g) => `${aisleTitle(g.aisle)} (${plural(g.items.length, "item")})`).join(", ")}` : "no aisles known yet",
+  ].filter(Boolean).join(" · ")
 }
 
-const aislesSchema = {
-  type: "object",
-  description: "Aisle number per category, by category name or id: { \"Frozen\": 12, \"Baking\": 7 }. null clears a number (the store doesn't sell it). Categories left out stay as they are. Claude can't add or rename categories.",
-  additionalProperties: { type: ["number", "null"] },
+/** An aisle as Claude gives it: a whole number, or the name of a place. A place the store doesn't have is added. */
+function parseAisle(store: SharedStore, v: unknown): AisleValue | null {
+  if (v === null || v === "") return null
+  if (store.noAisleNumbers) throw new ToolError(`${store.name} has no aisle numbers, so its items have no aisle there.`)
+  if (typeof v === "number" && Number.isInteger(v) && v > 0) return v
+  if (typeof v === "string" && /^\s*\d+\s*$/.test(v) && Number(v) > 0) return Number(v)
+  const place = str(v)
+  if (place) return (store.places ?? []).find((p) => p.toLowerCase() === place.toLowerCase()) ?? cap(place)
+  throw new ToolError("An aisle is a whole number above 0, or the name of a place such as Freezer. null clears it.")
 }
 
-const aisleText = (x: SharedStore, cats: Category[]) =>
-  x.noAisleNumbers
-    ? `no aisle numbers; sells ${aisleOrder(x, cats).filter((c) => sells(x, c.id)).map((c) => c.name).join(", ") || "nothing ticked"}`
-    : aisleOrder(x, cats).filter((c) => x.aisles[c.id] != null).map((c) => `${x.aisles[c.id]} ${c.name}`).join(", ") || "no aisles set"
+/** A store with a new place added, if the aisle is one it doesn't have yet. */
+const withPlace = (store: SharedStore, a: AisleValue | null): SharedStore =>
+  typeof a === "string" && !(store.places ?? []).some((p) => p.toLowerCase() === a.toLowerCase()) ? { ...store, places: [...(store.places ?? []), a] } : store
 
 // ---------- finding things ----------
 
@@ -222,14 +230,22 @@ function findRecipe(recipes: SharedRecipe[], ref: unknown): SharedRecipe {
   throw new ToolError(`No recipe is called "${q}". Use find_recipes to see what's saved.`)
 }
 
-function findCategory(data: PantryData, ref: unknown): string {
+/** A tag (what the code calls a category) by name or id. Claude can't add, rename or remove tags. */
+function findTag(data: PantryData, ref: unknown): string {
   const q = str(ref)
   if (!q) return ""
   const c = data.categories.find((x) => x.id === q || x.name.toLowerCase() === q.toLowerCase())
   if (c) return c.id
   throw new ToolError(
-    `There's no category "${q}". Use one that exists (${categoriesAtoZ(data.categories).map((x) => x.name).join(", ")}). Claude can't add categories yet.`,
+    `There's no tag "${q}". Use ones that exist (${categoriesAtoZ(data.categories).map((x) => x.name).join(", ")}). Claude can't add tags: the user adds them in Collca or on the phone.`,
   )
+}
+
+/** Tags as Claude gives them: a list of names or ids. The old single `category` still works, as one tag. */
+function tagIds(data: PantryData, v: unknown, legacy?: unknown): string[] {
+  if (Array.isArray(v)) return [...new Set(v.map((t) => findTag(data, t)).filter(Boolean))]
+  if (typeof v === "string") return [findTag(data, v)].filter(Boolean)
+  return legacy === undefined ? [] : [findTag(data, legacy)].filter(Boolean)
 }
 
 function findStore(data: PantryData, ref: unknown) {
@@ -271,7 +287,7 @@ const newItemProps = {
   name: { type: "string", description: "As the user would say it, capitalised: \"Chopped tomatoes\"." },
   type: { type: "string", enum: ["counted", "bulk"], description: "counted: tracked by number (eggs, tins, onions). bulk: tracked in whole packs, which can be open (flour, oil, rice, spices)." },
   unit: { type: "string", description: "Optional, singular: \"tin\", \"bag\", \"bottle\". Leave out for plain counts (3 onions)." },
-  category: { type: "string", description: "An existing category's name or id (get_categories_and_stores). Leave out if unsure." },
+  tags: { type: "array", items: { type: "string" }, description: "Optional: existing tags by name or id (get_categories_and_stores), such as [\"Dairy\"]. An item can have several, or none. Leave out if unsure." },
   location: { type: "string", enum: LOCATIONS, description: "household is shown to the user as Other: cleaning things, toiletries, anything not food." },
 }
 const ingredientSchema = {
@@ -305,7 +321,7 @@ type NewItems = { created: SharedItem[]; linked: string[]; unlinked: string[] }
 /**
  * Turns Claude's ingredient lines into the app's. A line with no pantry item stays on the recipe, not linked:
  * it becomes a pantry item only when the user puts it on the shopping list (the pantry app asks for its
- * category and location then).
+ * location and tags then).
  */
 function buildIngredients(data: PantryData, input: unknown, _now: Date): { ingredients: SharedIngredient[] } & NewItems {
   if (!Array.isArray(input) || !input.length) throw new ToolError("A recipe needs its ingredients.")
@@ -341,8 +357,11 @@ function newItem(data: PantryData, n: Json, items: Items, now: Date): SharedItem
     inStock: stock,
     open: type === "bulk" ? 0 : undefined,
     unit: unitPair(str(n.unit) ?? null),
-    categoryId: findCategory(data, n.category),
+    // Several tags, or none (Batch 4c). categoryId is kept as the first, for apps that know one.
+    categoryId: tagIds(data, n.tags, n.category)[0] ?? "",
+    tagIds: tagIds(data, n.tags, n.category),
     where: [],
+    boughtAt: stock > 0 ? now.toISOString().slice(0, 10) : undefined,
     location: location(n.location),
     otherNames: strs(n.other_names)?.length ? strs(n.other_names) : undefined,
     notes: str(n.notes),
@@ -416,11 +435,11 @@ export const tools: Tool[] = [
     name: "search_pantry",
     title: "Search the pantry",
     description:
-      "Look up pantry items and their stock. Each line gives the id, what's in stock, whether it's a Staple (an item with a minimum to keep), whether it's low or out, how many are on the shopping list, the soonest use-by date, location, category and price each (marked \"(estimate)\" when it's a guess rather than one the user gave). With no query and no filter it lists everything.",
+      "Look up pantry items and their stock. Each line gives the id, what's in stock, whether it's a Staple (an item with a minimum to keep), whether it's low or out, how many are on the shopping list, the soonest use-by date, location, tags, its aisle in each store, when it was last bought and price each (marked \"(estimate)\" when it's a guess rather than one the user gave). With no query and no filter it lists everything.",
     inputSchema: {
       type: "object",
       properties: {
-        query: { type: "string", description: "Part of a name, another name, or a category name." },
+        query: { type: "string", description: "Part of a name, another name, or a tag." },
         filter: { type: "string", enum: ["all", "staples", "low_or_out", "out", "use_soon", "not_staples", "no_price", "estimated_price"], description: "low_or_out: Out, or Low (half the minimum or fewer). use_soon: has a use-by date in the next 7 days. no_price: no price set. estimated_price: the price is an estimate." },
       },
     },
@@ -430,7 +449,7 @@ export const tools: Tool[] = [
       const filter = str(args.filter) ?? "all"
       let list = pantryItems(data.items)
       if (q) {
-        list = list.filter((i) => namesOf(i).some((n) => n.toLowerCase().includes(q)) || categoryName(data.categories, i.categoryId).toLowerCase().includes(q))
+        list = list.filter((i) => namesOf(i).some((n) => n.toLowerCase().includes(q)) || tagNames(data.categories, i).some((t) => t.toLowerCase().includes(q)))
       }
       list = list.filter((i) => {
         if (filter === "staples") return isStaple(i)
@@ -450,14 +469,14 @@ export const tools: Tool[] = [
         const near = q ? nearItems(data.items, q) : []
         return near.length ? `Nothing matches. Did you mean: ${idList(near)}?` : "Nothing matches."
       }
-      return `${plural(list.length, "item")}:\n${list.map((i) => itemLine(i, data.categories)).join("\n")}`
+      return `${plural(list.length, "item")}:\n${list.map((i) => itemLine(i, data.categories, data.stores)).join("\n")}`
     },
   },
   {
     name: "get_shopping_list",
     title: "Get the shopping list",
     description:
-      "What's on the shopping list and why: Staples below their minimum, things for recipes the user wants to cook, and things added by hand or by Claude. Lines marked ORDERED are already ordered (online, say), so not to buy in a shop; they stay on the list until they arrive. Give a store to get it in that store's aisle order, with anything the store doesn't sell listed apart. Each line has its cost (price each times how many), and the list starts with an estimated total: it leaves out lines with no price and says how many there are, and it's approximate when any line is unpriced or uses an estimated price.",
+      "What's on the shopping list and why: Staples below their minimum, things for recipes the user wants to cook, and things added by hand or by Claude. Lines marked ORDERED are already ordered (online, say), so not to buy in a shop; they stay on the list until they arrive. Give a store to get it in the order the user walks it: No aisle first, then the numbered aisles, then its places, each item in its own aisle there, with things for other stores listed apart. Without a store it's A to Z. Each line has its cost (price each times how many), and the list starts with an estimated total: it leaves out lines with no price and says how many there are, and it's approximate when any line is unpriced or uses an estimated price.",
     inputSchema: { type: "object", properties: { store: { type: "string", description: "A store's name or id (get_categories_and_stores)." } } },
     annotations: { readOnlyHint: true },
     async run(args, { data }) {
@@ -468,19 +487,27 @@ export const tools: Tool[] = [
       const store = findStore(data, args.store)
       const out: string[] = []
       if (store) {
-        out.push(store.noAisleNumbers ? `${store.name} (no aisle numbers), A to Z:` : `${store.name}, in aisle order:`)
-        for (const c of aisleOrder(store, data.categories)) {
-          const here = rows.filter((r) => r.item.categoryId === c.id && soldAt(r.item, store))
-          const n = aisleNumber(store, c.id)
-          if (here.length) out.push(n === null ? `${c.name} (no aisle number)` : `Aisle ${n} · ${c.name}`, ...here.map(line))
+        const here = rows.filter((r) => soldAt(r.item, store))
+        if (store.noAisleNumbers) out.push(`${store.name} (no aisle numbers), A to Z:`, ...here.map(line))
+        else {
+          out.push(`${store.name}, in the order it's walked:`)
+          const groups = new Map<string, { aisle: AisleValue | null; rows: typeof rows }>()
+          for (const r of here) {
+            const a = itemAisle(r.item, store)
+            const k = a === null ? "" : aisleKey(a)
+            const g = groups.get(k) ?? { aisle: a, rows: [] }
+            g.rows.push(r)
+            groups.set(k, g)
+          }
+          for (const g of [...groups.values()].sort((x, y) => compareAisles(store, x.aisle, y.aisle))) {
+            const label = aisleLabel(store, g.aisle)
+            out.push(`${aisleTitle(g.aisle)}${label ? ` (${label})` : ""}:`, ...g.rows.map(line))
+          }
         }
-        const elsewhere = rows.filter((r) => !soldAt(r.item, store) || !data.categories.some((c) => c.id === r.item.categoryId))
-        if (elsewhere.length) out.push(`For other stores, or with no category:`, ...elsewhere.map(line))
+        const elsewhere = rows.filter((r) => !soldAt(r.item, store))
+        if (elsewhere.length) out.push(`For other stores:`, ...elsewhere.map(line))
       } else {
-        for (const c of [...categoriesAtoZ(data.categories), { id: "", name: "No category" }]) {
-          const here = rows.filter((r) => (r.item.categoryId || "") === c.id || (c.id === "" && !data.categories.some((x) => x.id === r.item.categoryId)))
-          if (here.length) out.push(`${c.name}:`, ...here.map(line))
-        }
+        out.push("A to Z:", ...[...rows].sort((a, b) => a.item.name.localeCompare(b.item.name)).map(line))
       }
       return `${plural(rows.length, "thing")} on the list.\n${totalText(listTotal(rows))}\n${out.join("\n")}`
     },
@@ -584,15 +611,15 @@ export const tools: Tool[] = [
   },
   {
     name: "get_categories_and_stores",
-    title: "Get categories and stores",
-    description: "The categories (shop sections) items can go in, and the stores with their aisle numbers.",
+    title: "Get tags and stores",
+    description: "The tags items can have (labels such as Dairy or Breakfast; what older versions called categories), and the stores: each one's number of aisles, its places (named aisles such as Freezer, walked after the numbers), its aisle labels and the aisles known so far. Tags don't set aisles: each item has its own aisle in each store.",
     inputSchema: { type: "object", properties: {} },
     annotations: { readOnlyHint: true },
     async run(_args, { data }) {
       const stores = data.stores.map((s) => {
-        return `- ${s.name} [id: ${s.id}]${s.kind ? ` · ${s.kind}` : ""}: ${aisleText(s, data.categories)}`
+        return `- ${s.name} [id: ${s.id}]${s.kind ? ` · ${s.kind}` : ""}: ${storeText(s, data.items)}`
       })
-      return [`Categories: ${categoriesAtoZ(data.categories).map((c) => `${c.name} [id: ${c.id}]`).join(", ")}`, "Stores:", ...stores].join("\n")
+      return [`Tags: ${categoriesAtoZ(data.categories).map((c) => `${c.name} [id: ${c.id}]`).join(", ")}`, "Stores:", ...stores].join("\n")
     },
   },
 
@@ -646,7 +673,7 @@ export const tools: Tool[] = [
           detail: one ? (one.target > 0 ? `A Staple · ${one.target} min` : "Not a Staple") : added.map((i) => i.name).join(", "),
         })
       }
-      const out = added.map((i) => `Added: ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`)
+      const out = added.map((i) => `Added: ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`)
       if (skipped.length) out.push(`Already in the pantry, not added: ${idList(skipped)}`)
       return out.join("\n")
     },
@@ -673,9 +700,9 @@ export const tools: Tool[] = [
       const old = [...(i.useBy ?? [])].slice(0, i.inStock)
       while (old.length < i.inStock) old.push(null)
       const fresh = Array.from({ length: amount }, (_, n) => dates[n] ?? null)
-      const next = { ...withStock(i, i.inStock + amount), useBy: [...old, ...fresh].sort(byDate), entries: settle(i.entries, amount) }
+      const next = { ...withStock(i, i.inStock + amount), useBy: [...old, ...fresh].sort(byDate), entries: settle(i.entries, amount), boughtAt: ctx.now().toISOString().slice(0, 10) }
       await commit(ctx, { items: [next], title: `Added ${amountOf(i, amount)}`, detail: stockDetail(normalise(next)), itemIds: [i.id] })
-      return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`
+      return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`
     },
   },
   {
@@ -702,8 +729,8 @@ export const tools: Tool[] = [
         if ((i.open ?? 0) >= i.inStock) throw new ToolError(`Every ${pack} of ${lower(i.name)} is already open (${haveText(i)}). Ask the user whether one was finished or more came in.`)
         const { item: next, movedTo } = openUnit(i)
         await commit(ctx, { items: [next], title: `Opened a ${pack} of ${lower(i.name)}`, detail: stockDetail(normalise(next)), itemIds: [i.id] })
-        if (movedTo) return `Done. Its use-by is now ${movedTo} (use within ${i.useWithinWeeks} weeks once open). ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`
-        return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`
+        if (movedTo) return `Done. Its use-by is now ${movedTo} (use within ${i.useWithinWeeks} weeks once open). ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`
+        return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`
       }
       if (i.inStock <= 0) throw new ToolError(`There's no ${lower(i.name)} in stock already, so nothing was taken off. If the stock is wrong, ask the user and use update_item.`)
       const used = args.all === true ? i.inStock : Math.round(num(args.amount) ?? 1)
@@ -715,7 +742,7 @@ export const tools: Tool[] = [
           : next.inStock === 0 ? `Used the last ${lower(i.name)}` : `Used ${amountOf(i, taken)}`
       await commit(ctx, { items: [next], title, detail: stockDetail(normalise(next)), itemIds: [i.id] })
       const note = used > taken ? ` Only ${taken} were in stock, so it's now at 0.` : ""
-      return `Done.${note} ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`
+      return `Done.${note} ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`
     },
   },
   {
@@ -902,7 +929,7 @@ export const tools: Tool[] = [
     name: "update_item",
     title: "Change a pantry item",
     description:
-      "Changes any property of an item: name, type, minimum, stock, open packs, unit, pack size, category, location, use-by (best before) dates, when packs were opened, other names, brand, price, notes, and whether it's been ordered (only for something on the shopping list). Set a property to null to clear it. Use-by dates are numbered soonest first, undated last, as search_pantry lists them; change one with use_by_one, or replace them all with use_by. An edit: ask the user first, then call with confirmed: true. To record something used, use record_used instead (no asking needed).",
+      "Changes any property of an item: name, type, minimum, stock, open packs, unit, pack size, tags, its aisle in a store, location, use-by (best before) dates, when packs were opened, other names, brand, price, notes, the day it was last bought, and whether it's been ordered (only for something on the shopping list). Set a property to null to clear it. Use-by dates are numbered soonest first, undated last, as search_pantry lists them; change one with use_by_one, or replace them all with use_by. An edit: ask the user first, then call with confirmed: true. To record something used, use record_used instead (no asking needed).",
     inputSchema: {
       type: "object",
       properties: {
@@ -920,7 +947,17 @@ export const tools: Tool[] = [
               anyOf: [{ type: "object", properties: { amount: { type: "number" }, measure: { type: "string", enum: ["g", "ml"] } }, required: ["amount", "measure"] }, { type: "null" }],
               description: "Bulk only: what one pack holds, e.g. { amount: 1000, measure: \"g\" }. Used to check a recipe has enough.",
             },
-            category: { type: ["string", "null"] },
+            tags: { type: ["array", "null"], items: { type: "string" }, description: "Replaces its tags: existing tags by name or id. [] or null clears them. Claude can't add new tags." },
+            aisle: {
+              type: "object",
+              properties: {
+                store: { type: "string", description: "The store's id or name." },
+                aisle: { type: ["number", "string", "null"], description: "A whole number, or a place's name (Freezer, Tills). A place the store doesn't have is added to it. null clears it." },
+              },
+              required: ["store", "aisle"],
+              description: "Its aisle in one store. Say the store and the old and new aisle when asking.",
+            },
+            bought: { type: ["string", "null"], description: "The day it was last bought, YYYY-MM-DD. Stock added sets it by itself." },
             location: { type: ["string", "null"], enum: [...LOCATIONS, null], description: "household is shown to the user as Other." },
             use_by: { type: "array", items: { type: "string" }, description: "Replaces every date, one per unit or pack. YYYY-MM-DD. [] clears them." },
             open_counts: { type: "boolean", description: "Bulk only: true if an open pack counts towards the minimum like a full one. false (the default) counts only full packs." },
@@ -988,7 +1025,23 @@ export const tools: Tool[] = [
           said.push(`pack size ${amount} ${p.measure}`)
         }
       }
-      if (has("category")) { next.categoryId = cleared("category") ? "" : findCategory(ctx.data, c.category); said.push(next.categoryId ? "shop or aisle" : "category cleared") }
+      if (has("tags") || has("category")) {
+        next = withTags(next, has("tags") ? (cleared("tags") ? [] : tagIds(ctx.data, c.tags)) : cleared("category") ? [] : tagIds(ctx.data, undefined, c.category))
+        said.push(tagsOf(next).length ? `tags: ${tagNames(ctx.data.categories, next).join(", ")}` : "tags cleared")
+      }
+      let storeChange: SharedStore | undefined
+      if (c.aisle !== undefined) {
+        const a = (c.aisle ?? {}) as Json
+        const store = findStore(ctx.data, a.store)
+        if (!store) throw new ToolError("Say which store the aisle is in.")
+        const was = itemAisle(i, store)
+        const value = parseAisle(store, a.aisle)
+        next = withAisle(next, store.id, value)
+        const added = withPlace(store, value)
+        if (added !== store) storeChange = added
+        said.push(`aisle at ${store.name}: ${was === null ? "none" : aisleTitle(was)} → ${value === null ? "none" : aisleTitle(value)}`)
+      }
+      if (has("bought")) { next.boughtAt = cleared("bought") ? undefined : isoDate(c.bought); said.push(next.boughtAt ? `last bought ${next.boughtAt}` : "bought date cleared") }
       if (has("location")) { next.location = cleared("location") ? undefined : location(c.location); said.push(next.location ? "location" : "location cleared") }
       if (Array.isArray(c.use_by)) { next.useBy = (strs(c.use_by) ?? []).map(isoDate).sort(); said.push(next.useBy.length ? "use-by dates" : "use-by dates cleared") }
       if (typeof c.open_counts === "boolean") {
@@ -1044,7 +1097,9 @@ export const tools: Tool[] = [
       if (next.type !== "bulk") { next.open = undefined; next.packSize = undefined; next.openedAt = undefined }
       if (!said.length) return "Nothing to change."
       await commit(ctx, { items: [next], title: `Changed ${next.name}`, detail: cap(said.join(", ")), itemIds: [i.id] })
-      return `Changed. ${itemLine(ctx.data.items[i.id], ctx.data.categories)}`
+      // A new place for the store: it joins the store's places, after the others.
+      if (storeChange) await commitStores(ctx, { save: [storeChange], title: `${storeChange.name}: added the place ${(storeChange.places ?? []).at(-1)}` })
+      return `Changed. ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`
     },
   },
   {
@@ -1194,14 +1249,16 @@ export const tools: Tool[] = [
   {
     name: "add_store",
     title: "Add a store",
-    description: "Adds a store with its aisle numbers, so the shopping list follows its layout. Needs no asking. Categories you don't number aren't sold there. To change a store that already exists, use update_store.",
+    description: "Adds a store. Needs no asking. Its items' aisles fill in as the user shops there with the phone (it asks after each tick-off), so there's nothing to set up. To change a store that already exists, use update_store.",
     inputSchema: {
       type: "object",
       properties: {
         name: { type: "string", description: "\"Sainsbury's, Stoke Newington\"." },
         kind: { type: "string", description: "Optional: \"Supermarket\", \"Butcher\"." },
         place: { type: "string", description: "Optional: the street or area." },
-        aisles: aislesSchema,
+        no_aisle_numbers: { type: "boolean", description: "true for a shop that isn't walked in aisles (a greengrocer, a butcher): its list goes A to Z." },
+        aisle_count: { type: "number", description: "Optional: how many numbered aisles it has. The phone offers that many when it asks. Default 20." },
+        places: { type: "array", items: { type: "string" }, description: "Optional: named aisles such as Freezer or Tills, in the order they're walked, after the numbers." },
       },
       required: ["name"],
     },
@@ -1212,21 +1269,39 @@ export const tools: Tool[] = [
       const clash = ctx.data.stores.find((x) => x.name.toLowerCase() === name.toLowerCase())
       if (clash) throw new ToolError(`There's already a store called ${clash.name} [id: ${clash.id}]. To change it, use update_store.`)
       const id = freshId(slug(name), (x) => ctx.data.stores.some((s) => s.id === x))
-      const aisles = Object.fromEntries(Object.entries(aisleChanges(ctx.data, args.aisles)).filter(([, n]) => n !== null))
-      const store: SharedStore = { id, name, kind: str(args.kind) ?? "", place: str(args.place) ?? "", aisles }
-      await commitStores(ctx, { save: [store], title: `Added the store ${name}`, detail: aisleText(store, ctx.data.categories) })
-      return `Added ${name} [id: ${id}]: ${aisleText(store, ctx.data.categories)}.`
+      const count = aisleCount(args.aisle_count)
+      const store: SharedStore = {
+        id, name, kind: str(args.kind) ?? "", place: str(args.place) ?? "",
+        // Stores still keep a retired number per tag (null), so older apps see the store.
+        aisles: Object.fromEntries(ctx.data.categories.map((c) => [c.id, null])),
+        ...(args.no_aisle_numbers === true ? { noAisleNumbers: true, sells: [] } : {}),
+        ...(count ? { aisleCount: count } : {}),
+        ...((strs(args.places) ?? []).length ? { places: [...new Set((strs(args.places) ?? []).map(cap))] } : {}),
+      }
+      await commitStores(ctx, { save: [store], title: `Added the store ${name}`, detail: storeText(store, ctx.data.items) })
+      return `Added ${name} [id: ${id}]: ${storeText(store, ctx.data.items)}.`
     },
   },
   {
     name: "update_store",
-    title: "Change a store or its aisle numbers",
-    description: "Renames a store or changes its kind, place or aisle numbers. Only the aisles you give change. An edit: ask the user first, saying the store and the old and new numbers, then call with confirmed: true. This can't be undone from History, so the reply lists the old numbers.",
+    title: "Change a store",
+    description: "Renames a store, or changes its kind, place, whether it has aisle numbers, its number of aisles, its places (named aisles such as Freezer, in walking order) or its aisle labels (\"Dairy and eggs\" for aisle 4). To move an item to another aisle, use update_item. An edit: ask the user first, saying what changes, then call with confirmed: true. This can't be undone from History, so the reply says what it was.",
     inputSchema: {
       type: "object",
       properties: {
         store: { type: "string", description: "The store's id or name (get_categories_and_stores)." },
-        changes: { type: "object", properties: { name: { type: "string" }, kind: { type: "string" }, place: { type: "string" }, aisles: aislesSchema } },
+        changes: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            kind: { type: "string" },
+            place: { type: "string" },
+            no_aisle_numbers: { type: "boolean" },
+            aisle_count: { type: ["number", "null"], description: "How many numbered aisles. null goes back to 20." },
+            places: { type: "array", items: { type: "string" }, description: "Replaces its places, in walking order. Items in a place that's left out go back to No aisle there." },
+            aisle_labels: { type: "object", additionalProperties: { type: ["string", "null"] }, description: "Labels by aisle: { \"4\": \"Dairy and eggs\", \"Freezer\": \"Back wall\" }. null removes a label. Others stay." },
+          },
+        },
         confirmed,
       },
       required: ["store", "changes", "confirmed"],
@@ -1235,38 +1310,77 @@ export const tools: Tool[] = [
     async run(args, ctx) {
       const x = findStore(ctx.data, args.store)!
       const c = (args.changes ?? {}) as Json
-      const aisles = aisleChanges(ctx.data, c.aisles)
       const name = str(c.name) ?? x.name
       const clash = ctx.data.stores.find((y) => y.id !== x.id && y.name.toLowerCase() === name.toLowerCase())
       if (clash) throw new ToolError(`There's already a store called ${clash.name}.`)
       needConfirmed(args, `changing ${x.name}`)
-      const next: SharedStore = {
-        ...x, name, kind: c.kind === undefined ? x.kind : str(c.kind) ?? "", place: c.place === undefined ? x.place : str(c.place) ?? "",
-        aisles: Object.fromEntries(Object.entries({ ...x.aisles, ...aisles }).filter(([, n]) => n != null)),
+      const next: SharedStore = { ...x, name, kind: c.kind === undefined ? x.kind : str(c.kind) ?? "", place: c.place === undefined ? x.place : str(c.place) ?? "" }
+      const said: string[] = name !== x.name ? [`renamed from ${x.name}`] : []
+      if (typeof c.no_aisle_numbers === "boolean" && c.no_aisle_numbers !== !!x.noAisleNumbers) {
+        if (c.no_aisle_numbers) Object.assign(next, { noAisleNumbers: true, sells: x.sells ?? [] })
+        else next.noAisleNumbers = undefined
+        said.push(c.no_aisle_numbers ? "now no aisle numbers (A to Z)" : "aisle numbers again")
       }
-      const moved = Object.entries(aisles).map(([id, n]) => `${categoryName(ctx.data.categories, id)} ${x.aisles[id] ?? "none"} → ${n ?? "none"}`)
-      const detail = [name !== x.name ? `Renamed from ${x.name}` : "", ...moved].filter(Boolean).join("; ") || undefined
+      if ("aisle_count" in c) {
+        const n = c.aisle_count === null ? undefined : aisleCount(c.aisle_count)
+        if (n !== x.aisleCount) { next.aisleCount = n; said.push(`aisles ${x.aisleCount ?? DEFAULT_AISLES} → ${n ?? DEFAULT_AISLES}`) }
+      }
+      let cleared: SharedItem[] = []
+      if (Array.isArray(c.places)) {
+        const places = [...new Set((strs(c.places) ?? []).map(cap))]
+        const gone = (x.places ?? []).filter((p) => !places.some((q) => q.toLowerCase() === p.toLowerCase()))
+        next.places = places.length ? places : undefined
+        cleared = pantryItems(ctx.data.items).filter((i) => { const a = i.aisleAt?.[x.id]; return typeof a === "string" && gone.some((p) => p.toLowerCase() === a.toLowerCase()) })
+          .map((i) => withAisle(i, x.id, null))
+        if (JSON.stringify(places) !== JSON.stringify(x.places ?? [])) said.push(`places: ${(x.places ?? []).join(", ") || "none"} → ${places.join(", ") || "none"}`)
+      }
+      if (c.aisle_labels !== undefined) {
+        if (!c.aisle_labels || typeof c.aisle_labels !== "object" || Array.isArray(c.aisle_labels)) throw new ToolError("aisle_labels is an object of aisle → label, such as { \"4\": \"Dairy and eggs\" }.")
+        const labels = { ...(x.aisleLabels ?? {}) }
+        for (const [k, v] of Object.entries(c.aisle_labels as Json)) {
+          const key = aisleKey(/^\d+$/.test(k.trim()) ? Number(k) : k)
+          const was = labels[key]
+          if (v === null || v === "") delete labels[key]
+          else if (typeof v === "string") labels[key] = v.trim()
+          else throw new ToolError("Each label is text, or null to remove it.")
+          if ((labels[key] ?? "") !== (was ?? "")) said.push(`${aisleTitle(/^\d+$/.test(key) ? Number(key) : k.trim())} label: ${was ?? "none"} → ${labels[key] ?? "none"}`)
+        }
+        next.aisleLabels = Object.keys(labels).length ? labels : undefined
+      }
+      if (!said.length) return "Nothing to change."
+      const detail = cap(said.join("; "))
       await commitStores(ctx, { save: [next], title: `Changed ${name}`, detail })
-      return `Changed ${name}.${detail ? ` ${detail}.` : ""} It can't be undone from History, so to go back, change it again.\nNow: ${aisleText(next, ctx.data.categories)}.`
+      if (cleared.length) await commit(ctx, { items: cleared, title: `${plural(cleared.length, "item")} back to No aisle at ${name}`, itemIds: cleared.map((i) => i.id) })
+      return `Changed ${name}. ${detail}. It can't be undone from History, so to go back, change it again.\nNow: ${storeText(next, ctx.data.items)}.`
     },
   },
   {
     name: "delete_store",
     title: "Delete a store",
-    description: "Deletes a store and its aisle numbers. Items stay. A delete: ask the user first, then call with confirmed: true. It can't be undone from History.",
+    description: "Deletes a store, its places and labels. Items stay, but lose their aisle there. A delete: ask the user first, then call with confirmed: true. It can't be undone from History.",
     inputSchema: { type: "object", properties: { store: { type: "string", description: "The store's id or name." }, confirmed }, required: ["store", "confirmed"] },
     annotations: { readOnlyHint: false, destructiveHint: true },
     async run(args, ctx) {
       const x = findStore(ctx.data, args.store)!
       needConfirmed(args, `deleting ${x.name}`)
-      await commitStores(ctx, { remove: [x.id], title: `Deleted the store ${x.name}`, detail: aisleText(x, ctx.data.categories) })
-      // Items bought at this store go back to any store.
-      const moved = Object.values(ctx.data.items).filter((i) => i.where.includes(x.id)).map((i) => ({ ...i, where: i.where.filter((s) => s !== x.id) }))
+      const had = storeText(x, ctx.data.items)
+      await commitStores(ctx, { remove: [x.id], title: `Deleted the store ${x.name}`, detail: had })
+      // Items bought at this store go back to any store, and lose their aisle there.
+      const moved = Object.values(ctx.data.items).filter((i) => i.where.includes(x.id) || i.aisleAt?.[x.id] !== undefined)
+        .map((i) => ({ ...withAisle(i, x.id, null), where: i.where.filter((s) => s !== x.id) }))
       if (moved.length) await commit(ctx, { items: moved, title: `${moved.length === 1 ? moved[0].name : `${moved.length} items`} no longer tied to ${x.name}`, itemIds: moved.map((i) => i.id) })
-      return `Deleted ${x.name}. It had: ${aisleText(x, ctx.data.categories)}. It can't be undone from History; add_store would recreate it.`
+      return `Deleted ${x.name}. It had: ${had}. It can't be undone from History; add_store would recreate it, but not its items' aisles.`
     },
   },
 ]
+
+/** A store's number of aisles: a whole number from 1 to 200, or undefined for the default (20). */
+function aisleCount(v: unknown) {
+  if (v === undefined || v === null) return undefined
+  const n = num(v)
+  if (n === undefined || !Number.isInteger(n) || n < 1 || n > 200) throw new ToolError("aisle_count is a whole number from 1 to 200.")
+  return n === DEFAULT_AISLES ? undefined : n
+}
 
 function nameListShort(names: string[]) {
   if (names.length <= 3) return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`

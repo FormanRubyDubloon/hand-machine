@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Shopping" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Shopping list</title>
+    <title>Shopping list has moved</title>
     <!-- Link previews (WhatsApp, Messages, Slack, social): public/og-image.png is the splash emblem at 1200×630. -->
     <meta name="description" content="Know what's in the cupboard, cook from what you have, and shop for what's missing. On your computer, your phone and in Claude." />
     <meta property="og:type" content="website" />
@@ -29,8 +29,28 @@
     <meta name="twitter:image" content="https://shopping-list-app-db5118.netlify.app/og-image.png" />
     <link rel="stylesheet" href="https://use.typekit.net/tvk6fub.css" />
   </head>
+  <!--
+    Switched off on 24 Nov 2026 (Batch 4c, Isaac's decision): the phone shopping list was the fallback until the
+    native Collca app took over, and it can't follow aisles on items. The code stays in src/ and its tests still run;
+    to bring it back, restore the root div and the script tag below.
+  -->
+  <style>
+    :root { --bg: #F2EFE3; --ink: #3D2B1F; --muted: #6B5A4C; --olive: #7A6A42; --line: #D9D2C1; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #2A1D15; --ink: #F2EFE3; --muted: #C9BBA8; --olive: #C9B46E; --line: #4A3A2E; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font-family: "stevie-sans", system-ui, sans-serif; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+    main { max-width: 420px; display: flex; flex-direction: column; gap: 16px; }
+    h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 34px; line-height: 1.05; text-transform: uppercase; letter-spacing: 0.02em; }
+    p { margin: 0; font-size: 17px; line-height: 1.45; color: var(--muted); }
+    a { color: var(--olive); font-weight: 600; text-underline-offset: 3px; }
+    hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
+  </style>
   <body>
-    <div id="root"></div>
-    <script type="module" src="./src/main.tsx"></script>
+    <main>
+      <h1>The shopping list has moved</h1>
+      <p>Shop with the Collca app on your iPhone. Your list, pantry and recipes are all there, and it learns the aisles as you shop.</p>
+      <hr />
+      <p>On a computer, use <a href="/prototypes/pantry-app/">Collca on the web</a>.</p>
+    </main>
   </body>
 </html>
