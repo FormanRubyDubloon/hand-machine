@@ -65,7 +65,10 @@ Details and gaps in `GAPS-COLLCA.md`.
 
 Most of these are composition. Build parts (header, content, footer) as their own components so instances stay editable.
 
-## Batch 4: Collca rows and counters (web)
+## Batch 4: Collca rows and counters (web) (done 24 Nov 2026)
+
+Details and gaps in `GAPS-COLLCA.md`. The current row is primary, not Focus, so it has its own tone variants.
+
 
 The design system's own components, written for the shopping list and pantry and never built in Figma.
 

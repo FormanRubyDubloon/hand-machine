@@ -211,3 +211,45 @@ Card, dialog, popover, command, the table container and the toast are rounded to
 ### Figma limit found
 
 - **Text layers can't take padding.** Setting it threw "object is not extensible"; spacing that the code puts on text (`mt-0.5`) goes into the parent's gap.
+
+## Batch 4: Collca rows and counters (24 November 2026)
+
+One section, "rows and counters", on the Components page: `count-box`, `tick-box`, `list-row-text`, `list-row`, `item-row`, `swipe-row`, `segment-bar`, `summary-stat` and `summary-stats`, `sync-bar`, `keypad-key` and `keypad`, `filter-chip` and `filter-chips`, `store-row`, `choice-row`. All at phone width (390). Checked in Light, Dark and Focus.
+
+These were written for the phone web app, which is switched off; the native app has its own kit (Batch 6). They're still the design system's components, and the pantry app uses some.
+
+### The "current" row isn't Focus
+
+The plan said dark rows would come from the Focus mode. They don't: a current row (`tone=current`) uses `bg-primary text-primary-foreground`, so it's olive in Light and gold in Dark and Focus, not dark brown. Count box, list-row text and tick box have a `tone` (or `inverse`) variant for a current row instead; the code flips them with `group-data-[tone=current]`, which Figma can't read from a parent.
+
+### Shape
+
+None of these are in the warm theme's rounding list, so they're square on the web, except the filter chips, which are `rounded-full` pills. (The native app rounds its own count boxes; that's Batch 6.)
+
+### Tokens and styles added
+
+- `state/primary-foreground-10`, `-20`, `-40` (things on a current row). Raw values, invented names.
+- Spacing `13` (52, count box), `15` (60, keypad key), `21` (84) and `23` (92) (row heights).
+- Icons `delete` (keypad), `circle-check` and `octagon-x` (the toast types Batch 3 was missing).
+- Text styles under `row/`: `count`, `count-sm`, `count-wide`, `title-lg`, `title-md`, `title-sm`, `description`, `description-sm`, `stat-value`, `keypad`, `chip-count`, `sync-note`. `font-medium` titles render the 400 face, as elsewhere.
+
+### Components
+
+- **count-box** (30): `variant` (default, filled, done, skipped, add) × `size` (default 52, sm 40, wide 44 × at least 56) × `tone`. The code's `inverse` variant is the same as default on a current row, so it isn't separate. Dashes are 3/3 (browsers draw their own). Done's check is stroke 2.5.
+- **tick-box** (4): `checked` × `inverse`. 28px, 18px check.
+- **list-row-text** (6): `title-size` (lg 22, md 20, sm 17) × `tone`, with `eyebrow` and `description` toggles. The code widens the gap to 6 when there's an eyebrow; one component can't, so it stays 4.
+- **list-row** (12): `tone` (default, current, muted, quiet) × `size` (min height 64, 84, 92). The text and count box are exposed instances; `trailing` hides the box. Focus ring not built.
+- **item-row** (6): to get (no pill, Out, Low), partly got, got (struck through, grey, done box, no pill), skipped (muted row, struck through, eyebrow-style sub-line, skipped box). A badge can replace the pill. The name and box are separate buttons in code; their focus rings aren't built.
+- **swipe-row** (3): still frames of a gesture. `left` shows Got 1 (primary) on the right, `right` shows Undo (muted) on the left, the row moved 104px. The icon's 125% "armed" scale isn't shown.
+- **segment-bar** (5): four 2px segments, `filled` 0 to 4.
+- **summary-stat** (2) and **summary-stats**: three equal cells, the third clickable with a chevron. The last cell's right border is turned off by hand.
+- **sync-bar** (2): two progress positions; the refresh icon spins in code.
+- **keypad-key** (6): digit, label (Clear) or delete × default or pressed (hover and active are both bg-muted; the 1px press isn't built). **keypad**: 1 to 9, Clear, 0, Delete in a 3-column wrap, 350 wide.
+- **filter-chip** (3): off, hover, on, with an optional count. **filter-chips**: All, Out, Low with the first on.
+- **store-row** (2): tick box and name (one button), and an outline icon-lg Edit button (18px pencil). On a current row the button's border is primary-foreground/20.
+- **choice-row** (2): a whole-row button (size lg) with tick box, eyebrow, md title and description; selected is a muted row.
+
+### Figma limit found (again)
+
+- **Resizing after setting "hug" fixes the size.** `resize()` quietly turns a hugging frame back to a fixed one. It cut off the store row's description and fixed the sync bar at 80. All Components-page frames were checked for content taller than the frame; none are left.
+- **One long script timed out** (three minutes) with nothing saved; the same work in four smaller scripts took under a second each. Something in the long one stalled; keep scripts short.
