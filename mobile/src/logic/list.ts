@@ -2,7 +2,7 @@
 // Pure, so it's tested (test/list.test.ts). The rules come from intent.md ("The shopping list") and the PROTO-1
 // handoff (section 6).
 import {
-  aisleTitle, compareAisles, entryTotal, isStaple, itemAisle, needOf, normalise, settle, shortfall, stockOf, tagsOf,
+  aisleLabel, aisleTitle, compareAisles, entryTotal, isStaple, itemAisle, needOf, normalise, settle, shortfall, stockOf, tagsOf,
   type AisleValue, type Category, type Item, type Items, type Store,
 } from "../../../prototypes/pantry-app/src/model"
 import type { PhoneState, Shop } from "../data/state"
@@ -15,7 +15,7 @@ export type GroupBy = "aisle" | "tag"
  * One heading on the list: an aisle ("Aisle 4", "Freezer", "No aisle"), a tag, or, for a store with no aisle
  * numbers, everything A to Z. `aisle` is set for aisle groups (null for No aisle); `tag` for tag groups ("" for No tag).
  */
-export type Group = { key: string; title: string; aisle?: AisleValue | null; tag?: string }
+export type Group = { key: string; title: string; aisle?: AisleValue | null; tag?: string; /** The store's label for the aisle ("Dairy and eggs"). */ label?: string }
 
 const noTag: Category = { id: "", name: "No tag" }
 
@@ -38,7 +38,7 @@ function groupOf(key: string, item: Item, store: Store | undefined, categories: 
     return { key, title: tag.name, tag: tag.id }
   }
   const a = itemAisle(item, store)
-  return { key, title: aisleTitle(a), aisle: a }
+  return { key, title: aisleTitle(a), aisle: a, label: aisleLabel(store, a) }
 }
 
 /** Groups in order: aisles as the store is walked; tags A to Z with No tag last. */

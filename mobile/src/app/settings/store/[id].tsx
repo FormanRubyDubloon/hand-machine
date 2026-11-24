@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from "expo-router"
 import * as React from "react"
 import { ScrollView, Text, View } from "react-native"
 import { ChevronRight, X } from "lucide-react-native"
-import { aisleTitle, DEFAULT_AISLES, storeAisles } from "../../../../../prototypes/pantry-app/src/model"
+import { aisleLabel, aisleTitle, DEFAULT_AISLES, storeAisles } from "../../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../../data/store"
 import { addPlace, chooseStore, removePlace, removeStore, renameStore, setAisleCount } from "../../../logic/actions"
 import { plural } from "../../../logic/phrases"
@@ -61,22 +61,25 @@ export default function StorePage() {
 
             <View style={{ gap: 4 }}>
               <Label>Aisles</Label>
-              <Caption>{aisles.length ? "What you've told it so far. Tap an item to change or clear its aisle." : "None yet. They fill in as you tick things off here."}</Caption>
+              <Caption>{aisles.length ? "What you've told it so far. Tap an aisle to label it or fix what's in it." : "None yet. They fill in as you tick things off here."}</Caption>
             </View>
-            {aisles.map((a) => (
-              <View key={String(a.aisle)} style={{ gap: 0 }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.stone }}>
-                  <Text style={{ fontFamily: font.bold, fontSize: 17, color: c.ink }}>{aisleTitle(a.aisle)}</Text>
-                  <Caption>{plural(a.items.length, "item")}</Caption>
-                </View>
-                {a.items.map((i) => (
-                  <Press key={i.id} fade onPress={() => router.push({ pathname: "/aisle", params: { id: i.id, from: "edit", store: store.id } })} accessibilityLabel={`${i.name}, ${aisleTitle(a.aisle)}. Change`} style={{ minHeight: 52, flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderBottomColor: c.line }}>
-                    <Text style={{ flex: 1, fontFamily: font.medium, fontSize: 17, color: c.ink }}>{i.name}</Text>
-                    <ChevronRight size={20} color={c.muted} />
-                  </Press>
-                ))}
+            {/* One row per aisle; its items and label are on their own screen (Isaac's change, 24 Nov 2026). */}
+            {aisles.length > 0 && (
+              <View style={{ borderTopWidth: 1, borderTopColor: c.line }}>
+                {aisles.map((a) => {
+                  const label = aisleLabel(store, a.aisle)
+                  return (
+                    <Press key={String(a.aisle)} fade onPress={() => router.push({ pathname: "/settings/aisle", params: { store: store.id, aisle: String(a.aisle) } })} accessibilityLabel={`${aisleTitle(a.aisle)}${label ? `, ${label}` : ""}, ${plural(a.items.length, "item")}. Open`} style={{ minHeight: 64, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: 1, borderBottomColor: c.line, paddingVertical: 8 }}>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={{ fontFamily: font.medium, fontSize: 18, color: c.ink }}>{aisleTitle(a.aisle)}</Text>
+                        <Caption>{[label, plural(a.items.length, "item")].filter(Boolean).join(" · ")}</Caption>
+                      </View>
+                      <ChevronRight size={20} color={c.muted} />
+                    </Press>
+                  )
+                })}
               </View>
-            ))}
+            )}
 
             <View style={{ gap: 8 }}>
               <Label>Places</Label>

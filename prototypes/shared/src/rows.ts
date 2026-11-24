@@ -267,8 +267,9 @@ export function recipeRows(recipes: SharedRecipe[], before: Record<string, Recip
 }
 
 /** A store row's "no aisle numbers" setting, as the apps keep it: left out when off, ticks kept either way. */
-export const storeExtras = (r: { no_aisle_numbers?: boolean | null; sells?: string[] | null; places?: string[] | null; aisle_count?: number | null }) => ({
+export const storeExtras = (r: { no_aisle_numbers?: boolean | null; sells?: string[] | null; places?: string[] | null; aisle_count?: number | null; aisle_labels?: Record<string, string> | null }) => ({
   ...(r.no_aisle_numbers ? { noAisleNumbers: true, sells: r.sells ?? [] } : r.sells?.length ? { sells: r.sells } : {}),
   ...(r.places?.length ? { places: r.places } : {}),
   ...(r.aisle_count ? { aisleCount: r.aisle_count } : {}),
+  ...(r.aisle_labels && Object.keys(r.aisle_labels).length ? { aisleLabels: r.aisle_labels } : {}),
 })

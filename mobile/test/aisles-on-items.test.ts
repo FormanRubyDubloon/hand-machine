@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { aisleTiles, compareAisles, storeAisles, highestAisle } from "../../prototypes/pantry-app/src/model"
 import { demoState } from "../src/data/demo"
 import type { PhoneState } from "../src/data/state"
-import { addNew, addPlace, removePlace, removeStore, setAisleCount, setItemAisle, tickAll, tickOne, untick } from "../src/logic/actions"
+import { addNew, addPlace, removePlace, removeStore, setAisleCount, setAisleLabel, setItemAisle, tickAll, tickOne, untick } from "../src/logic/actions"
 import { asksForAisle, refreshShop, shopGroups, today } from "../src/logic/list"
 
 const start = (): PhoneState => {
@@ -82,6 +82,17 @@ describe("an item's aisle in a store", () => {
     // Back to 20 is the default again, stored as unset.
     expect(setAisleCount(t, store.id, 20).stores.find((x) => x.id === store.id)!.aisleCount).toBeUndefined()
     expect(setAisleCount(s, store.id, 20)).toBe(s)
+  })
+
+  it("can have a label, shown with the aisle on the list, and removed by clearing it", () => {
+    const s = start()
+    const t = setAisleLabel(s, s.storeId, 9, "  Tins and pasta ")
+    expect(shopGroups(t).find((a) => a.title === "Aisle 9")!.label).toBe("Tins and pasta")
+    expect(setAisleLabel(t, s.storeId, 9, "Tins and pasta")).toBe(t)
+    const u = setAisleLabel(setAisleLabel(t, s.storeId, "Freezer", "Back wall"), s.storeId, 9, "")
+    expect(u.stores.find((x) => x.id === s.storeId)!.aisleLabels).toEqual({ freezer: "Back wall" })
+    // Removing a place takes its label too.
+    expect(removePlace(u, s.storeId, "Freezer").stores.find((x) => x.id === s.storeId)!.aisleLabels).toBeUndefined()
   })
 
   it("is given to something new added from an aisle", () => {

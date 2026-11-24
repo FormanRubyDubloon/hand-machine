@@ -165,7 +165,7 @@ export default function ListScreen() {
               </View>
             </Press>
             <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center" }}>
-              <Caption style={{ fontSize: 15 }}>{meta}</Caption>
+              <Caption style={{ fontSize: 15 }}>{!all && !empty && !noMatch && aisle?.label ? <><Text style={{ fontFamily: font.semibold, color: c.ink }}>{aisle.label}</Text> · </> : null}{meta}</Caption>
               {/* What's skipped this shop, beside what's left; it opens the Skipped sheet (Isaac's change, 24 Nov 2026). */}
               {skipped.length > 0 && (
                 <Press fade onPress={() => router.push("/skipped")} hitSlop={12} accessibilityRole="button" accessibilityLabel={`${skipped.length} skipped this shop. Show them`}>
@@ -236,7 +236,7 @@ export default function ListScreen() {
             <Press onPress={() => go(nextWithItems)} accessibilityLabel={`Done here. Next: ${aisles[nextWithItems].title}, ${aisles[nextWithItems].left} left`} style={{ minHeight: 64, borderRadius: radius.base, backgroundColor: c.olive, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 12 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: font.semibold, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", color: c.onOlive }}>Done here · next</Text>
-                <Text style={{ fontFamily: font.medium, fontSize: 18, color: c.onOlive }}>{aisles[nextWithItems].title} · {aisles[nextWithItems].left} left</Text>
+                <Text style={{ fontFamily: font.medium, fontSize: 18, color: c.onOlive }}>{[aisles[nextWithItems].title, aisles[nextWithItems].label, `${aisles[nextWithItems].left} left`].filter(Boolean).join(" · ")}</Text>
               </View>
               <ChevronRight size={24} color={c.onOlive} />
             </Press>

@@ -132,6 +132,8 @@ export type SharedStore = {
   places?: string[]
   /** How many numbered aisles it has, for the aisle question's tiles. Unset means 20 (Batch 4). */
   aisleCount?: number
+  /** Labels for its aisles ("Dairy and eggs"), keyed by number ("4") or place name in lower case. */
+  aisleLabels?: Record<string, string>
   /** Aisle number per category. null = not sold here. Kept but not used when noAisleNumbers is on. */
   aisles: Record<string, number | null>
   /** "This store has no aisle numbers": its list goes A to Z, and `sells` says what it sells. */

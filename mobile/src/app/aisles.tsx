@@ -72,12 +72,13 @@ export default function Aisles() {
           // The box shows the aisle number, the first letter of a place or tag, or a dash for No aisle and No tag.
           const mark = typeof a.aisle === "number" ? String(a.aisle) : a.aisle || a.tag ? a.title.slice(0, 1).toUpperCase() : "–"
           return (
-            <Press key={a.key} onPress={() => go(k)} accessibilityState={{ selected: on }} accessibilityLabel={`${a.title}. ${done ? "Done" : `${a.left} left`}`} style={{ minHeight: 68, flexDirection: "row", alignItems: "center", gap: 14, borderBottomWidth: 1, borderBottomColor: c.line, paddingVertical: 8 }}>
+            <Press key={a.key} onPress={() => go(k)} accessibilityState={{ selected: on }} accessibilityLabel={`${a.title}${a.label ? `, ${a.label}` : ""}. ${done ? "Done" : `${a.left} left`}`} style={{ minHeight: 68, flexDirection: "row", alignItems: "center", gap: 14, borderBottomWidth: 1, borderBottomColor: c.line, paddingVertical: 8 }}>
               <View style={box(on, done && !on)}>
                 <Text style={{ fontFamily: font.bold, fontSize: 17, color: on ? c.onOlive : c.ink }}>{mark}</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: font.medium, fontSize: 19, lineHeight: 24, color: done ? c.muted : c.ink }}>{a.title}</Text>
+                {!!a.label && <Caption>{a.label}</Caption>}
               </View>
               <Text style={{ fontFamily: font.regular, fontSize: 15, color: c.muted }}>{done ? "Done" : `${a.left} left`}</Text>
             </Press>

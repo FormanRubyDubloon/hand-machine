@@ -175,7 +175,8 @@ function recipeRows(recipes, before, items) {
 var storeExtras = (r) => ({
   ...r.no_aisle_numbers ? { noAisleNumbers: true, sells: r.sells ?? [] } : r.sells?.length ? { sells: r.sells } : {},
   ...r.places?.length ? { places: r.places } : {},
-  ...r.aisle_count ? { aisleCount: r.aisle_count } : {}
+  ...r.aisle_count ? { aisleCount: r.aisle_count } : {},
+  ...r.aisle_labels && Object.keys(r.aisle_labels).length ? { aisleLabels: r.aisle_labels } : {}
 });
 
 // prototypes/claude-connection/src/backend.ts

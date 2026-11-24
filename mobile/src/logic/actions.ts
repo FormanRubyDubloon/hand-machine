@@ -1,7 +1,7 @@
 // Every change the phone can make, as a pure function from one state to the next. The store (src/data/store.tsx)
 // runs them, saves the result, writes a History entry and syncs. Rules from intent.md and the PROTO-1 handoff.
 import {
-  cap, DEFAULT_AISLES, guessPlace, ingredientName, withAisle, isBulk, isListedItem, isStaple, needOf, normalise, openUnit, recipeInfo, withStock,
+  aisleKey, cap, DEFAULT_AISLES, guessPlace, ingredientName, withAisle, isBulk, isListedItem, isStaple, needOf, normalise, openUnit, recipeInfo, withStock,
   type AisleValue, type Category, type Item, type Items, type Location, type Recipe, type Store,
 } from "../../../prototypes/pantry-app/src/model"
 import type { PhoneState, Shop } from "../data/state"
@@ -358,6 +358,19 @@ export function setAisleCount(s: PhoneState, storeId: string, n: number): PhoneS
   return { ...s, stores: s.stores.map((x) => (x.id === storeId ? { ...x, aisleCount: value } : x)) }
 }
 
+/** Labels one of a store's aisles ("Dairy and eggs"). An empty label removes it. */
+export function setAisleLabel(s: PhoneState, storeId: string, a: AisleValue, label: string): PhoneState {
+  const store = s.stores.find((x) => x.id === storeId)
+  if (!store) return s
+  const key = aisleKey(a)
+  const clean = label.trim()
+  if ((store.aisleLabels?.[key] ?? "") === clean) return s
+  const labels = { ...(store.aisleLabels ?? {}) }
+  if (clean) labels[key] = clean
+  else delete labels[key]
+  return { ...s, stores: s.stores.map((x) => (x.id === storeId ? { ...x, aisleLabels: Object.keys(labels).length ? labels : undefined } : x)) }
+}
+
 /** Adds a named place (Freezer, Tills…) to a store, after the others. Nothing changes if it already has it. */
 export function addPlace(s: PhoneState, storeId: string, name: string): PhoneState {
   const clean = cap(name.trim())
@@ -371,7 +384,13 @@ export function removePlace(s: PhoneState, storeId: string, name: string): Phone
   const same = (a: unknown) => typeof a === "string" && a.toLowerCase() === name.toLowerCase()
   const items = { ...s.items }
   for (const i of Object.values(s.items)) if (same(i.aisleAt?.[storeId])) items[i.id] = { ...withAisle(i, storeId, null), editedAt: now() }
-  return { ...s, items, stores: s.stores.map((x) => (x.id === storeId ? { ...x, places: (x.places ?? []).filter((p) => !same(p)) } : x)) }
+  const drop = (labels: Record<string, string> | undefined) => {
+    if (!labels) return labels
+    const next = { ...labels }
+    delete next[aisleKey(name)]
+    return Object.keys(next).length ? next : undefined
+  }
+  return { ...s, items, stores: s.stores.map((x) => (x.id === storeId ? { ...x, places: (x.places ?? []).filter((p) => !same(p)), aisleLabels: drop(x.aisleLabels) } : x)) }
 }
 
 /**

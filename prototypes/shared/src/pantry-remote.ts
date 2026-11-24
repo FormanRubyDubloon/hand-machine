@@ -136,12 +136,12 @@ export async function deleteCategories(ids: string[]): Promise<Category[]> {
 // ---------- stores and aisle numbers ----------
 // Tables and policies in supabase/migrations/20261114170000_stores.sql.
 
-type StoreRow = { id: string; name: string; kind: string | null; place: string | null; no_aisle_numbers?: boolean; sells?: string[]; places?: string[]; aisle_count?: number | null }
+type StoreRow = { id: string; name: string; kind: string | null; place: string | null; no_aisle_numbers?: boolean; sells?: string[]; places?: string[]; aisle_count?: number | null; aisle_labels?: Record<string, string> | null }
 
 /** Every store in Supabase, in its saved order, with its aisle numbers. Categories it doesn't number are left out. */
 export async function fetchStores(): Promise<SharedStore[]> {
   const [storesRes, aislesRes] = await Promise.all([
-    supabase.from("stores").select("id, name, kind, place, sort, no_aisle_numbers, sells, places, aisle_count").order("sort"),
+    supabase.from("stores").select("id, name, kind, place, sort, no_aisle_numbers, sells, places, aisle_count, aisle_labels").order("sort"),
     supabase.from("store_aisles").select("store_id, category_id, number"),
   ])
   if (storesRes.error) throw new Error(storesRes.error.message)
@@ -163,7 +163,7 @@ export async function fetchStores(): Promise<SharedStore[]> {
  */
 export async function writeStores(stores: SharedStore[], sort: (id: string) => number, categories: Set<string>) {
   if (!stores.length) return
-  const rows = stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id), no_aisle_numbers: !!x.noAisleNumbers, sells: x.sells ?? [], places: x.places ?? [], aisle_count: x.aisleCount ?? null }))
+  const rows = stores.map((x) => ({ id: x.id, name: x.name, kind: x.kind || null, place: x.place || null, sort: sort(x.id), no_aisle_numbers: !!x.noAisleNumbers, sells: x.sells ?? [], places: x.places ?? [], aisle_count: x.aisleCount ?? null, aisle_labels: x.aisleLabels ?? {} }))
   const up = await supabase.from("stores").upsert(rows, { onConflict: "owner_id,id" })
   if (up.error) throw new Error(up.error.message)
   const ids = stores.map((x) => x.id)

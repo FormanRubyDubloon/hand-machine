@@ -468,6 +468,12 @@ export const itemAisle = (i: Item, store: Store | undefined): Aisle | null =>
 /** "Aisle 4", "Freezer" or "No aisle". */
 export const aisleTitle = (a: Aisle | null) => (a === null ? "No aisle" : typeof a === "number" ? `Aisle ${a}` : a)
 
+/** The key an aisle's label is kept under: its number, or a place name in lower case. */
+export const aisleKey = (a: Aisle) => (typeof a === "number" ? String(a) : a.trim().toLowerCase())
+
+/** A store's label for one of its aisles ("Dairy and eggs"), if it has one. */
+export const aisleLabel = (store: Store | undefined, a: Aisle | null) => (a === null ? undefined : store?.aisleLabels?.[aisleKey(a)] || undefined)
+
 /** Where an aisle comes in a store's walk: No aisle, the numbers, the store's places, then any other place A to Z. */
 export function aisleRank(store: Store | undefined, a: Aisle | null): [number, number, string] {
   if (a === null) return [0, 0, ""]
