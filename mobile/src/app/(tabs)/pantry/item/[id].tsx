@@ -1,17 +1,21 @@
-// A pantry item: its stock said plainly, the quick actions (about three taps to record one used), then its
-// use-by date, minimum, location, aisle and notes, and the recipes it's in.
+// A pantry item: its stock said plainly, then In stock and Minimum to keep as two matching steppers (Isaac's
+// change, 24 Nov 2026: they replace Used one, Used all, Add one and Add to the list), then its use-by date,
+// location, aisle, store and notes. The Used in list of recipes was removed at the same time.
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker"
 import { router, useLocalSearchParams } from "expo-router"
 import * as React from "react"
 import { Platform, ScrollView, Text, View } from "react-native"
-import { isBulk, isStaple, locationLabel, recipesUsing, type Location } from "../../../../../../prototypes/pantry-app/src/model"
+import { isBulk, isStaple, locationLabel, type Location } from "../../../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../../../data/store"
-import { addOne, addToList, approve, openOne, setCategory, setLocation, setMin, setNotes, setUseBy, usedAll, usedOne } from "../../../../logic/actions"
+import { addOne, approve, openOne, setCategory, setLocation, setMin, setNotes, setStore, setUseBy, usedOne } from "../../../../logic/actions"
 import { aislesOf } from "../../../../logic/list"
 import { phrase, stockStatus, expiryText } from "../../../../logic/phrases"
-import { AislePicker, BackLink, Body, Button, Caption, Chip, Display, Field, InfoBox, Label, Press, Stepper } from "../../../../ui/kit"
+import { AislePicker, BackLink, Body, Button, Caption, Chip, Display, Field, InfoBox, Label, Picker, Press, Stepper } from "../../../../ui/kit"
 import { LOCATIONS } from "../../../../ui/locations"
 import { font, space, useColours } from "../../../../ui/theme"
+
+/** The store dropdown's "Any store", which is no store id. */
+const ANY = "__any"
 
 export default function PantryItem() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -35,22 +39,14 @@ export default function PantryItem() {
   const unit = item.unit?.[0] ?? (bulk ? "pack" : "")
   const open = item.open ?? 0
   const date = (item.useBy ?? []).find((d): d is string => !!d) ?? null
-  const used = recipesUsing(state.recipes, item.id)
   const note = (title: string, key?: string) => ({ title, key })
 
-  const actions = bulk
-    ? [
-        { label: "Finished one", primary: true, disabled: item.inStock <= 0, run: () => { change((s) => usedOne(s, id), note(`Finished a ${unit} of ${name}`)); say(`Finished a ${unit} of ${name}.`) } },
-        { label: `Open a ${unit}`, disabled: open >= item.inStock, run: () => change((s) => openOne(s, id), note(`Opened a ${unit} of ${name}`)) },
-        { label: `Add a ${unit}`, run: () => change((s) => addOne(s, id), note(`Added a ${unit} of ${name}`)) },
-        { label: "Add to the list", run: () => { change((s) => addToList(s, id), note(`Added ${name} to the shopping list`)); say(`Added ${name} to the list.`) } },
-      ]
-    : [
-        { label: "Used one", primary: true, disabled: item.inStock <= 0, run: () => { change((s) => usedOne(s, id), note(`Used 1 ${name}`, `used:${id}`)); say(`Used one. ${phrase({ ...item, inStock: item.inStock - 1 })} left.`) } },
-        { label: "Used all", disabled: item.inStock <= 0, run: () => { change((s) => usedAll(s, id), note(`Used all the ${name}`)); say(`Used all the ${name}.`) } },
-        { label: "Add one", run: () => change((s) => addOne(s, id), note(`Added 1 ${name}`, `add:${id}`)) },
-        { label: "Add to the list", run: () => { change((s) => addToList(s, id), note(`Added ${name} to the shopping list`)); say(`Added ${name} to the list.`) } },
-      ]
+  // The stepper moves one at a time: up is one bought (an undated unit), down is one used (the soonest date
+  // goes first). For Bulk items a pack is the unit, and down finishes a pack.
+  const setStock = (n: number) => {
+    if (n > item.inStock) change((st) => addOne(st, id), note(bulk ? `Added a ${unit} of ${name}` : `Added 1 ${name}`, `stock:${id}`))
+    else if (n < item.inStock) change((st) => usedOne(st, id), note(bulk ? `Finished a ${unit} of ${name}` : `Used 1 ${name}`, `stock:${id}`))
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -75,10 +71,23 @@ export default function PantryItem() {
           <Caption style={{ fontSize: 15, lineHeight: 21 }}>{stockStatus(item)}</Caption>
         </View>
 
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-          {actions.map((a) => (
-            <Button key={a.label} kind={a.primary ? "primary" : "secondary"} height={60} label={a.label} disabled={a.disabled} onPress={a.run} style={{ flexBasis: "47%", flexGrow: 1 }} />
-          ))}
+        <View style={{ gap: 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Label>In stock</Label>
+              {/* The heading above already says how many in words, so this says what's counted. */}
+              <Caption>{[`Counted in ${item.unit?.[1] ?? (bulk ? "packs" : "units")}`, bulk && open ? `${open} open` : ""].filter(Boolean).join(" · ")}</Caption>
+            </View>
+            <Stepper label="In stock" value={item.inStock} min={0} onChange={setStock} />
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Label>Minimum to keep</Label>
+              <Caption>{isStaple(item) ? "A Staple" : "Not a Staple"}</Caption>
+            </View>
+            <Stepper label="Minimum to keep" value={item.target} min={0} onChange={(n) => change((st) => setMin(st, id, n), note(`Set the minimum for ${name} to ${n}`, `min:${id}`))} />
+          </View>
+          {bulk && <Button kind="secondary" height={48} label={`Open a ${unit}`} disabled={open >= item.inStock} onPress={() => change((st) => openOne(st, id), note(`Opened a ${unit} of ${name}`))} />}
         </View>
 
         <UseBy
@@ -86,14 +95,6 @@ export default function PantryItem() {
           caption={date ? expiryText(date) : item.noExpiry ? "Doesn't go off" : "No date"}
           onPick={(iso) => change((s) => setUseBy(s, id, iso), note(iso ? `Changed the use-by date of ${name}` : `Cleared the use-by date of ${name}`, `useby:${id}`))}
         />
-
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <View style={{ flex: 1 }}>
-            <Label>Minimum to keep</Label>
-            <Caption>{isStaple(item) ? "A Staple" : "Not a Staple"}</Caption>
-          </View>
-          <Stepper label="Minimum to keep" value={item.target} min={0} onChange={(n) => change((s) => setMin(s, id, n), note(`Set the minimum for ${name} to ${n}`, `min:${id}`))} />
-        </View>
 
         <View style={{ gap: 8 }}>
           <Label>Location</Label>
@@ -106,6 +107,18 @@ export default function PantryItem() {
 
         <AislePicker label="Shop aisle" value={item.categoryId} options={options} onPick={(k) => change((s) => setCategory(s, id, k), note(`Moved ${name} to ${state.categories.find((x) => x.id === k)?.name}`))} />
 
+        {state.stores.length > 1 && (
+          <View style={{ gap: 6 }}>
+            <Picker
+              label="Store"
+              value={item.where[0] ?? ANY}
+              options={[{ id: ANY, name: "Any store" }, ...state.stores.map((st) => ({ id: st.id, name: st.name }))]}
+              onPick={(k) => change((s) => setStore(s, id, k === ANY ? null : k), note(k === ANY ? `${item.name}: any store` : `${item.name}: buy at ${state.stores.find((st) => st.id === k)?.name}`))}
+            />
+            <Caption>{item.where.length ? "It's only on the list when you shop there." : "On the list wherever you shop."}</Caption>
+          </View>
+        )}
+
         <Field
           label="Notes"
           value={notes}
@@ -116,16 +129,6 @@ export default function PantryItem() {
           style={{ minHeight: 72 }}
         />
 
-        {used.length > 0 && (
-          <View style={{ gap: 6 }}>
-            <Label>Used in</Label>
-            {used.map((r) => (
-              <Press key={r.id} fade onPress={() => router.push({ pathname: "/recipes/[id]", params: { id: r.id } })} style={{ minHeight: 44, justifyContent: "center" }}>
-                <Text style={{ fontFamily: font.medium, fontSize: 17, color: c.ink, textDecorationLine: "underline", textDecorationColor: c.olive }}>{r.name}</Text>
-              </Press>
-            ))}
-          </View>
-        )}
         <Caption>Changes here go to your pantry by themselves.</Caption>
       </ScrollView>
     </View>

@@ -1,4 +1,5 @@
-// PAN-10: every item in one table, filters down the left, steppers change stock in place.
+// PAN-10: every item in one table, filters down the left, steppers change stock in place. In stock only is on
+// by default, with a switch beside Sort to show everything (Batch 2, 24 Nov 2026, as on the phone).
 // Clicking a name opens the item panel (PAN-11, PAN-16), "Add item" opens it empty (PAN-12).
 import * as React from "react"
 import { ShoppingBasketIcon, UploadIcon } from "lucide-react"
@@ -6,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   daysUntil, dateText, haveText, isBulk, isStaple, locationLabel, locations, money, needOf, plural, shortfall, soonest, stockOf, unitWord,
@@ -90,7 +92,11 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
   const { items, db, actions } = usePantry()
   const [sort, setSort] = React.useState<Sort>("name")
   const [f, setF] = React.useState<Filters>({ location: "all", show: null, type: null, aisle: null, stock: [] })
-  const all = Object.values(items).filter((i) => !i.oneOff)
+  const [onlyInStock, setOnlyInStock] = React.useState(true)
+  const everything = Object.values(items).filter((i) => !i.oneOff)
+  // The item whose panel is open stays in the table, so opening an out-of-stock item from elsewhere still shows its row.
+  const all = onlyInStock ? everything.filter((i) => i.inStock > 0 || i.id === route.item) : everything
+  const hidden = everything.length - all.length
   const rows = all.filter((i) => matches(i, f)).sort(sorts[sort].compare)
   const count = (k: keyof Filters, test: (i: Item) => boolean) => all.filter((i) => matches(i, f, k) && test(i)).length
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) => setF({ ...f, [k]: v })
@@ -114,7 +120,11 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
         <FilterChecks<Stock>
           label="Status"
           value={f.stock}
-          onChange={(v) => set("stock", v)}
+          onChange={(v) => {
+            set("stock", v)
+            // Out (and Ordered, usually none in yet) can't show with In stock only on, so ticking them turns the switch off.
+            if (v.some((k) => (k === "out" || k === "ordered") && !f.stock.includes(k))) setOnlyInStock(false)
+          }}
           allCount={count("stock", () => true)}
           options={[
             { value: "in", label: "In stock", count: count("stock", stockTests.in) },
@@ -149,9 +159,13 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
       <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-8 py-7 [&_[data-slot=table-container]]:overflow-visible">
         <PageTitle
           title={title}
-          subtitle={`${plural(rows.length, "item")} · ${plural(staples, "Staple")} · ${below} below minimum · sorted by ${sorts[sort].summary}`}
+          subtitle={`${plural(rows.length, "item")} · ${plural(staples, "Staple")} · ${below} below minimum · sorted by ${sorts[sort].summary}${onlyInStock && hidden ? ` · ${hidden} out of stock hidden` : ""}`}
         >
           <div className="flex items-center gap-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm whitespace-nowrap">
+              <Switch checked={onlyInStock} onCheckedChange={setOnlyInStock} aria-label="In stock only" />
+              In stock only
+            </label>
             <SortSelect value={sort} onChange={setSort} options={(Object.keys(sorts) as Sort[]).map((k) => ({ value: k, label: sorts[k].label }))} />
             <Button variant="outline" onClick={() => navigate({ name: "import" })}>
               <UploadIcon />

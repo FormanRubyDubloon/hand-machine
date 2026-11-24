@@ -4,7 +4,7 @@
 import { Check, ChevronDown, ChevronLeft, Minus, Plus } from "lucide-react-native"
 import * as React from "react"
 import {
-  Pressable, StyleSheet, Text, TextInput, View,
+  Pressable, StyleSheet, Switch, Text, TextInput, View,
   type PressableProps, type StyleProp, type TextInputProps, type TextProps, type TextStyle, type ViewStyle,
 } from "react-native"
 import { focus, font, radius, space, useColours, useReduceMotion, type Colours } from "./theme"
@@ -163,6 +163,20 @@ export function Stepper({ value, onChange, min = 0, max, label, display, dark, l
 
 // ---------- choosing ----------
 
+/** An on/off setting: its label (and a line under it) on the left, the system switch on the right. */
+export function Toggle({ label, caption, value, onChange }: { label: string; caption?: string; value: boolean; onChange: (v: boolean) => void }) {
+  const c = useColours()
+  return (
+    <View style={{ minHeight: 48, flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: font.medium, fontSize: 16, color: c.ink }}>{label}</Text>
+        {!!caption && <Caption>{caption}</Caption>}
+      </View>
+      <Switch accessibilityLabel={label} value={value} onValueChange={onChange} trackColor={{ true: c.olive, false: c.stone }} thumbColor={c.bg} ios_backgroundColor={c.stone} />
+    </View>
+  )
+}
+
 /** Two or three options; the chosen one is filled and heavier (not colour alone). */
 export function Segmented<T extends string>({ options, value, onChange, label }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string }) {
   const c = useColours()
@@ -244,8 +258,12 @@ export function Field({ label, labelColour, dark, style, ref, ...p }: TextInputP
  * The aisle picker: a button showing "Aisle 1 · Fruit & veg" that opens a list in place, with ✓ on the current
  * choice. Not the system picker, so the aisle numbers show.
  */
-export function AislePicker({ label, value, options, onPick, dark }: {
-  label: string; value: string; options: { id: string; num: string; name: string }[]; onPick: (id: string) => void; dark?: boolean
+/**
+ * A dropdown: the choice in a field, the options listed under it when opened. Options with a `num` (an aisle
+ * number) show it in a column; the store picker's don't (Batch 2, 24 Nov 2026).
+ */
+export function AislePicker({ label, value, options, onPick, dark, placeholder = "Choose an aisle" }: {
+  label: string; value: string; options: { id: string; num?: string; name: string }[]; onPick: (id: string) => void; dark?: boolean; placeholder?: string
 }) {
   const c = useColours()
   const [open, setOpen] = React.useState(false)
@@ -256,13 +274,13 @@ export function AislePicker({ label, value, options, onPick, dark }: {
     <View style={{ gap: 6 }}>
       <Label colour={dark ? focus.label : undefined}>{label}</Label>
       <Press
-        accessibilityLabel={`${label}: ${current ? `${current.num} ${current.name}` : "none"}`}
+        accessibilityLabel={`${label}: ${current ? [current.num, current.name].filter(Boolean).join(" ") : "none"}`}
         accessibilityState={{ expanded: open }}
         onPress={() => setOpen((o) => !o)}
         tint={dark ? focus.press : undefined}
         style={{ minHeight: 52, borderWidth: 1, borderColor: border, borderRadius: radius.base, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: dark ? focus.field : "transparent" }}
       >
-        <Text style={{ fontFamily: font.medium, fontSize: 17, color: ink, flex: 1 }}>{current ? `${current.num} · ${current.name}` : "Choose an aisle"}</Text>
+        <Text style={{ fontFamily: font.medium, fontSize: 17, color: ink, flex: 1 }}>{current ? [current.num, current.name].filter(Boolean).join(" · ") : placeholder}</Text>
         <ChevronDown size={20} color={ink} style={{ transform: [{ rotate: open ? "180deg" : "0deg" }] }} />
       </Press>
       {open && (
@@ -277,7 +295,7 @@ export function AislePicker({ label, value, options, onPick, dark }: {
                 tint={dark ? focus.press : undefined}
                 style={{ minHeight: 48, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 12, borderTopWidth: k ? 1 : 0, borderTopColor: border, backgroundColor: on ? (dark ? focus.field : c.panel) : "transparent" }}
               >
-                <Text style={{ width: 64, fontFamily: font.semibold, fontSize: 14, color: dark ? focus.label : c.muted }}>{o.num}</Text>
+                {o.num !== undefined && <Text style={{ width: 64, fontFamily: font.semibold, fontSize: 14, color: dark ? focus.label : c.muted }}>{o.num}</Text>}
                 <Text style={{ flex: 1, fontFamily: on ? font.bold : font.regular, fontSize: 17, color: ink }}>{o.name}</Text>
                 {on && <Check size={20} color={ink} />}
               </Press>
@@ -288,6 +306,9 @@ export function AislePicker({ label, value, options, onPick, dark }: {
     </View>
   )
 }
+
+/** The same dropdown, for choices that aren't aisles. */
+export const Picker = AislePicker
 
 // ---------- layout ----------
 
