@@ -15,10 +15,12 @@ export const isCategoryColour = (v: unknown): v is CategoryColour => categoryCol
 /** Lucide icon names (PascalCase, without "Icon") a category can use. The pantry app maps them to components. */
 export const categoryIcons = [
   "Carrot", "Apple", "Citrus", "Cherry", "Grape", "Banana", "LeafyGreen", "Salad", "Sprout", "Leaf",
-  "Beef", "Drumstick", "Ham", "Fish", "Shrimp", "Shell", "Egg", "Milk", "Snowflake", "IceCreamCone",
-  "Wheat", "Bean", "Nut", "Croissant", "Sandwich", "Pizza", "Cake", "Cookie", "Donut", "Candy", "Popcorn",
-  "Soup", "CookingPot", "Cylinder", "Amphora", "Droplet", "Flame", "Coffee", "CupSoda", "Wine", "Beer",
-  "Package", "ShoppingBasket", "SprayCan", "Bath", "Pill", "Baby", "PawPrint",
+  "Clover", "Beef", "Drumstick", "Ham", "Fish", "FishSymbol", "Shrimp", "Shell", "Egg", "Milk",
+  "Snowflake", "IceCreamCone", "Wheat", "Bean", "Can", "Nut", "Croissant", "Sandwich", "Hamburger", "Pizza",
+  "Cake", "Cookie", "Donut", "Candy", "Popcorn", "Soup", "CookingPot", "Cylinder", "Amphora", "Bubbles",
+  "Blender", "Blend", "Cuboid", "Droplet", "Flame", "Star", "Sparkles", "Gem", "Coffee", "CupSoda",
+  "Wine", "BottleWine", "Beer", "Package", "ShoppingBasket", "SprayCan", "SoapDispenserDroplet", "Scroll", "Bath", "Pill",
+  "PillBottle", "Baby", "PawPrint",
 ] as const
 export type CategoryIcon = (typeof categoryIcons)[number]
 
