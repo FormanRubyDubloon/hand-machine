@@ -5,12 +5,11 @@ import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/d
 import { router, useLocalSearchParams } from "expo-router"
 import * as React from "react"
 import { Platform, ScrollView, Text, View } from "react-native"
-import { isBulk, isStaple, locationLabel, type Location } from "../../../../../../prototypes/pantry-app/src/model"
+import { aisleTitle, isBulk, isStaple, itemAisle, locationLabel, tagsOf, type Location } from "../../../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../../../data/store"
-import { addOne, approve, openOne, setCategory, setLocation, setMin, setNotes, setStore, setUseBy, usedOne } from "../../../../logic/actions"
-import { aislesOf } from "../../../../logic/list"
+import { addOne, approve, openOne, setLocation, setMin, setNotes, setStore, setUseBy, usedOne } from "../../../../logic/actions"
 import { phrase, stockStatus, expiryText } from "../../../../logic/phrases"
-import { AislePicker, BackLink, Body, Button, Caption, Chip, Display, Field, InfoBox, Label, Picker, Press, Stepper } from "../../../../ui/kit"
+import { AisleField, BackLink, Body, Button, Caption, Chip, Display, Field, InfoBox, Label, Picker, Press, Stepper } from "../../../../ui/kit"
 import { LOCATIONS } from "../../../../ui/locations"
 import { font, space, useColours } from "../../../../ui/theme"
 
@@ -32,9 +31,9 @@ export default function PantryItem() {
     )
   }
   const name = item.name.toLowerCase()
-  const cat = state.categories.find((k) => k.id === item.categoryId)
   const store = state.stores.find((s) => s.id === state.storeId) ?? state.stores[0]
-  const options = aislesOf(store, state.categories).flatMap((a) => a.categories.filter((k) => k.id).map((k) => ({ id: k.id, num: a.number ? `Aisle ${a.number}` : "–", name: k.name })))
+  const aisle = itemAisle(item, store)
+  const tags = tagsOf(item).map((t) => state.categories.find((k) => k.id === t)?.name).filter((n): n is string => !!n)
   const bulk = isBulk(item)
   const unit = item.unit?.[0] ?? (bulk ? "pack" : "")
   const open = item.open ?? 0
@@ -55,7 +54,7 @@ export default function PantryItem() {
       </View>
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.screen, paddingBottom: 40, gap: 20 }} keyboardShouldPersistTaps="handled">
         <View style={{ gap: 6 }}>
-          <Label>{[locationLabel(item.location), cat?.name ?? "No aisle"].join(" · ")}</Label>
+          <Label>{[locationLabel(item.location), ...tags].join(" · ")}</Label>
           <Display size={32}>{item.name}</Display>
         </View>
 
@@ -105,7 +104,16 @@ export default function PantryItem() {
           </View>
         </View>
 
-        <AislePicker label="Shop aisle" value={item.categoryId} options={options} onPick={(k) => change((s) => setCategory(s, id, k), note(`Moved ${name} to ${state.categories.find((x) => x.id === k)?.name}`))} />
+        {store && !store.noAisleNumbers && (
+          <AisleField label={`Aisle at ${store.name}`} value={aisle === null ? null : aisleTitle(aisle)} onPress={() => router.push({ pathname: "/aisle", params: { id, from: "edit" } })} />
+        )}
+
+        {/* Tags are given to items in Collca on the web (Isaac's decision, 24 Nov 2026), so here they're only shown. */}
+        <View style={{ gap: 6 }}>
+          <Label>Tags</Label>
+          <Body>{tags.length ? tags.join(", ") : "No tags"}</Body>
+          <Caption>Change tags in Collca on the web.</Caption>
+        </View>
 
         {state.stores.length > 1 && (
           <View style={{ gap: 6 }}>

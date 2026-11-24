@@ -36,8 +36,12 @@ export type SharedItem = {
   notes?: string
   /** Shop or aisle. */
   categoryId: string
-  /** Store ids to buy it at (Supabase store_ids). Empty means any store with the aisle. */
+  /** Store ids to buy it at (Supabase store_ids). Empty means any store. */
   where: string[]
+  /** Its aisle in each store, by store id: a number or a named place (Batch 4, 24 Nov 2026). Blank until set. */
+  aisleAt?: Record<string, AisleValue>
+  /** The day it was last bought, as an ISO date. Ticking it off or adding stock sets it. */
+  boughtAt?: string
   entries?: ListEntry[]
   /** On the list and already ordered, so not to buy in a shop. Clears once it's no longer needed. */
   ordered?: boolean
@@ -118,9 +122,18 @@ export type SharedRecipe = {
   editedAt?: string
 }
 
+/** An item's aisle in one store: a number ("Aisle 4") or a named place such as Freezer or Tills. */
+export type AisleValue = number | string
+
 export type SharedStore = {
   id: string
   name: string
+  /** Named places (Freezer, Tills…), in walking order after the numbered aisles (Batch 4). */
+  places?: string[]
+  /** How many numbered aisles it has, for the aisle question's tiles. Unset means 20 (Batch 4). */
+  aisleCount?: number
+  /** Labels for its aisles ("Dairy and eggs"), keyed by number ("4") or place name in lower case. */
+  aisleLabels?: Record<string, string>
   /** Aisle number per category. null = not sold here. Kept but not used when noAisleNumbers is on. */
   aisles: Record<string, number | null>
   /** "This store has no aisle numbers": its list goes A to Z, and `sells` says what it sells. */

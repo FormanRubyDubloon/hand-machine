@@ -1,7 +1,7 @@
 // The shared pieces from the handoff's component table (section 4): text styles, buttons, steppers, chips,
 // rows, pills, info boxes, fields and the aisle picker. Native components only (shadcn/ui doesn't run here);
 // the tokens carry over from the web app as values.
-import { Check, ChevronDown, ChevronLeft, Minus, Plus } from "lucide-react-native"
+import { Check, ChevronDown, ChevronRight, ChevronLeft, Minus, Plus } from "lucide-react-native"
 import * as React from "react"
 import {
   Pressable, StyleSheet, Switch, Text, TextInput, View,
@@ -259,10 +259,10 @@ export function Field({ label, labelColour, dark, style, ref, ...p }: TextInputP
  * choice. Not the system picker, so the aisle numbers show.
  */
 /**
- * A dropdown: the choice in a field, the options listed under it when opened. Options with a `num` (an aisle
- * number) show it in a column; the store picker's don't (Batch 2, 24 Nov 2026).
+ * A dropdown: the choice in a field, the options listed under it when opened. Options with a `num` show it in a
+ * column (Batch 2, 24 Nov 2026).
  */
-export function AislePicker({ label, value, options, onPick, dark, placeholder = "Choose an aisle" }: {
+export function Picker({ label, value, options, onPick, dark, placeholder = "Choose one" }: {
   label: string; value: string; options: { id: string; num?: string; name: string }[]; onPick: (id: string) => void; dark?: boolean; placeholder?: string
 }) {
   const c = useColours()
@@ -307,8 +307,28 @@ export function AislePicker({ label, value, options, onPick, dark, placeholder =
   )
 }
 
-/** The same dropdown, for choices that aren't aisles. */
-export const Picker = AislePicker
+/**
+ * An item's aisle in the store you're in, as a field (Batch 4, 24 Nov 2026). It opens the Which aisle? sheet rather
+ * than a dropdown, since an aisle can be any number or a named place.
+ */
+export function AisleField({ label, value, onPress, dark }: { label: string; value: string | null; onPress: () => void; dark?: boolean }) {
+  const c = useColours()
+  const ink = dark ? focus.ink : c.ink
+  return (
+    <View style={{ gap: 6 }}>
+      <Label colour={dark ? focus.label : undefined}>{label}</Label>
+      <Press
+        accessibilityLabel={`${label}: ${value ?? "none yet"}. Change`}
+        onPress={onPress}
+        tint={dark ? focus.press : undefined}
+        style={{ minHeight: 52, borderWidth: 1, borderColor: dark ? focus.line : c.stone, borderRadius: radius.base, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: dark ? focus.field : "transparent" }}
+      >
+        <Text style={{ fontFamily: font.medium, fontSize: 17, color: value ? ink : dark ? focus.label : c.muted, flex: 1 }}>{value ?? "None yet"}</Text>
+        <ChevronRight size={20} color={ink} />
+      </Press>
+    </View>
+  )
+}
 
 // ---------- layout ----------
 

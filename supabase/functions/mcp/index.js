@@ -37,6 +37,8 @@ function toItem(r) {
     notes: r.notes ?? void 0,
     categoryId: r.category_id ?? "",
     where: r.store_ids ?? [],
+    aisleAt: r.aisles && Object.keys(r.aisles).length ? r.aisles : void 0,
+    boughtAt: r.bought_at ?? void 0,
     location: r.location ?? void 0,
     otherNames: r.other_names.length ? r.other_names : void 0,
     open: r.open ?? void 0,
@@ -104,6 +106,8 @@ function toRow(i, knownCategories) {
     open_counts: !!i.openCounts,
     use_within_weeks: i.useWithinWeeks ?? null,
     store_ids: i.where ?? [],
+    aisles: i.aisleAt ?? {},
+    bought_at: i.boughtAt ?? null,
     opened_at: (i.openedAt ?? []).filter((d) => !!d),
     one_off: !!i.oneOff,
     ordered: !!i.ordered,
@@ -168,7 +172,12 @@ function recipeRows(recipes, before, items) {
   });
   return { rows, lines };
 }
-var storeExtras = (r) => r.no_aisle_numbers ? { noAisleNumbers: true, sells: r.sells ?? [] } : r.sells?.length ? { sells: r.sells } : {};
+var storeExtras = (r) => ({
+  ...r.no_aisle_numbers ? { noAisleNumbers: true, sells: r.sells ?? [] } : r.sells?.length ? { sells: r.sells } : {},
+  ...r.places?.length ? { places: r.places } : {},
+  ...r.aisle_count ? { aisleCount: r.aisle_count } : {},
+  ...r.aisle_labels && Object.keys(r.aisle_labels).length ? { aisleLabels: r.aisle_labels } : {}
+});
 
 // prototypes/claude-connection/src/backend.ts
 var RECIPE_SELECT = "*, recipe_ingredients(position, text, group_name, item_id, need, buy, partial, optional, uses)";

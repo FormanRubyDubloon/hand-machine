@@ -5,12 +5,12 @@ import { ChevronRight } from "lucide-react-native"
 import * as React from "react"
 import { ScrollView, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { isBulk, isStaple } from "../../../../prototypes/pantry-app/src/model"
+import { aisleTitle, isBulk, isStaple, itemAisle, tagsOf } from "../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../data/store"
-import { removeFromList, removeQuestion, restoreTicks, setCategory, setListNote, setToGet, skip, tickAll, untick } from "../../logic/actions"
-import { aislesOf, tickedText, rowsOf } from "../../logic/list"
+import { removeFromList, removeQuestion, restoreTicks, setListNote, setToGet, skip, tickAll, untick } from "../../logic/actions"
+import { tickedText, rowsOf } from "../../logic/list"
 import { minText, phrase } from "../../logic/phrases"
-import { AislePicker, Button, Field, Press, Stepper } from "../../ui/kit"
+import { AisleField, Button, Field, Press, Stepper } from "../../ui/kit"
 import { focus, font, radius } from "../../ui/theme"
 
 export default function ListItemSheet() {
@@ -32,15 +32,15 @@ export default function ListItemSheet() {
   }
 
   const store = state.stores.find((s) => s.id === state.storeId) ?? state.stores[0]
-  const cat = state.categories.find((k) => k.id === item.categoryId)
-  const num = store?.noAisleNumbers ? null : store?.aisles[item.categoryId]
-  const where = `${num ? `Aisle ${num}` : "No aisle number"} · ${cat?.name ?? "No aisle"}`
+  const aisle = itemAisle(item, store)
+  const tags = tagsOf(item).map((t) => state.categories.find((k) => k.id === t)?.name).filter(Boolean)
+  // The aisle in this store, then its tags. A store with no aisle numbers shows only the tags.
+  const where = [store?.noAisleNumbers ? null : aisleTitle(aisle), ...tags].filter(Boolean).join(" · ")
   const notInPantry = !!row.isNew && item.inStock - row.got <= 0
   const handAdded = (row.item.entries ?? []).length > 0 || !isStaple(item)
   const openNote = isBulk(item) && isStaple(item) && (item.open ?? 0) > 0 && !item.openCounts
   const counts = isBulk(item) && !item.openCounts ? item.inStock - (item.open ?? 0) : item.inStock
   const recipeNote = (item.entries ?? []).find((e) => e.source.kind === "recipe")
-  const options = aislesOf(store, state.categories).flatMap((a) => a.categories.filter((k) => k.id).map((k) => ({ id: k.id, num: a.number ? `Aisle ${a.number}` : "–", name: k.name })))
 
   const saveNote = () => {
     if (handAdded && note !== (item.notes ?? "")) change((s) => setListNote(s, id, note), { title: `Changed the note on ${item.name.toLowerCase()}` })
@@ -116,8 +116,8 @@ export default function ListItemSheet() {
           </View>
         )}
 
-        {notInPantry && (
-          <AislePicker dark label="Aisle" value={item.categoryId} options={options} onPick={(k) => change((s) => setCategory(s, id, k), { title: `Moved ${item.name.toLowerCase()} to ${state.categories.find((x) => x.id === k)?.name}` })} />
+        {store && !store.noAisleNumbers && (
+          <AisleField dark label={`Aisle at ${store.name}`} value={aisle === null ? null : aisleTitle(aisle)} onPress={() => router.push({ pathname: "/aisle", params: { id, from: "edit" } })} />
         )}
       </ScrollView>
       <View style={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 16, gap: 8 }}>

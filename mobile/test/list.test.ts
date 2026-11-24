@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { demoState } from "../src/data/demo"
 import { clearShop, removeFromList, removeQuestion, restoreTicks, tickAll, tickOne, untick, addNew, setToGet } from "../src/logic/actions"
-import { aislesOf, filtersOn, leftOf, matchesFilter, NO_FILTER, refreshShop, rowsOf, shopAisles, shownRows, tickedText, type Row } from "../src/logic/list"
+import { filtersOn, leftOf, matchesFilter, NO_FILTER, refreshShop, rowsOf, shopGroups, shownRows, tickedText, type Row } from "../src/logic/list"
 import type { PhoneState } from "../src/data/state"
 
 const start = (): PhoneState => {
@@ -20,14 +20,16 @@ describe("the list", () => {
     expect(rows.find((r) => r.id === "spinach")).toBeUndefined()
   })
 
-  it("walks the store in aisle order, with shared numbers together and no-number last", () => {
+  it("walks the store: No aisle first, then the numbers, then named places", () => {
     const s = start()
-    const aisles = shopAisles(s)
-    expect(aisles[0].number).toBe(1)
-    const nine = aisles.find((a) => a.number === 9)!
-    expect(nine.categories.map((c) => c.name)).toEqual(["Tins & jars", "Pasta, rice & grains"])
-    expect(aisles[aisles.length - 1].number).toBeNull()
-    expect(aisles[aisles.length - 1].rows.map((r) => r.id)).toContain("candles")
+    const aisles = shopGroups(s)
+    expect(aisles[0]).toMatchObject({ title: "No aisle", aisle: null })
+    expect(aisles[0].rows.map((r) => r.id)).toEqual(expect.arrayContaining(["candles", "sardines"]))
+    const titles = aisles.map((a) => a.title)
+    expect(titles.indexOf("Aisle 1")).toBeLessThan(titles.indexOf("Aisle 9"))
+    expect(titles[titles.length - 1]).toBe("Freezer")
+    // Items sharing a number are one aisle, whatever their tags.
+    expect(aisles.find((a) => a.title === "Aisle 9")!.rows.map((r) => r.id)).toEqual(expect.arrayContaining(["linguine", "rice"]))
   })
 
   it("ticking one adds to stock straight away, and the row stays on the list", () => {
@@ -88,11 +90,11 @@ describe("the list", () => {
     expect(rowsOf(s).find((r) => r.id === "sardines")!.need).toBe(3)
   })
 
-  it("a store with no numbers puts everything under No aisle number", () => {
+  it("a store with no aisle numbers lists everything A to Z under one heading", () => {
     const s = start()
-    const aisles = aislesOf({ id: "x", name: "Corner shop", aisles: {} }, s.categories)
-    expect(aisles).toHaveLength(1)
-    expect(aisles[0].number).toBeNull()
+    const t = { ...s, stores: s.stores.map((x) => (x.id === s.storeId ? { ...x, noAisleNumbers: true } : x)) }
+    const aisles = shopGroups(t)
+    expect(aisles.map((a) => a.title)).toEqual(["A to Z"])
   })
 })
 
@@ -116,7 +118,7 @@ describe("the toast after a tick", () => {
 describe("the aisle counts", () => {
   it("drop with every tap, not only when a row is done", () => {
     const s = start()
-    const aisle = (st: PhoneState) => shopAisles(st).find((a) => a.rows.some((r) => r.id === "sardines"))!
+    const aisle = (st: PhoneState) => shopGroups(st).find((a) => a.rows.some((r) => r.id === "sardines"))!
     const before = aisle(s)
     const after = aisle(tickOne(s, "sardines"))
     expect(after.left).toBe(before.left - 1)
@@ -148,7 +150,7 @@ describe("the list filters", () => {
   it("shows only what matches, aisle by aisle, and clears when a new list starts", () => {
     const s: PhoneState = { ...start(), filter: { show: "staples", stock: "all" } }
     expect(shownRows(s).every((r) => r.group === "staples")).toBe(true)
-    expect(shopAisles(s).flatMap((a) => a.rows).every((r) => r.group === "staples")).toBe(true)
+    expect(shopGroups(s).flatMap((a) => a.rows).every((r) => r.group === "staples")).toBe(true)
     expect(matchesFilter(rowsOf(s)[0], NO_FILTER)).toBe(true)
     expect(filtersOn(s.filter)).toBe(1)
     expect(clearShop(s).filter).toBeUndefined()

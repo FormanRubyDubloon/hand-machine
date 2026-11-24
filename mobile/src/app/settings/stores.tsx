@@ -3,6 +3,7 @@ import { router } from "expo-router"
 import { ChevronRight } from "lucide-react-native"
 import * as React from "react"
 import { ScrollView, Text, View } from "react-native"
+import { storeAisles } from "../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../data/store"
 import { addStore } from "../../logic/actions"
 import { plural } from "../../logic/phrases"
@@ -23,12 +24,12 @@ export default function Stores() {
         <Caption style={{ fontSize: 15 }}>The store you shop in sets the aisle order on your list.</Caption>
         <View style={{ borderTopWidth: 1, borderTopColor: c.line }}>
           {state.stores.map((s) => {
-            const numbered = new Set(Object.values(s.aisles).filter((n) => n != null && n > 0)).size
+            const numbered = storeAisles(s, Object.values(state.items)).length
             return (
               <Press key={s.id} onPress={() => router.push({ pathname: "/settings/store/[id]", params: { id: s.id } })} style={{ minHeight: 68, flexDirection: "row", alignItems: "center", gap: 10, borderBottomWidth: 1, borderBottomColor: c.line, paddingVertical: 8 }}>
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={{ fontFamily: font.medium, fontSize: 18, color: c.ink }}>{s.name}</Text>
-                  <Caption>{numbered ? plural(numbered, "aisle number") : "No aisle numbers yet"}</Caption>
+                  <Caption>{s.noAisleNumbers ? "A to Z, no aisle numbers" : numbered ? `${plural(numbered, "aisle")} known so far` : "No aisles known yet"}</Caption>
                 </View>
                 {s.id === state.storeId && <Pill label="Using" />}
                 <ChevronRight size={22} color={c.muted} />

@@ -4,7 +4,7 @@
 // The shapes are the pantry's own (prototypes/shared/src/pantry.ts), so the phone, Collca on the web and the
 // Claude connection all read and write the same items, recipes, categories and stores.
 import type { Category, HistoryEntry, Item, Items, ListEntry, Recipe, Store } from "../../../prototypes/pantry-app/src/model"
-import type { ListFilter } from "../logic/list"
+import type { GroupBy, ListFilter } from "../logic/list"
 
 export type { Category, HistoryEntry, Item, Items, ListEntry, Recipe, Store }
 
@@ -18,6 +18,8 @@ export type ShopRow = {
   entries?: ListEntry[]
   /** Whether it was New before anything was ticked. */
   review?: boolean
+  /** Its bought date before anything was ticked, so "Not got it" puts it back. */
+  boughtAt?: string
   /** Skipped this shop: off the list until you change store or start a new list. Still needs buying. */
   skipped?: boolean
 }
@@ -57,8 +59,12 @@ export type PhoneState = {
   outbox: HistoryEntry[]
   conflicts: Conflict[]
   storeId: string
-  /** Which aisle the list is showing: an index into the store's aisles, or "all" for A to Z. */
+  /** Which heading the list is showing: an index into its aisles (or tags), or "all" for everything A to Z. */
   aisle: number | "all"
+  /** Shopping by aisle (the default) or by tag (Batch 4). Kept on this phone, not synced. */
+  groupBy?: GroupBy
+  /** "Ask for the aisle after ticking off" turned off (Batch 4). Kept on this phone, not synced. */
+  noAislePrompt?: boolean
   shop: Shop | null
   /** The list filters. Kept through a shop; cleared when a new list starts. */
   filter?: ListFilter

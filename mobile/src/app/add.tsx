@@ -1,6 +1,7 @@
 // Add to the list (sheet). Type to find something in the pantry and tap it, then choose how many and whether
-// you've already got it (Batch 1, 24 Nov 2026). Something the pantry doesn't have can be added with an aisle;
-// it becomes a New pantry item, bought or not. "Already got it" ticks it off straight away, so it's in stock.
+// you've already got it (Batch 1, 24 Nov 2026). Something the pantry doesn't have becomes a New pantry item, bought
+// or not; added from an aisle it's in that aisle here, and from a tag it has that tag (the aisle chips went in
+// Batch 4). "Already got it" ticks it off straight away, so it's in stock.
 import { router, useLocalSearchParams } from "expo-router"
 import { Check, Plus } from "lucide-react-native"
 import * as React from "react"
@@ -8,7 +9,6 @@ import { ScrollView, Text, View } from "react-native"
 import { containsText, locationLabel, matchesName, namesOf, needOf } from "../../../prototypes/pantry-app/src/model"
 import { useStore } from "../data/store"
 import { addNew, addToList, gotNow } from "../logic/actions"
-import { aislesOf } from "../logic/list"
 import { count, phrase } from "../logic/phrases"
 import { Body, Button, Caption, Chip, Field, Label, Press, Stepper, type FieldRef } from "../ui/kit"
 import { SheetHeader } from "../ui/sheet"
@@ -18,16 +18,15 @@ export default function Add() {
   const { state, change, say } = useStore()
   const c = useColours()
   const [q, setQ] = React.useState("")
-  // Opened from an aisle with one category: a new item goes there unless another is picked.
-  const { category } = useLocalSearchParams<{ category?: string }>()
-  const [cat, setCat] = React.useState(category ?? "")
+  // Opened from an aisle or a tag on the list: a new item goes in that aisle (in this store) or gets that tag.
+  const { category, aisle } = useLocalSearchParams<{ category?: string; aisle?: string }>()
+  const inAisle = aisle ? (/^\d+$/.test(aisle) ? Number(aisle) : aisle) : null
+  const where = inAisle !== null ? (typeof inAisle === "number" ? `aisle ${inAisle}` : inAisle) : category ? state.categories.find((k) => k.id === category)?.name : undefined
   const input = React.useRef<FieldRef>(null)
   const query = q.trim()
   const pantry = Object.values(state.items).filter((i) => !i.oneOff)
   const matches = query ? pantry.filter((i) => namesOf(i).some((n) => containsText(n, query))).sort((a, b) => a.name.localeCompare(b.name)).slice(0, 8) : []
   const exact = query && pantry.some((i) => matchesName(i, query))
-  const store = state.stores.find((s) => s.id === state.storeId) ?? state.stores[0]
-  const cats = aislesOf(store, state.categories).flatMap((a) => a.categories.filter((k) => k.id))
   // The pantry item tapped, waiting for how many and Add. Typing again lets it go.
   const [picked, setPicked] = React.useState<string | null>(null)
   const [qty, setQty] = React.useState(1)
@@ -58,11 +57,10 @@ export default function Add() {
   const addNewOne = (more: boolean) => {
     const name = query
     change((s) => {
-      const made = addNew(s, name, cat, qty)
+      const made = addNew(s, name, category ?? "", qty, inAisle)
       return got ? gotNow(made.state, made.id, qty) : made.state
     }, got ? { title: `Got ${qty} ${name} on the phone`, detail: "New · added to the pantry" } : { title: `Added ${name} to the shopping list`, detail: "New · not in the pantry yet" })
     setQ("")
-    setCat(category ?? "")
     reset()
     if (more) {
       say(`Added ${name}. Type the next one.`)
@@ -121,10 +119,7 @@ export default function Add() {
         })}
         {!!query && !exact && !picked && (
           <View style={{ gap: 12, marginTop: 8 }}>
-            <Body>“{query}” isn't in your pantry yet. Which aisle?</Body>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {cats.map((k) => <Chip key={k.id} label={k.name} on={cat === k.id} onPress={() => setCat(cat === k.id ? "" : k.id)} />)}
-            </View>
+            <Body>“{query}” isn't in your pantry yet. It's added as new{where ? `, in ${where}` : ""}.</Body>
             {amount}
             <Button label={`Add “${query}”`} onPress={() => addNewOne(false)} />
             <Press fade onPress={() => addNewOne(true)} style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}>

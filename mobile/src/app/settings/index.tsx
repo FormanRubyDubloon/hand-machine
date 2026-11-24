@@ -1,4 +1,4 @@
-// SETTINGS (full screen, from ☰): account, theme, stores, how syncing is going, and Sign out.
+// SETTINGS (full screen, from ☰): account, theme, stores, asking for aisles, tags, how syncing is going, and Sign out.
 import Constants from "expo-constants"
 import { router } from "expo-router"
 import { ChevronRight } from "lucide-react-native"
@@ -8,13 +8,15 @@ import { DEMO } from "../../data/supabase"
 import { useStore } from "../../data/store"
 import type { Theme } from "../../data/state"
 import { initials, plural, whenText } from "../../logic/phrases"
-import { Button, Caption, Label, Press, Segmented } from "../../ui/kit"
+import { addTag } from "../../logic/actions"
+import { Button, Caption, Field, Label, Press, Segmented, Toggle } from "../../ui/kit"
 import { useLeaveSettings } from "../../ui/leave-settings"
 import { SheetHeader } from "../../ui/sheet"
 import { font, radius, useColours } from "../../ui/theme"
 
 export default function Settings() {
-  const { state, local, status, online, pending, syncNow, signOut } = useStore()
+  const { state, local, change, say, status, online, pending, syncNow, signOut } = useStore()
+  const [tag, setTag] = React.useState("")
   const c = useColours()
   const [asking, setAsking] = React.useState(false)
   const leave = useLeaveSettings()
@@ -31,7 +33,7 @@ export default function Settings() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <SheetHeader title="Settings" full onDone={() => leave()} />
+      <SheetHeader title="Settings" full onDone={() => leave(tag.trim())} />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 48 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
           <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: c.olive, alignItems: "center", justifyContent: "center" }}>
@@ -58,6 +60,31 @@ export default function Settings() {
             </View>
             <ChevronRight size={22} color={c.muted} />
           </Press>
+          {/* Batch 4, 24 Nov 2026: kept on this phone, not synced. */}
+          <Toggle
+            label="Ask for the aisle after ticking off"
+            caption={state.noAislePrompt ? "Off. Set an item's aisle from the item, or from the store's Aisles." : "When something has no aisle in the store you're in."}
+            value={!state.noAislePrompt}
+            onChange={(on) => local((s) => ({ ...s, noAislePrompt: on ? undefined : true }))}
+          />
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <Label>Tags</Label>
+          <Caption>{plural(state.categories.length, "tag")}. Give items their tags, and rename or remove tags, in Collca on the web.</Caption>
+          <Field label="Add a tag" value={tag} onChangeText={setTag} placeholder="e.g. World foods" />
+          <Button
+            kind="secondary"
+            label="Add"
+            disabled={!tag.trim()}
+            onPress={() => {
+              const made = addTag(state, tag)
+              if (!made) return say(`There's already a tag called ${tag.trim()}.`)
+              change(() => made.state, { title: `Added a tag: ${tag.trim()}` })
+              say(`Added the tag ${tag.trim()}.`)
+              setTag("")
+            }}
+          />
         </View>
 
         <View style={{ gap: 8 }}>

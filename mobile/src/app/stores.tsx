@@ -1,4 +1,4 @@
-// Which store? (sheet). Choosing one reorders the list by its aisle numbers and goes back to the first aisle.
+// Which store? (sheet). Choosing one reorders the list by each item's aisle there and goes back to the first aisle.
 import { router } from "expo-router"
 import { Check } from "lucide-react-native"
 import * as React from "react"
@@ -40,7 +40,7 @@ export default function Stores() {
               if (!made) return
               change(() => ({ ...made.state, storeId: made.id, aisle: 0 }))
               setName("")
-              say(`Added ${name.trim()}. Set its aisle numbers in Settings.`)
+              say(`Added ${name.trim()}. Its aisles fill in as you tick things off there.`)
             }}
           />
         </View>
