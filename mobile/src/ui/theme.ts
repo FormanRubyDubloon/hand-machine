@@ -13,9 +13,12 @@ export const light: Colours = {
   bg: "#F2EFE3", ink: "#3D2B1F", muted: "#6B5142", olive: "#7A6840", onOlive: "#FFFFE6", panel: "#E8E5D8", line: "#D6D1C2",
   stone: "#C0BCAE", danger: "#9A3324", onDanger: "#FFFFFF", press: "rgba(61,43,31,0.1)", placeholder: "#8A7B6E",
 }
+// Dark matches the web's warm theme (theme-warm.css .dark), Isaac's decision 24 November 2026:
+// bg = background, muted = muted-foreground, onOlive and onDanger = primary- and destructive-foreground,
+// panel = muted, line = border, stone = line-strong. placeholder and press are phone only.
 export const dark: Colours = {
-  bg: "#1F1712", ink: "#F2EFE3", muted: "#C4B6A3", olive: "#C2A86A", onOlive: "#1F1712", panel: "#2C2119", line: "#45362A",
-  stone: "#5E4C3D", danger: "#E59A86", onDanger: "#1F1712", press: "rgba(242,239,227,0.12)", placeholder: "#9C8C7A",
+  bg: "#2A1D15", ink: "#F2EFE3", muted: "#C0BCAE", olive: "#C2A86A", onOlive: "#2A1D15", panel: "#3D2B1F", line: "#544136",
+  stone: "#6B5142", danger: "#E59A86", onDanger: "#2A1D15", press: "rgba(242,239,227,0.12)", placeholder: "#9C8C7A",
 }
 
 /** The always-dark screens: list item sheet, cooking view, toast, Shop done banner. */

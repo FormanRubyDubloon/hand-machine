@@ -6,10 +6,11 @@ import { normalise, type Category, type Item, type Location, type Recipe, type S
 import { emptyState, type PhoneState } from "./state"
 
 const categories: Category[] = [
-  { id: "fruit-and-veg", name: "Fruit & veg" }, { id: "bakery", name: "Bakery" }, { id: "dairy-and-eggs", name: "Dairy & eggs" },
-  { id: "meat-and-fish", name: "Meat & fish" }, { id: "tins-and-jars", name: "Tins & jars" }, { id: "pasta-rice-and-grains", name: "Pasta, rice & grains" },
-  { id: "oils-and-sauces", name: "Oils & sauces" }, { id: "baking-and-spices", name: "Baking & spices" }, { id: "frozen", name: "Frozen" },
-  { id: "household", name: "Household" },
+  { id: "fruit-and-veg", name: "Fruit & veg", colour: "sage", icon: "Carrot" }, { id: "bakery", name: "Bakery", colour: "apricot", icon: "Croissant" },
+  { id: "dairy-and-eggs", name: "Dairy & eggs", colour: "sky", icon: "Milk" }, { id: "meat-and-fish", name: "Meat & fish", colour: "rose", icon: "Beef" },
+  { id: "tins-and-jars", name: "Tins & jars", colour: "periwinkle", icon: "Can" }, { id: "pasta-rice-and-grains", name: "Pasta, rice & grains", colour: "butter", icon: "Wheat" },
+  { id: "oils-and-sauces", name: "Oils & sauces", colour: "mauve", icon: "BottleWine" }, { id: "baking-and-spices", name: "Baking & spices", colour: "lime", icon: "Star" },
+  { id: "frozen", name: "Frozen", colour: "teal", icon: "Snowflake" }, { id: "household", name: "Household", colour: "mint", icon: "SprayCan" },
 ]
 const C: Record<string, string> = {
   fruit: "fruit-and-veg", bakery: "bakery", dairy: "dairy-and-eggs", meat: "meat-and-fish", tins: "tins-and-jars",

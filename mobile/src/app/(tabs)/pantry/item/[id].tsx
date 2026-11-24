@@ -11,7 +11,8 @@ import { addOne, approve, openOne, setLocation, setMin, setNotes, setStore, setU
 import { stockStatus, expiryText } from "../../../../logic/phrases"
 import { AisleField, BackLink, Body, Button, Caption, Chip, Display, Field, InfoBox, Label, Picker, Press, Stepper } from "../../../../ui/kit"
 import { LOCATIONS } from "../../../../ui/locations"
-import { font, space, useColours } from "../../../../ui/theme"
+import { TagMark } from "../../../../ui/tags"
+import { font, radius, space, useColours } from "../../../../ui/theme"
 
 /** The store dropdown's "Any store", which is no store id. */
 const ANY = "__any"
@@ -33,7 +34,8 @@ export default function PantryItem() {
   const name = item.name.toLowerCase()
   const store = state.stores.find((s) => s.id === state.storeId) ?? state.stores[0]
   const aisle = itemAisle(item, store)
-  const tags = tagsOf(item).map((t) => state.categories.find((k) => k.id === t)?.name).filter((n): n is string => !!n)
+  const tagList = tagsOf(item).map((t) => state.categories.find((k) => k.id === t)).filter((k): k is NonNullable<typeof k> => !!k)
+  const tags = tagList.map((k) => k.name)
   const bulk = isBulk(item)
   const unit = item.unit?.[0] ?? (bulk ? "pack" : "")
   const open = item.open ?? 0
@@ -120,7 +122,19 @@ export default function PantryItem() {
         {/* Tags are given to items in Collca on the web (Isaac's decision, 24 Nov 2026), so here they're only shown. Below Store (Isaac's change, 24 Nov 2026). */}
         <View style={{ gap: 6 }}>
           <Label>Tags</Label>
-          <Body>{tags.length ? tags.join(", ") : "No tags"}</Body>
+          {/* Each tag with its icon in its colour, as on the web (Isaac's change, 24 Nov 2026). */}
+          {tagList.length ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {tagList.map((k) => (
+                <View key={k.id} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingRight: 12, minHeight: 32, borderRadius: radius.base, borderWidth: 1, borderColor: c.line, paddingLeft: k.icon || k.colour ? 4 : 12 }}>
+                  <TagMark tag={k} size="sm" />
+                  <Text style={{ fontFamily: font.medium, fontSize: 15, color: c.ink }}>{k.name}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Body>No tags</Body>
+          )}
           <Caption>Change tags in Collca on the web.</Caption>
         </View>
 

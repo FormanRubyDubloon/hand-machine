@@ -20,7 +20,7 @@ import { applySync, isNetworkError, pendingCount, runSync } from "./sync"
 
 // The demo key moves on when the demo seed changes: v2 with Batch 4 (aisles on items), v3 with Batch 6 (a 20-second
 // step on Berry porridge, to try a timer's alert quickly).
-const KEY = DEMO ? "collca:demo:v3" : "collca:phone:v1"
+const KEY = DEMO ? "collca:demo:v4" : "collca:phone:v1"
 const AFTER_CHANGE_MS = 1200
 const HEARD_MS = 800
 const EVERY_MS = 120_000
