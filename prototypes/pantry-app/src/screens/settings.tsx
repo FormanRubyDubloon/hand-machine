@@ -299,7 +299,7 @@ function NameForm({ initial, placeholder, submit, onSubmit, onCancel }: { initia
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => e.key === "Escape" && onCancel()}
         className="h-8 max-w-64 bg-background px-2"
-        aria-label="Category name"
+        aria-label="Tag name"
       />
       <Button type="submit" size="sm" disabled={!name.trim()}>{submit}</Button>
       <Button type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
@@ -319,7 +319,7 @@ function RemoveCategory({ category, onClose }: { category: Category; onClose: ()
   return (
     <DialogContent className="gap-5 p-8 sm:max-w-[520px]">
       <DialogHeader>
-        <Eyebrow>Remove category</Eyebrow>
+        <Eyebrow>Remove tag</Eyebrow>
         <DialogTitle className="text-[22px] tracking-[0.04em] uppercase">Remove {category.name}?</DialogTitle>
         <DialogDescription>
           {empty ? (
@@ -327,7 +327,7 @@ function RemoveCategory({ category, onClose }: { category: Category; onClose: ()
           ) : (
             <>
               {category.name} still has <strong className="font-semibold text-foreground">{plural(inIt.length, "item")}</strong>: {nameList(shown)}. Move{" "}
-              {inIt.length === 1 ? "it" : "them"} to another category first. A category can only be removed when it's empty.
+              {inIt.length === 1 ? "it" : "them"} to another tag first. A tag can only be removed when it's empty.
             </>
           )}
         </DialogDescription>
@@ -336,7 +336,7 @@ function RemoveCategory({ category, onClose }: { category: Category; onClose: ()
         <div className="flex items-end gap-3 border border-border bg-muted p-4">
           <Field label={`Move the ${plural(inIt.length, "item")} to`} className="flex-1">
             <Select value={moveTo} onValueChange={setMoveTo}>
-              <SelectTrigger className="w-full bg-background"><SelectValue placeholder="Choose a category" /></SelectTrigger>
+              <SelectTrigger className="w-full bg-background"><SelectValue placeholder="Choose a tag" /></SelectTrigger>
               <SelectContent>{others.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
           </Field>
@@ -358,7 +358,7 @@ function RemoveCategory({ category, onClose }: { category: Category; onClose: ()
       <DialogFooter className="sm:justify-between">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
         <Button className="bg-destructive text-destructive-foreground hover:bg-destructive/80" disabled={!empty} onClick={() => { actions.removeCategory(category.id); onClose() }}>
-          Remove category
+          Remove tag
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -380,10 +380,10 @@ function Categories({ intro }: { intro: string }) {
 
   return (
     <>
-      <PageTitle title="Categories" subtitle={intro}>
+      <PageTitle title="Tags" subtitle={intro}>
         <Button variant="outline" className="border-primary" disabled={adding} onClick={() => { setAdding(true); setRenaming(null) }}>
           <PlusIcon />
-          Add category
+          Add tag
         </Button>
       </PageTitle>
 
@@ -391,7 +391,7 @@ function Categories({ intro }: { intro: string }) {
         <Table className="text-sm">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className={cn(head, "pl-3")}>Category</TableHead>
+              <TableHead className={cn(head, "pl-3")}>Tag</TableHead>
               <TableHead className={cn(head, "text-right")}>In pantry</TableHead>
               <TableHead className={cn(head, "text-right")}>On list</TableHead>
               <TableHead className={head}>Has an aisle number in</TableHead>
@@ -404,7 +404,7 @@ function Categories({ intro }: { intro: string }) {
                 <TableCell className="pl-3" colSpan={3}>
                   <NameForm
                     initial=""
-                    placeholder="Category name, like Snacks"
+                    placeholder="Tag name, like Snacks"
                     submit="Add"
                     onSubmit={(name) => { actions.addCategory(null, name); setAdding(false); toast(`Added ${name}`, { description: "Give it an aisle number in each store from Stores and aisles." }) }}
                     onCancel={() => setAdding(false)}
@@ -465,9 +465,9 @@ function Categories({ intro }: { intro: string }) {
           </TableBody>
         </Table>
         <span className="text-xs text-muted-foreground">
-          {plural(db.categories.length, "category", "categories")}, {plural(pantry.length, "item")}.{" "}
+          {plural(db.categories.length, "tag")}, {plural(pantry.length, "item")}.{" "}
           {renaming ? "Renaming changes the name everywhere: items, the shopping list and every store's aisles. " : ""}
-          A category without an aisle number in a store doesn't show on that store's list. Changes reach the phone at its next sync.
+          A tag without an aisle number in a store doesn't show on that store's list. Changes reach the phone at its next sync.
         </span>
       </div>
 
@@ -696,7 +696,7 @@ function Account() {
 const tabs: { tab: SettingsTab; title: string; sub: string; intro: string }[] = [
   { tab: "general", title: "General", sub: "Theme", intro: "Settings for this computer." },
   { tab: "stores", title: "Stores and aisles", sub: "Your shops and their aisle order", intro: "Your shops, where they are, and the order of their aisles. The shopping list follows each shop's aisle order. You can change it here or on your phone." },
-  { tab: "categories", title: "Categories", sub: "Groups for items and aisles", intro: "Every item has one. Each store gives a category an aisle number, so the shopping list follows your walk round the shop." },
+  { tab: "tags", title: "Tags", sub: "Labels for items and aisles", intro: "Every item has one. Each store gives a tag an aisle number, so the shopping list follows your walk round the shop." },
   { tab: "claude", title: "Claude connection", sub: "What Claude can read and change", intro: "Lets Claude use your pantry from the Claude phone app, desktop or web." },
   { tab: "account", title: "Account", sub: "Sign-in, devices and your data", intro: "One account for the pantry, your phone and Claude." },
 ]
@@ -712,7 +712,7 @@ export function Settings({ tab, store }: { tab: SettingsTab; store?: string }) {
         </nav>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-10 py-7">
-        {tab === "categories" ? (
+        {tab === "tags" ? (
           <Categories intro={current.intro} />
         ) : (
           <>

@@ -74,7 +74,8 @@ function linksFor(entry: HistoryEntry, db: Db, items: Items): HistoryLinks | und
   if (entry.itemIds?.length) return itemLinks
   // No item or recipe: a category or store change. Claude's store entries carry no store id, so
   // the store is found by its name in the title (the longest name wins, so "Co-op" loses to "Co-op Express").
-  if (/\bcategory\b/i.test(entry.title)) return { href: href({ name: "settings", tab: "categories" }) }
+  // Tag entries (called category before 24 Nov 2026) open Settings → Tags.
+  if (/\b(category|tag)\b/i.test(entry.title)) return { href: href({ name: "settings", tab: "tags" }) }
   const store = [...db.stores].sort((a, b) => b.name.length - a.name.length).find((x) => x.name && entry.title.includes(x.name))
   if (store) return { href: href({ name: "settings", tab: "stores", store: store.id }) }
   if (/\bstore\b/i.test(entry.title)) return { href: href({ name: "settings", tab: "stores" }) }
