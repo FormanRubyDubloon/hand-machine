@@ -1,7 +1,9 @@
-// PANTRY: New items to review (only when there are some), the In stock only switch, All items (a card like the
+// PANTRY: New items to review (only when there are some), All items (a card like the
 // locations, first; Isaac's change, 24 Nov 2026, in place of the See all link), and a
 // card per location with what's in it and what needs using soon. Locations with nothing to show are left out
-// (Batch 2, 24 Nov 2026), so with In stock only on, a location whose things have all run out disappears. Its search
+// (Batch 2, 24 Nov 2026), so with In stock only on, a location whose things have all run out disappears. The In stock
+// only switch went from this page (Isaac's change, 24 Nov 2026): it's in All items' Filters and on each location's page,
+// and this page follows it. Its search
 // field went in Batch 5: search is the header's, across the list, the pantry and recipes.
 import { router } from "expo-router"
 import { ChevronRight, LayoutList, type LucideIcon } from "lucide-react-native"
@@ -10,12 +12,12 @@ import { RefreshControl, ScrollView, Text, View } from "react-native"
 import { useStore } from "../../../data/store"
 import { inStockOnly, locationCounts, pantryItems } from "../../../logic/pantry"
 import { plural, goingOffSoon } from "../../../logic/phrases"
-import { Caption, Label, Press, Toggle } from "../../../ui/kit"
+import { Caption, Label, Press } from "../../../ui/kit"
 import { LOCATIONS } from "../../../ui/locations"
 import { font, radius, space, useColours } from "../../../ui/theme"
 
 export default function Pantry() {
-  const { state, local, pulling, pullToSync } = useStore()
+  const { state, pulling, pullToSync } = useStore()
   const c = useColours()
   const everything = pantryItems(state.items, true)
   const review = everything.filter((i) => i.review)
@@ -45,16 +47,10 @@ export default function Pantry() {
       )}
       {everything.length > 0 && (
         <>
-          <Toggle
-            label="In stock only"
-            caption={only ? `${plural(everything.length - items.length, "item")} out of stock hidden` : "Showing everything, out of stock too"}
-            value={only}
-            onChange={(on) => local((s) => ({ ...s, pantryAll: !on }))}
-          />
           <View style={{ marginTop: 4, minHeight: 32, justifyContent: "center" }}>
             <Label>Where it lives</Label>
           </View>
-          {items.length > 0 && (
+          {everything.length > 0 && (
             <Card
               icon={LayoutList}
               label="All items"
@@ -80,7 +76,7 @@ export default function Pantry() {
         )
       })}
       {everything.length === 0 && <Caption>Your pantry is empty. Add things in Collca on the web, or tell Claude what you have.</Caption>}
-      {everything.length > 0 && items.length === 0 && <Caption>Nothing's in stock. Turn off In stock only to see everything.</Caption>}
+      {everything.length > 0 && items.length === 0 && <Caption>Nothing's in stock. To see everything, open All items' Filters and choose Everything.</Caption>}
     </ScrollView>
   )
 }

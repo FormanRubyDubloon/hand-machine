@@ -1,14 +1,17 @@
 // A list of pantry items: one location (soonest use-by first), everything (See all, with sorting and filters),
 // search results, or the New items to review. One location and See all follow the In stock only switch
 // (Batch 2, 24 Nov 2026); search and To review always show everything, so nothing you look for is hidden.
+// All items' sort and filters (and the switch) are in a Filters sheet from the button by its title, as on the
+// shopping list (Isaac's change, 24 Nov 2026); one location keeps its switch on the page.
 import { router, useLocalSearchParams } from "expo-router"
+import { SlidersHorizontal } from "lucide-react-native"
 import * as React from "react"
-import { FlatList, ScrollView, Text, View } from "react-native"
+import { FlatList, Text, View } from "react-native"
 import { containsText, locationLabel, namesOf, soonest, type Item } from "../../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../../data/store"
-import { defaultView, inStockOnly, locationCounts, pantryItems, SHOWS, SORTS, viewOf, type PantryView } from "../../../logic/pantry"
+import { defaultView, inStockOnly, pantryFiltersOn, pantryItems, SHOWS, SORTS, viewOf } from "../../../logic/pantry"
 import { phrase, plural, expiryText } from "../../../logic/phrases"
-import { BackLink, Caption, Chip, Display, Label, Pill, Press, Segmented, Toggle } from "../../../ui/kit"
+import { BackLink, Caption, Display, IconButton, Pill, Press, Toggle } from "../../../ui/kit"
 import { LOCATIONS } from "../../../ui/locations"
 import { font, space, useColours } from "../../../ui/theme"
 
@@ -19,7 +22,12 @@ export default function Browse() {
   const { loc, q, review, all: seeAll, show } = useLocalSearchParams<{ loc?: string; q?: string; review?: string; all?: string; show?: string }>()
   const { state, local } = useStore()
   const c = useColours()
-  const [view, setView] = React.useState<PantryView>(() => ({ ...defaultView, show: SHOWS.find((x) => x.value === show)?.value ?? null }))
+  const view = state.pantryView ?? defaultView
+  // Home's counts open All items with one Show filter, starting from no others.
+  React.useEffect(() => {
+    const s = SHOWS.find((x) => x.value === show)?.value
+    if (s) local((st) => ({ ...st, pantryView: { ...defaultView, show: s } }))
+  }, [show, local])
   const only = inStockOnly(state)
   const setOnly = (on: boolean) => local((s) => ({ ...s, pantryAll: !on }))
   const everything = pantryItems(state.items, true)
@@ -37,51 +45,21 @@ export default function Browse() {
     title = "All items"
     // Out means none in stock, so it looks at everything whatever the switch says.
     list = viewOf(view.show === "out" ? everything : shown, view)
-    caption = `sorted ${SORTS.find((x) => x.value === view.sort)!.label}`
+    const on = pantryFiltersOn(view, !only)
+    caption = [`sorted ${SORTS.find((x) => x.value === view.sort)!.label}`, on ? `${on} ${on === 1 ? "filter" : "filters"} on` : ""].filter(Boolean).join(" · ")
   } else {
     title = LOCATIONS.find((l) => l.value === loc)?.label ?? "Pantry"
     list = shown.filter((i) => (i.location ?? "none") === loc).sort(bySoonest)
     caption = "soonest use-by first"
   }
-  const switchable = !review && !q
+  // One location keeps the switch on the page; All items has it in its Filters sheet.
+  const switchable = !review && !q && !seeAll
   const showLoc = !loc
-  const counts = locationCounts(shown)
+  const filtersOnNow = seeAll ? pantryFiltersOn(view, !only) : 0
 
   const header = (
     <View style={{ gap: 12, paddingBottom: 10 }}>
       {switchable && <Toggle label="In stock only" value={only} onChange={setOnly} />}
-      {seeAll && (
-        <>
-          <Segmented label="Sort" value={view.sort} onChange={(sort) => setView({ ...view, sort })} options={SORTS} />
-          <View style={{ gap: 6 }}>
-            <Label>Where</Label>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              <Chip label="All" on={view.location === null} onPress={() => setView({ ...view, location: null })} />
-              {LOCATIONS.filter((l) => counts.get(l.value)).map((l) => (
-                <Chip key={l.value} label={l.label} on={view.location === l.value} onPress={() => setView({ ...view, location: view.location === l.value ? null : l.value })} />
-              ))}
-            </ScrollView>
-          </View>
-          <View style={{ gap: 6 }}>
-            <Label>Show</Label>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {SHOWS.map((x) => (
-                <Chip
-                  key={x.value}
-                  label={x.label}
-                  on={view.show === x.value}
-                  onPress={() => {
-                    const on = view.show !== x.value
-                    setView({ ...view, show: on ? x.value : null })
-                    // Out of stock can't show with In stock only on, so asking for it turns the switch off.
-                    if (on && x.value === "out" && only) setOnly(false)
-                  }}
-                />
-              ))}
-            </ScrollView>
-          </View>
-        </>
-      )}
     </View>
   )
 
@@ -90,9 +68,16 @@ export default function Browse() {
       <View style={{ paddingHorizontal: 12, paddingTop: 6 }}>
         <BackLink label="Pantry" onPress={() => router.back()} />
       </View>
-      <View style={{ paddingHorizontal: space.screen, paddingBottom: 10, gap: 4 }}>
-        <Display size={30}>{title}</Display>
-        <Caption>{plural(list.length, "item")}{caption ? ` · ${caption}` : ""}</Caption>
+      <View style={{ paddingHorizontal: space.screen, paddingBottom: 10, flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Display size={30}>{title}</Display>
+          <Caption>{plural(list.length, "item")}{caption ? ` · ${caption}` : ""}</Caption>
+        </View>
+        {seeAll && (
+          <IconButton label={filtersOnNow ? `Filters, ${filtersOnNow} on` : "Filters"} filled={!!filtersOnNow} onPress={() => router.push("/pantry-filters")}>
+            <SlidersHorizontal size={22} color={filtersOnNow ? c.onOlive : c.ink} strokeWidth={2} />
+          </IconButton>
+        )}
       </View>
       <FlatList
         data={list}
@@ -117,7 +102,7 @@ export default function Browse() {
         }}
         ListEmptyComponent={
           <Caption style={{ paddingVertical: 20 }}>
-            {review ? "Nothing to review." : q ? `Nothing in your pantry matches “${q}”.` : only && everything.length ? "Nothing in stock here. Turn off In stock only to see everything." : "Nothing here."}
+            {review ? "Nothing to review." : q ? `Nothing in your pantry matches “${q}”.` : only && everything.length ? seeAll ? "Nothing matches. Change the filters to see more." : "Nothing in stock here. Turn off In stock only to see everything." : "Nothing here."}
           </Caption>
         }
       />
