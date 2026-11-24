@@ -220,7 +220,8 @@ const LOCATION_ICONS: Record<Location, React.ReactNode> = {
   freezer: <><path d="M2 12h20" /><path d="M12 2v20" /><path d="m20 16-4-4 4-4" /><path d="m4 8 4 4-4 4" /><path d="m16 4-4 4-4-4" /><path d="m8 20 4-4 4 4" /></>,
   cupboard: <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M12 3v18" /><path d="M9 12h.01" /><path d="M15 12h.01" /></>,
   counter: <><path d="M3 13h18" /><path d="M4 13a8 7 0 0 0 16 0" /><circle cx="9" cy="9.5" r="3" /><circle cx="15.5" cy="10" r="2.5" /><path d="M9 6.5 10 4" /><path d="M9 20h6" /></>,
-  household: <><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" /><path d="M12 22V12" /><path d="m3.3 7 8.7 5 8.7-5" /><path d="m7.5 4.27 9 5.15" /></>,
+  // A bath (Lucide's), as on the phone: Other is mostly toiletries and cleaning things (Isaac's change, 24 Nov 2026).
+  household: <><path d="M10 4 8 6" /><path d="M17 19v2" /><path d="M2 12h20" /><path d="M7 19v2" /><path d="M9 5 7.621 3.621A2.121 2.121 0 0 0 4 5v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5" /></>,
 }
 
 function LocationPicker({ value, onChange }: { value?: Location; onChange: (l: Location) => void }) {
