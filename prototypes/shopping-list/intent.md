@@ -1,22 +1,22 @@
 # Intent: pantry, recipes and shopping list app, with Claude access
 
-Author: Isaac Forman · Date: 14 Nov 2026 · Updated: 20 Nov 2026 · Status: draft, awaiting review
+Author: Isaac Forman · Date: 14 Nov 2026 · Updated: 24 Nov 2026 (aisles on items, Tags, bought date, shopping by aisle or tag; draft) · Status: draft, awaiting review
 
 ## Problem
 
-My shopping list and pantry stock live in Notion. I'm building a small web app for checking off items in shops, but it depends on Notion for the stock data. I'd rather not rely on a third-party app for this. I want one seamless, elegant solution where the list, the stock and the recipes work together. I have to keep the list and the stock in step by hand, and nothing tells me what's running low. I also can't ask Claude what's in my pantry or have it update things for me.
+I want one seamless, elegant system where my shopping list, pantry stock and recipes work together. Without it I keep the list and the stock in step by hand, and nothing tells me what's running low. I also can't ask Claude what's in my pantry or have it update things for me.
 
 My recipes aren't connected to any of this. I can't see which recipes I can cook from what I have, what I'd need to buy for one, or what to cook first before food goes off.
 
 ## Proposed outcome
 
-One system I own, made of three parts, that replaces Notion completely:
+One system I own, made of three parts:
 
 1. **Mobile app (native iPhone app).** One app with three sections:
    - **Shopping list.** I use it in shops. It shows what I need to buy and roughly what it will cost, and it works without signal. Pantry stock updates as I tick things off, and goes to the pantry by itself whenever there's signal.
    - **Recipes.** All my recipes. A recipe's detail page is where I cook from: it shows what I have and what I'm short of, and has a step-by-step cooking view.
    - **Pantry.** A cut-down version of the pantry for the phone. I can record what I've used, add stock, mark a pack as open, search and view stock, edit an item's details, and review New items.
-2. **Pantry admin app (desktop web).** I use it at my desk to manage pantry items, stock, recipes and categories. It does everything the phone's Pantry section does, plus the jobs that stay on the desktop, such as managing categories and merging items.
+2. **Pantry admin app (desktop web).** I use it at my desk to manage pantry items, stock, recipes and tags. It does everything the phone's Pantry section does, plus the jobs that stay on the desktop, such as renaming and removing tags and merging items.
 3. **Claude connection.** Claude can read pantry stock, update stock, edit the shopping list, create or change pantry items, and read, search and add recipes. I can use it from the Claude phone app and on desktop or web. For example: "what can I cook tonight?", "I used the last of the rice", "add what I need for this recipe to the list", "save this recipe".
 
 All three sections of the mobile app are built and released together.
@@ -27,9 +27,11 @@ Each pantry item records:
 - quantity and unit
 - pack size (optional, for bulk items, such as 1 kg)
 - minimum level
-- category (the shop or aisle section it belongs to, such as dairy or tins)
-- location (fridge, freezer, cupboard)
+- tags (optional, any number, such as dairy and breakfast; they don't decide where the item is in a shop)
+- aisle, for each store I shop in (a number, or a named place such as Freezer or Tills; blank until I give it one)
+- location (fridge, freezer, cupboard, counter or other)
 - use-by date
+- bought date (when I last bought it)
 - price each (marked as an estimate when Claude guessed it rather than me giving it)
 - preferred brand (optional; blank means any brand is fine)
 - other names (optional, such as coriander and cilantro), used to match recipe ingredients
@@ -49,8 +51,6 @@ Each recipe records:
 - source
 - my notes
 
-Existing Notion data, including my pantry, shopping list and recipes, is imported once. After that, Notion is no longer used.
-
 ### How it should behave
 
 **The shopping list**
@@ -58,11 +58,22 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - When checking off an item, I can tick one unit at a time, enter an amount, or check off all of it at once.
 - An item leaves the list once what I've checked off brings stock back above its minimum.
 - The list can hold things that aren't in the pantry yet, such as a recipe ingredient I've never bought. These stay on the list only and don't appear in the pantry while I'm shopping.
-- When I check one of these off, it becomes a pantry item with the amount I bought and a minimum of 0. The app guesses its category and location, and I can change them. It is linked to the recipe ingredient it came from.
-- A new item made this way is marked "New" until I've reviewed and saved it, because its category and location are guesses. I can review it in the admin app or in the phone's Pantry section.
+- When I check one of these off, it becomes a pantry item with the amount I bought and a minimum of 0. The app guesses its location, and I can change it and give it tags. It is linked to the recipe ingredient it came from.
+- A new item made this way is marked "New" until I've reviewed and saved it, because its location is a guess and it has no tags yet. I can review it in the admin app or in the phone's Pantry section.
 - If I undo the check-off on the phone, the item comes off stock again (and doesn't go into the pantry if it was new).
 - Items that are already in the pantry stay there while they're on the list. If I have none, they show as Out.
+- On the phone I choose how I shop: by aisle or by tag. The list has an Aisles menu and a Tags menu. Aisles shows the list in the order I walk the store (see Aisles) and lets me jump to one aisle. Tags lets me pick a tag, such as everything for the butcher or the greengrocer, and shows only items with it. Items with no tags show under No tag.
 - I can mark an item on the list as Ordered (for example, when I've ordered it online), so I don't also buy it in a shop. It stays on the list, marked Ordered, until it arrives and is no longer needed; then the mark clears by itself. I mark it in the admin app's shopping list or by telling Claude, and the mobile app's shopping list shows it.
+
+**Aisles**
+- Aisles belong to stores, not tags. Each item has its own aisle in each store I shop in, and it starts blank. Tags don't set the aisle.
+- An aisle is a number ("Aisle 4") or a named place I add, such as Freezer or Tills. That is its name on the list.
+- The list walks the store: All items first, then No aisle, then the aisles in number order, then the named places.
+- When I tick off an item that has no aisle in this store, the app asks which aisle it was in: a sheet of number tiles, a way to enter a higher number than the tiles go, and my named places. It starts blank. If I bought more than one, it waits a second or two after my last tap before asking. I can skip it, and it asks again next time.
+- A setting turns this asking off. With it off, I set aisles from the item or the store's Aisles section instead.
+- A store whose list goes A to Z (it has no aisle numbers) never asks.
+- Each store has an Aisles section showing the aisles used so far and the items in each, so I can fix mistakes. There's nothing to set up first: aisles fill in as I shop.
+- On the phone I can also set an item's aisle for the store I'm in from the item itself.
 
 **Prices and the estimated total**
 - The shopping list shows an estimated total in the mobile app and the admin app: each item's price times how many to buy, added up. The mobile app has it from its first release.
@@ -84,7 +95,8 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - Counted items are tracked by number. Bulk items are tracked as whole packs, and the app knows whether one is open. I want to see the quantity the way I'd say it, for example "two bags of flour, one open". It doesn't measure how much is left in an open pack.
 - I can mark a pack as open. An open pack counts as less than one full pack.
 - For bulk items, only full packs count towards the minimum. The amount to buy is the minimum minus the full packs. For example, one open bag of rice with a minimum of 2 means buying 2.
-- If I keep more than one of something (its minimum is above 1), each unit has its own use-by date. Otherwise the item has one use-by date.
+- Each unit has its own use-by date. Opening a pack brings its use-by forward if the item has a use-within time.
+- Ticking an item off the list, or adding stock, sets its bought date to today. I can change it.
 
 **Recipes**
 - I add recipes through Claude. I give Claude a recipe (typed, pasted, a web link or a file) and it saves it.
@@ -107,27 +119,27 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - Recipes I've marked "Want to cook" are downloaded to the phone, so I can read them in a shop without signal. Other recipes need signal.
 
 **Pantry on the phone**
-- The phone's Pantry section covers: recording what I've used, adding stock, marking a pack as open, searching and viewing stock, editing an item's details (such as minimum, category, location and notes), and reviewing New items.
-- Managing categories and merging items stay in the admin app.
+- The phone's Pantry section covers: recording what I've used, adding stock, marking a pack as open, searching and viewing stock, editing an item's details (such as minimum, location, store, aisle and notes), and reviewing New items.
+- I can add a new tag from the phone. Giving items tags, renaming and removing tags, and merging items stay in the admin app.
 
-**Categories**
-- I can add, rename and remove categories in the pantry admin app. They aren't fixed. Today's set comes from Notion's 18.
-- Every item belongs to one category. Renaming a category renames it everywhere, including each store's aisle order and the shopping list.
-- A new category appears in every store's aisle order. It starts with no aisle number until I set one.
-- I can't remove a category that still has items in it. The app tells me how many, and offers to move them to another category first.
-- Categories reach the mobile app when it syncs, like stores and aisles.
-- In a shop I can change a store's aisle numbers, add or edit a store, and add an aisle (a new category), on the phone. These changes go to the pantry by themselves, so the admin app and Claude see them. If the same store was changed in both places, the phone's version wins. Renaming and removing categories stays in the admin app.
+**Tags** (called categories until 24 Nov 2026)
+- I manage tags in the pantry admin app: adding, renaming and removing them, and choosing each item's tags. They aren't fixed. The phone can add a new tag too.
+- An item can have any number of tags, or none. Renaming a tag renames it everywhere.
+- Tags are labels for finding and filtering things. They don't decide the aisle or the order of the shopping list.
+- Removing a tag takes it off every item that has it. The app tells me how many first, and it can be undone from History.
+- Tags reach the mobile app when it syncs, like stores, and the shopping list's Tags menu uses them.
+- In a shop I can add or edit a store, add a tag, and set an item's aisle, on the phone. These changes go to the pantry by themselves, so the admin app and Claude see them. If the same store was changed in both places, the phone's version wins.
 
 **Undo**
-- I can undo any change from History on the same day, including a merge, a delete and removing a category. Changes Claude makes can be undone the same way.
+- I can undo any change from History on the same day, including a merge, a delete and removing a tag. Changes Claude makes can be undone the same way.
 
 **What Claude can do**
 - Claude can read pantry stock, the shopping list and my saved recipes, and search them.
 - Claude can add items, stock, list entries, recipes and stores without asking.
 - When I tell Claude what I've used ("I used the last of the rice"), it takes that off stock without asking. This doesn't count as an edit.
-- Claude must ask me to confirm before it edits or deletes anything else, including changing a store or its aisle numbers.
+- Claude must ask me to confirm before it edits or deletes anything else, including changing a store or an item's aisle.
 - Claude can read prices and the shopping list's estimated total. It can set the prices of many items at once, for example from a receipt or as estimates for items with none, after I confirm the whole batch once. It says whether the prices are estimates.
-- Claude can change a store's aisle numbers, but not add, rename or remove categories. Those stay in the admin app.
+- Claude can change an item's aisle in a store, but not add, rename or remove tags. Those stay in the admin app.
 
 **Success looks like:**
 - I do four weekly shops in a row with nothing forgotten and nothing bought that I already had enough of.
@@ -144,9 +156,8 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 
 - **Me**, as the only user for now.
 - **Other people, later.** They will sign up and create their own pantry. Each person's pantry, shopping list and recipes are separate from mine and private to them. Adding this shouldn't need a rebuild.
-- **The current shopping-list web app.** The native mobile app takes over from it. The web app stays running as a fallback but isn't improved any further.
+- **The current shopping-list web app.** The native mobile app takes over from it. The web app stays running as a fallback, isn't improved any further, and is switched off once the native app has taken over (decided 24 Nov 2026). It can't follow aisles on items, so its list order stops making sense from then on anyway.
 - **The pantry admin app, the pantry database and the Claude connection**, which already exist. The mobile app uses the same data and the same sign-in.
-- **My Notion pantry, shopping list and recipes**, as a one-off data source.
 - **Claude** (phone app and desktop/web), as a way in to the same data.
 - **My recipes skill**, which currently suggests meals from my pantry. It should be able to use the new pantry and recipe data.
 
@@ -171,4 +182,6 @@ Existing Notion data, including my pantry, shopping list and recipes, is importe
 - **Other users:** people will sign up and create their own pantry. When does sign-up open? Can two people in one household share a pantry? Does each person get their own Claude connection?
 - **Clashes without manual sync:** with changes going through by themselves, the same item changing in two places should be rare (mostly a shop with no signal while the desktop app is used). Is asking which to keep still right, or should the later change win, as the desktop app does?
 - **Phone features:** which of barcode scanning, notifications, widgets and keeping the screen awake are in the first release, and which come later?
-- **The fallback web app:** it won't be improved, so it will fall behind the native app. When is it switched off?
+- **Named aisles in the walk:** named places (Freezer, Tills) go after the numbered aisles. Should I be able to put them in order among the numbers instead (Freezer between aisles 8 and 9)?
+- **Bought date:** one date per item (when I last bought it), or one per unit like use-by dates?
+- **Shopping by tag:** can I pick more than one tag at once (butcher and fishmonger), and does an item with two tags show under both?

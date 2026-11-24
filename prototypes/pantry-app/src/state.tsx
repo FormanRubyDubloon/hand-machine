@@ -741,7 +741,7 @@ function usePantryState() {
             return { ...x, aisles }
           }),
         }),
-        { title: `Removed the category ${gone.name}`, detail: "It had no items" },
+        { title: `Removed the tag ${gone.name}`, detail: "It had no items" },
       )
       toast(`Removed ${gone.name}`, { description: "You can undo this from History today." })
     },
@@ -816,7 +816,7 @@ function usePantryState() {
         ].filter(Boolean)
         const notes = [
           result.clashes ? `${plural(result.clashes, "item")} changed in both places: the later edit won.` : "",
-          result.uncategorised ? `${plural(result.uncategorised, "item")} saved without a category: Supabase doesn't have it.` : "",
+          result.uncategorised ? `${plural(result.uncategorised, "item")} saved without a tag: Supabase doesn't have it.` : "",
           kept.length ? `${nameList(kept.map((c) => c.name))} stayed in Supabase: items there still use ${kept.length === 1 ? "it" : "them"}. Sync tries again next time.` : "",
         ].filter(Boolean)
         // The sync on opening the app stays quiet unless something came or went.
