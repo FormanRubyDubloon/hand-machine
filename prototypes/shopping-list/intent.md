@@ -113,6 +113,7 @@ Each recipe records:
 - Once an ingredient is on the list, the recipe shows a number I can raise or lower. Taking it below 1 removes it from the list.
 - An "Add all missing" action adds 1 of every ingredient I'm short of that isn't already on the list.
 - A recipe's detail page in the mobile app has a step-by-step cooking view to follow while I cook.
+- Any step that names a time ("simmer for 25 minutes") has a timer, on the recipe page and in the cooking view. Several can run at once, from different steps or recipes. A timer alerts me when it's up, even with the phone locked; the first one asks for permission to send notifications.
 - When I mark a recipe as cooked, I check what was used and then stock goes down. Counted ingredients are filled in with the recipe amounts, which I can change. Each bulk ingredient has a "finished it" tick, and ticking it takes one pack off stock.
 - For bulk ingredients, a recipe shows that I have some, not whether I have enough. If a bulk item has a pack size, the app warns me when a recipe needs more than my packs could hold (for example, 1.5 kg of flour when I have one 1 kg bag).
 - I can see all my recipes in the pantry admin app and in the mobile app's Recipes section.
@@ -181,7 +182,7 @@ Each recipe records:
 - **Use-by warnings:** recipes are ranked by what needs using first. Should anything also warn me before things go off?
 - **Other users:** people will sign up and create their own pantry. When does sign-up open? Can two people in one household share a pantry? Does each person get their own Claude connection?
 - **Clashes without manual sync:** with changes going through by themselves, the same item changing in two places should be rare (mostly a shop with no signal while the desktop app is used). Is asking which to keep still right, or should the later change win, as the desktop app does?
-- **Phone features:** which of barcode scanning, notifications, widgets and keeping the screen awake are in the first release, and which come later?
+- **Phone features:** notifications (for recipe timers) and keeping the screen awake while cooking are in. Which of barcode scanning and widgets come, and when?
 - **Named aisles in the walk:** named places (Freezer, Tills) go after the numbered aisles. Should I be able to put them in order among the numbers instead (Freezer between aisles 8 and 9)?
 - **Bought date:** one date per item (when I last bought it), or one per unit like use-by dates?
 - **Shopping by tag:** can I pick more than one tag at once (butcher and fishmonger), and does an item with two tags show under both?

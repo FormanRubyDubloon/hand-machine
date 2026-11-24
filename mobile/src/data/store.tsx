@@ -18,8 +18,9 @@ import { DEMO, configured, supabase } from "./supabase"
 import { emptyState, type HistoryEntry, type Item, type PhoneState } from "./state"
 import { applySync, isNetworkError, pendingCount, runSync } from "./sync"
 
-// The demo key moved to v2 with Batch 4, so the demo starts from a seed that has aisles on items.
-const KEY = DEMO ? "collca:demo:v2" : "collca:phone:v1"
+// The demo key moves on when the demo seed changes: v2 with Batch 4 (aisles on items), v3 with Batch 6 (a 20-second
+// step on Berry porridge, to try a timer's alert quickly).
+const KEY = DEMO ? "collca:demo:v3" : "collca:phone:v1"
 const AFTER_CHANGE_MS = 1200
 const HEARD_MS = 800
 const EVERY_MS = 120_000

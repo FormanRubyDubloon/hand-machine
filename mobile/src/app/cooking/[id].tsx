@@ -1,5 +1,6 @@
 // The cooking view (full screen, always dark): one step at a time in big type, with the screen kept awake.
-// The last step's button opens "What did you use?".
+// The last step's button opens "What did you use?". A step that names a time has a timer button under it, and every
+// other timer running (other steps, other recipes) shows above the step (Batch 6, 24 Nov 2026).
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake"
 import { router, useLocalSearchParams } from "expo-router"
 import * as React from "react"
@@ -7,6 +8,7 @@ import { Platform, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useStore } from "../../data/store"
 import { Button, Press } from "../../ui/kit"
+import { StepTimers, TimerStrip } from "../../ui/timers"
 import { focus, font } from "../../ui/theme"
 
 export default function Cooking() {
@@ -37,8 +39,12 @@ export default function Cooking() {
       <View style={{ flexDirection: "row", gap: 4, marginTop: 8 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         {steps.map((_, k) => <View key={k} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: k <= n ? focus.gold : focus.line }} />)}
       </View>
-      <View style={{ flex: 1, justifyContent: "center" }}>
+      <View style={{ marginTop: 12 }}>
+        <TimerStrip dark except={(t) => t.recipeId === id && t.step === n} />
+      </View>
+      <View style={{ flex: 1, justifyContent: "center", gap: 20 }}>
         <Text accessibilityLiveRegion="polite" style={{ fontFamily: font.medium, fontSize: big ? 32 : 26, lineHeight: big ? 42 : 34, color: focus.ink }}>{step}</Text>
+        {recipe && recipe.method.length > 0 && <StepTimers dark recipe={recipe} step={n} text={step} />}
       </View>
       <Text style={{ fontFamily: font.regular, fontSize: 14, color: focus.label, textAlign: "center", marginBottom: 12 }}>The screen stays on while you cook.</Text>
       <View style={{ flexDirection: "row", gap: 10 }}>
