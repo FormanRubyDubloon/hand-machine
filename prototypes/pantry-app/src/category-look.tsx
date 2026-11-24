@@ -2,11 +2,13 @@
 // colour tokens in shared/src/category-look.css.
 import * as React from "react"
 import {
-  AmphoraIcon, AppleIcon, BabyIcon, BananaIcon, BathIcon, BeanIcon, BeefIcon, BeerIcon, CakeIcon, CandyIcon, CarrotIcon,
-  CherryIcon, CitrusIcon, CoffeeIcon, CookieIcon, CookingPotIcon, CroissantIcon, CupSodaIcon, CylinderIcon, DonutIcon,
-  DropletIcon, DrumstickIcon, EggIcon, FishIcon, FlameIcon, GrapeIcon, HamIcon, IceCreamConeIcon, LeafIcon, LeafyGreenIcon,
-  MilkIcon, NutIcon, PackageIcon, PawPrintIcon, PillIcon, PizzaIcon, PopcornIcon, SaladIcon, SandwichIcon, ShellIcon,
-  ShoppingBasketIcon, ShrimpIcon, SnowflakeIcon, SoupIcon, SprayCanIcon, SproutIcon, WheatIcon, WineIcon,
+  AmphoraIcon, AppleIcon, BabyIcon, BananaIcon, BathIcon, BeanIcon, BeefIcon, BeerIcon, BlendIcon, BlenderIcon,
+  BottleWineIcon, BubblesIcon, CakeIcon, CanIcon, CandyIcon, CarrotIcon, CherryIcon, CitrusIcon, CloverIcon, CoffeeIcon,
+  CookieIcon, CookingPotIcon, CroissantIcon, CuboidIcon, CupSodaIcon, CylinderIcon, DonutIcon, DropletIcon, DrumstickIcon, EggIcon,
+  FishIcon, FishSymbolIcon, FlameIcon, GemIcon, GrapeIcon, HamIcon, HamburgerIcon, IceCreamConeIcon, LeafIcon, LeafyGreenIcon,
+  MilkIcon, NutIcon, PackageIcon, PawPrintIcon, PillBottleIcon, PillIcon, PizzaIcon, PopcornIcon, SaladIcon, SandwichIcon,
+  ScrollIcon, ShellIcon, ShoppingBasketIcon, ShrimpIcon, SnowflakeIcon, SoapDispenserDropletIcon, SoupIcon, SparklesIcon, SprayCanIcon, SproutIcon,
+  StarIcon, WheatIcon, WineIcon,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -16,14 +18,16 @@ import { categoryColours, categoryIcons, type CategoryColour, type CategoryIcon 
 
 export const categoryIconComponents: Record<CategoryIcon, LucideIcon> = {
   Carrot: CarrotIcon, Apple: AppleIcon, Citrus: CitrusIcon, Cherry: CherryIcon, Grape: GrapeIcon, Banana: BananaIcon,
-  LeafyGreen: LeafyGreenIcon, Salad: SaladIcon, Sprout: SproutIcon, Leaf: LeafIcon, Beef: BeefIcon, Drumstick: DrumstickIcon,
-  Ham: HamIcon, Fish: FishIcon, Shrimp: ShrimpIcon, Shell: ShellIcon, Egg: EggIcon, Milk: MilkIcon, Snowflake: SnowflakeIcon,
-  IceCreamCone: IceCreamConeIcon, Wheat: WheatIcon, Bean: BeanIcon, Nut: NutIcon, Croissant: CroissantIcon,
-  Sandwich: SandwichIcon, Pizza: PizzaIcon, Cake: CakeIcon, Cookie: CookieIcon, Donut: DonutIcon, Candy: CandyIcon,
-  Popcorn: PopcornIcon, Soup: SoupIcon, CookingPot: CookingPotIcon, Cylinder: CylinderIcon, Amphora: AmphoraIcon,
-  Droplet: DropletIcon, Flame: FlameIcon, Coffee: CoffeeIcon, CupSoda: CupSodaIcon, Wine: WineIcon, Beer: BeerIcon,
-  Package: PackageIcon, ShoppingBasket: ShoppingBasketIcon, SprayCan: SprayCanIcon, Bath: BathIcon, Pill: PillIcon,
-  Baby: BabyIcon, PawPrint: PawPrintIcon,
+  LeafyGreen: LeafyGreenIcon, Salad: SaladIcon, Sprout: SproutIcon, Leaf: LeafIcon, Clover: CloverIcon, Beef: BeefIcon,
+  Drumstick: DrumstickIcon, Ham: HamIcon, Fish: FishIcon, FishSymbol: FishSymbolIcon, Shrimp: ShrimpIcon, Shell: ShellIcon,
+  Egg: EggIcon, Milk: MilkIcon, Snowflake: SnowflakeIcon, IceCreamCone: IceCreamConeIcon, Wheat: WheatIcon, Bean: BeanIcon,
+  Can: CanIcon, Nut: NutIcon, Croissant: CroissantIcon, Sandwich: SandwichIcon, Hamburger: HamburgerIcon, Pizza: PizzaIcon,
+  Cake: CakeIcon, Cookie: CookieIcon, Donut: DonutIcon, Candy: CandyIcon, Popcorn: PopcornIcon, Soup: SoupIcon,
+  CookingPot: CookingPotIcon, Cylinder: CylinderIcon, Amphora: AmphoraIcon, Bubbles: BubblesIcon, Blender: BlenderIcon, Blend: BlendIcon,
+  Cuboid: CuboidIcon, Droplet: DropletIcon, Flame: FlameIcon, Star: StarIcon, Sparkles: SparklesIcon, Gem: GemIcon,
+  Coffee: CoffeeIcon, CupSoda: CupSodaIcon, Wine: WineIcon, BottleWine: BottleWineIcon, Beer: BeerIcon, Package: PackageIcon,
+  ShoppingBasket: ShoppingBasketIcon, SprayCan: SprayCanIcon, SoapDispenserDroplet: SoapDispenserDropletIcon, Scroll: ScrollIcon, Bath: BathIcon, Pill: PillIcon,
+  PillBottle: PillBottleIcon, Baby: BabyIcon, PawPrint: PawPrintIcon,
 }
 
 /** The colour laid over the background at the tint opacity: a muted pastel of whatever the background is. */
