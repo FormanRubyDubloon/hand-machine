@@ -6,7 +6,9 @@ import { router, useLocalSearchParams } from "expo-router"
 import * as React from "react"
 import { Platform, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { recipeInfo } from "../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../data/store"
+import { ingredientsForStep } from "../../logic/steps"
 import { Button, Press } from "../../ui/kit"
 import { StepTimers, TimerStrip } from "../../ui/timers"
 import { focus, font } from "../../ui/theme"
@@ -27,6 +29,10 @@ export default function Cooking() {
   const last = n === steps.length - 1
   const step = steps[Math.min(n, steps.length - 1)]
   const big = step.length < 90
+  // The recipe's ingredients at the servings chosen on the recipe page, then the ones this step names.
+  const factor = recipe && serves ? Number(serves) / (recipe.serves || 1) : 1
+  const rows = recipe ? recipeInfo(recipe, state.items, factor || 1).rows.map((r) => ({ text: r.text, name: r.item?.name, otherNames: r.item?.otherNames })) : []
+  const uses = recipe?.method.length ? ingredientsForStep(step, rows) : []
 
   return (
     <View style={{ flex: 1, backgroundColor: focus.bg, paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16, paddingHorizontal: 20 }}>
@@ -46,7 +52,18 @@ export default function Cooking() {
         <Text accessibilityLiveRegion="polite" style={{ fontFamily: font.medium, fontSize: big ? 32 : 26, lineHeight: big ? 42 : 34, color: focus.ink }}>{step}</Text>
         {recipe && recipe.method.length > 0 && <StepTimers dark recipe={recipe} step={n} text={step} />}
       </View>
-      <Text style={{ fontFamily: font.regular, fontSize: 14, color: focus.label, textAlign: "center", marginBottom: 12 }}>The screen stays on while you cook.</Text>
+      {uses.length > 0 && (
+        <View accessibilityLabel={`For this step: ${uses.map((u) => u.text).join(", ")}`} accessible style={{ marginBottom: 16, gap: 4 }}>
+          {/* A bullet for each, in a muted colour (Isaac's change, 24 Nov 2026). */}
+          {uses.map((u, k) => (
+            <View key={k} style={{ flexDirection: "row", gap: 10 }}>
+              <Text style={{ fontFamily: font.regular, fontSize: 17, lineHeight: 23, color: "rgba(242,239,227,0.35)" }}>•</Text>
+              <Text style={{ flex: 1, fontFamily: font.regular, fontSize: 17, lineHeight: 23, color: focus.label }}>{u.text}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+      {uses.length === 0 && <View style={{ height: 16 }} />}
       <View style={{ flexDirection: "row", gap: 10 }}>
         <Button kind="goldOutline" height={72} label="Back" disabled={n === 0} onPress={() => setN((x) => Math.max(0, x - 1))} style={{ flex: 1 }} />
         <Button

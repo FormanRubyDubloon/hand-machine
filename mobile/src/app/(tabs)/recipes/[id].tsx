@@ -1,5 +1,5 @@
 // RECIPE: where you cook from. What you have and what you're short of, servings that scale every amount,
-// putting ingredients on the list, the method, Start cooking, Cooked it and Want to cook.
+// putting ingredients on the list, the method, Want to cook, Cooked it and (pinned at the bottom) Start cooking.
 import { router, useLocalSearchParams } from "expo-router"
 import { Plus } from "lucide-react-native"
 import * as React from "react"
@@ -11,7 +11,7 @@ import { useStore } from "../../../data/store"
 import { addAllMissing, addIngredient, setIngredientQty, toggleWant } from "../../../logic/actions"
 import { phrase, plural } from "../../../logic/phrases"
 import { BackLink, Button, Caption, Display, IconButton, Label, Stepper } from "../../../ui/kit"
-import { StepTimers, TimerStrip } from "../../../ui/timers"
+import { TimerStrip } from "../../../ui/timers"
 import { font, space, useColours } from "../../../ui/theme"
 
 /** How many of this item the recipe has put on the list. */
@@ -131,41 +131,44 @@ export default function RecipePage() {
         </View>
 
         <View style={{ flexDirection: "row", gap: 10 }}>
-          <Button kind="secondary" label="Start cooking" style={{ flex: 1 }} onPress={() => router.push({ pathname: "/cooking/[id]", params: { id: recipe.id, serves: String(serves) } })} />
+          {/* Want to cook and Start cooking swapped places (Isaac's change, 24 Nov 2026): Start cooking is the pinned
+              button at the bottom, Want to cook sits beside Cooked it and shows a tick when it's on. */}
+          <Button
+            kind="secondary"
+            style={{ flex: 1 }}
+            accessibilityState={{ selected: recipe.wantToCook }}
+            accessibilityLabel={recipe.wantToCook ? "On your Want to cook list. Take it off" : "Want to cook"}
+            label={recipe.wantToCook ? "Want to cook ✓" : "Want to cook"}
+            onPress={() => {
+              let added = 0
+              change((s) => {
+                const r = toggleWant(s, s.recipes.find((x) => x.id === recipe.id) ?? recipe, factor)
+                added = r.added
+                return r.state
+              }, note(recipe.wantToCook ? `No longer want to cook ${recipe.name}` : `Want to cook ${recipe.name}`))
+              if (!recipe.wantToCook) say(added ? `Saved. ${plural(added, "thing")} you're short of went on the list.` : "Saved to your Want to cook list.")
+            }}
+          />
           <Button kind="secondary" label="Cooked it" style={{ flex: 1 }} onPress={() => router.push({ pathname: "/cooked/[id]", params: { id: recipe.id, serves: String(serves) } })} />
         </View>
 
         <View style={{ gap: 12 }}>
           <Label>Method</Label>
-          {/* Timers running for other recipes (Batch 6); this recipe's show on their own steps. */}
-          <TimerStrip except={(t) => t.recipeId === recipe.id} />
+          {/* Every running timer, this recipe's included: the steps here have no timer buttons any more (Isaac's
+              change, 24 Nov 2026), so timers are started from the cooking view. */}
+          <TimerStrip />
           {recipe.method.length ? recipe.method.map((step, k) => (
             <View key={k} style={{ flexDirection: "row", gap: 12 }}>
               <Text style={{ width: 22, fontFamily: font.bold, fontSize: 17, lineHeight: 24, color: c.muted }}>{k + 1}</Text>
-              <View style={{ flex: 1, gap: 8 }}>
+              <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: font.regular, fontSize: 17, lineHeight: 24, color: c.ink }}>{step}</Text>
-                <StepTimers recipe={recipe} step={k} text={step} />
               </View>
             </View>
           )) : <Caption>No method saved for this recipe.</Caption>}
         </View>
       </ScrollView>
       <View style={{ paddingHorizontal: space.screen, paddingTop: 10, paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: c.line }}>
-        <Button
-          kind={recipe.wantToCook ? "secondary" : "primary"}
-          height={60}
-          accessibilityState={{ selected: recipe.wantToCook }}
-          label={recipe.wantToCook ? "On your Want to cook list" : "Want to cook"}
-          onPress={() => {
-            let added = 0
-            change((s) => {
-              const r = toggleWant(s, s.recipes.find((x) => x.id === recipe.id) ?? recipe, factor)
-              added = r.added
-              return r.state
-            }, note(recipe.wantToCook ? `No longer want to cook ${recipe.name}` : `Want to cook ${recipe.name}`))
-            if (!recipe.wantToCook) say(added ? `Saved. ${plural(added, "thing")} you're short of went on the list.` : "Saved to your Want to cook list.")
-          }}
-        />
+        <Button kind="primary" height={60} label="Start cooking" onPress={() => router.push({ pathname: "/cooking/[id]", params: { id: recipe.id, serves: String(serves) } })} />
       </View>
     </View>
   )
