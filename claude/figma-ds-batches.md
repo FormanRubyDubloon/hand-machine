@@ -90,7 +90,10 @@ From `prototypes/pantry-app/src/components.tsx`. These were built locally in the
 - **Rows:** `HistoryRow` (who: you, phone, Claude, Collca), `UnitRow`, `NavRow`, `Empty`.
 - **Brand:** the Collca emblem and splash emblem.
 
-## Batch 6: Phone kit
+## Batch 6: Phone kit (done 24 Nov 2026)
+
+On a Phone page. The kit's `dark` prop is the Focus mode. Details and gaps in `GAPS-COLLCA.md`.
+
 
 From `mobile/src/ui/kit.tsx` and its neighbours, on a Phone page, at iPhone sizes.
 

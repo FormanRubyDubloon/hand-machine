@@ -296,3 +296,36 @@ A "pantry app" section on the Components page, from `prototypes/pantry-app/src/c
 - **Swapping an instance renames it** to the new component, so finding it by its old name fails; find it by position.
 - **The jar came out solid** on the first emblem build: the test for the cut-out marker colour was wrong (magenta has no green, and the test looked for green). Fixed by rebuilding.
 - One call took 103 seconds for no clear reason; the rest took under half a second.
+
+## Batch 6: Phone kit (24 November 2026)
+
+A **Phone** page, "phone kit" section, from `mobile/src/ui/` (`kit.tsx`, `sheet.tsx`, `toast.tsx`, `conflict.tsx`, `tags.tsx`, `timers.tsx`) and the tab bar in `src/app/(tabs)/_layout.tsx`. 390 wide. Checked in Light, Dark and Focus with a mock screen built from the kit.
+
+### The Focus mode is the kit's `dark` prop
+
+Most kit components take `dark` for the always-dark screens (list item sheet, cooking view), which swaps `theme.ts` colours for the `focus` palette. Those map onto the Semantic Focus mode: olive becomes gold (primary), ink the light ink (foreground), the field fill `focus.field`, lines `focus.line`. So each component is built once; set an instance (or its screen) to Focus for the dark version. The code's `gold` and `goldOutline` button kinds are primary and secondary in Focus, so they aren't separate variants. The toast is always dark, so its component is fixed to Focus.
+
+### Tokens and styles added
+
+- `phone/on-danger` (white in Light; the web uses cream), `phone/field` (the page colour, or `focus.field` in Focus), `phone/field-line` (stone, or the Focus line), `phone/overlay` (black 40%), `phone/place` (`focus.place`, the aisle name; not used by a component yet).
+- Text styles `phone/button`, `segment`, `segment-on`, `chip`, `chip-on`, `pill`, `field`, `picker`, `number`, `title`, `toast`, `tab`, `back`, `timer`, `dialog-title`, `option-value`, beside the five from Batch 1. The app draws **Figtree** for now (Stevie Sans licence not checked); Figma shows Stevie Sans as planned, with 500 as Medium and 600 and 700 as Bold. Letter spacing is in points, as in React Native.
+
+### Components
+
+- **phone-button** (15): primary, secondary, quiet, danger, danger-fill × default, pressed, disabled. Min height 56, full width (350). Pressed shows the press tint; the app also scales to 0.97 (not with Reduce Motion), which Figma can't show.
+- **phone-icon-button** (6): outline, filled, plain × default, pressed. 48 square.
+- **phone-back-link**, **phone-stepper** (44 boxes, at-min), **phone-toggle** (on, off; the iOS switch drawn at 51 × 31, though iOS 26 draws its own shape and may ignore the thumb colour), **phone-segment** and **phone-segmented**, **phone-chip** (off, on, dashed), **phone-pill** (panel, olive), **phone-info-box**.
+- **phone-field** (placeholder, filled, focused), **phone-picker** (closed, open in place), **phone-aisle-field** (with a value, none yet), **phone-row** (chevron or nothing), **phone-divider**, **phone-tag-mark** (tint, plain, empty × 22, 32, 44; radius 4, where the web uses rounded-sm).
+- **phone-sheet-header** (title or back link, Done), **phone-toast** (with or without Undo; Focus), **phone-conflict-dialog** (the card; the backdrop isn't built), **phone-timer-button** (idle, running, done), **phone-timer-row** (running, done), **phone-tab-bar** (home, list, recipes, pantry).
+
+### Gaps
+
+- **Hairlines.** The code draws rows and dividers two hairlines thick (`StyleSheet.hairlineWidth * 2`), which is 1pt on a 2× or 3× screen. Figma uses 1.
+- **Press states** show the tint only; the scale and the 60% fade (tabs, Done, back link) aren't shown.
+- **Safe areas** aren't built; the tab bar and full-screen sheet headers sit under the status bar in the app.
+- **Not built:** the item sheet and cooking view screens (they're compositions), the Home tiles, the aisle question, the sync note under the tab bar, art and location illustrations (`art.tsx`, `locations.tsx`), and the conflict backdrop.
+- **Spacing** in the phone kit is in points and mostly not on the 4px scale (14, 18, 6, 10); those values are typed, not bound. Radii are bound (`radius`, `radius-pill`, `radius-dialog`).
+
+### Figma limit found (again)
+
+- The resize-after-hug trap squashed the tab bar's labels to one letter each. Fixed, and every fixed-width frame on the Phone page was checked for content wider than the frame; none are left.
