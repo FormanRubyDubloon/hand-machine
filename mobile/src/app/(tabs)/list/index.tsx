@@ -14,6 +14,7 @@ import { TOAST_UNDO_MS, useStore } from "../../../data/store"
 import { restoreTicks, tickAll, tickOne, untick, clearShop } from "../../../logic/actions"
 import { asksForAisle, filtersOn, leftOf, refreshShop, rowsOf, shopGroups, shownRows, sortRows, tickedText, type Row } from "../../../logic/list"
 import { Body, Button, Caption, Display, IconButton, Press } from "../../../ui/kit"
+import { TagMark } from "../../../ui/tags"
 import { focus, font, radius, space, useColours, useReduceMotion } from "../../../ui/theme"
 
 /** Bought more than one: how long after the last tap the aisle question waits. */
@@ -150,6 +151,7 @@ export default function ListScreen() {
     : aisle.aisle !== undefined && aisle.aisle !== null ? { aisle: String(aisle.aisle) }
     : undefined
   const byTag = state.groupBy === "tag"
+  const headingTag = byTag && aisle?.tag ? state.categories.find((t) => t.id === aisle.tag) : undefined
 
   return (
     <View style={{ flex: 1 }}>
@@ -162,8 +164,12 @@ export default function ListScreen() {
           <View style={{ flex: 1, gap: 6 }}>
             <Press fade disabled={empty || noMatch} onPress={() => router.push("/aisles")} accessibilityLabel={`${title}. ${byTag ? "All tags" : "All aisles"}`} style={{ alignSelf: "flex-start", opacity: 1 }}>
               {/* An underline 2 pt thick, 6 pt below the name, as in the prototype (text underlines can't be offset). */}
-              <View style={{ alignSelf: "flex-start", borderBottomWidth: empty || noMatch ? 0 : 2, borderBottomColor: c.olive, paddingBottom: 2, marginBottom: 4 }}>
-                <Display size={32}>{title}</Display>
+              {/* Shopping by tag, the heading leads with the tag's icon in its colour (Isaac's change, 24 Nov 2026). */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                {!all && headingTag && <TagMark tag={headingTag} size="md" />}
+                <View style={{ flexShrink: 1, alignSelf: "flex-start", borderBottomWidth: empty || noMatch ? 0 : 2, borderBottomColor: c.olive, paddingBottom: 2, marginBottom: 4 }}>
+                  <Display size={32}>{title}</Display>
+                </View>
               </View>
             </Press>
             <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center" }}>

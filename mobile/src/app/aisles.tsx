@@ -9,6 +9,7 @@ import { useStore } from "../data/store"
 import { filterNames, filtersOn, leftOf, NO_FILTER, shopGroups, shownRows, type GroupBy, type ListFilter } from "../logic/list"
 import { Caption, Chip, Press, Segmented } from "../ui/kit"
 import { SheetHeader } from "../ui/sheet"
+import { TAG_ICONS, TagMark } from "../ui/tags"
 import { font, radius, useColours } from "../ui/theme"
 
 export default function Aisles() {
@@ -71,11 +72,18 @@ export default function Aisles() {
           const done = a.left === 0
           // The box shows the aisle number, the first letter of a place or tag, or a dash for No aisle and No tag.
           const mark = typeof a.aisle === "number" ? String(a.aisle) : a.aisle || a.tag ? a.title.slice(0, 1).toUpperCase() : "–"
+          const tag = a.tag ? state.categories.find((t) => t.id === a.tag) : undefined
+          const TagIcon = tag?.icon ? TAG_ICONS[tag.icon] : null
           return (
             <Press key={a.key} onPress={() => go(k)} accessibilityState={{ selected: on }} accessibilityLabel={`${a.title}${a.label ? `, ${a.label}` : ""}. ${done ? "Done" : `${a.left} left`}`} style={{ minHeight: 68, flexDirection: "row", alignItems: "center", gap: 14, borderBottomWidth: 1, borderBottomColor: c.line, paddingVertical: 8 }}>
-              <View style={box(on, done && !on)}>
-                <Text style={{ fontFamily: font.bold, fontSize: 17, color: on ? c.onOlive : c.ink }}>{mark}</Text>
-              </View>
+              {/* A tag shows its icon in its colour (Isaac's change, 24 Nov 2026); the current one is filled olive as before. */}
+              {tag && (tag.icon || tag.colour) && !on ? (
+                <TagMark tag={tag} size="lg" fallback={mark} style={done ? { borderWidth: 1, borderStyle: "dashed", borderColor: c.stone } : undefined} />
+              ) : (
+                <View style={box(on, done && !on)}>
+                  {TagIcon ? <TagIcon size={22} color={on ? c.onOlive : c.ink} strokeWidth={1.75} /> : <Text style={{ fontFamily: font.bold, fontSize: 17, color: on ? c.onOlive : c.ink }}>{mark}</Text>}
+                </View>
+              )}
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: font.medium, fontSize: 19, lineHeight: 24, color: done ? c.muted : c.ink }}>{a.title}</Text>
                 {!!a.label && <Caption>{a.label}</Caption>}
