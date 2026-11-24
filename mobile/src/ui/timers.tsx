@@ -56,6 +56,12 @@ export function StepTimers({ recipe, step, text, dark }: { recipe: { id: string;
   )
 }
 
+/** "2. Melt the butter in the pan…": the step's number and its text, or the recipe's name if the step has gone. */
+export const stepLine = (t: Timer, recipes: { id: string; method: string[] }[]) => {
+  const text = recipes.find((r) => r.id === t.recipeId)?.method[t.step]
+  return text ? `${t.step + 1}. ${text}` : `${t.recipeName}, step ${t.step + 1}`
+}
+
 /** Every timer that's running or done, soonest first. Hidden when there are none (or only `except`'s). */
 export function TimerStrip({ dark, except }: { dark?: boolean; except?: (t: Timer) => boolean }) {
   const { state } = useStore()
@@ -74,7 +80,8 @@ export function TimerStrip({ dark, except }: { dark?: boolean; except?: (t: Time
             <TimerIcon size={18} color={done ? p.onFill : p.ink} />
             <View style={{ flex: 1 }}>
               <Text numberOfLines={1} style={{ fontFamily: font.semibold, fontSize: 15, color: done ? p.onFill : p.ink }}>{done ? `${t.label} is up` : clock(left)}</Text>
-              <Text numberOfLines={1} style={{ fontFamily: font.regular, fontSize: 13, color: done ? p.onFill : p.sub }}>{t.recipeName} · step {t.step + 1}</Text>
+              {/* The step's number and the start of its text, cut to one line (Isaac's change, 24 Nov 2026). */}
+              <Text numberOfLines={1} ellipsizeMode="tail" style={{ fontFamily: font.regular, fontSize: 13, color: done ? p.onFill : p.sub }}>{stepLine(t, state.recipes)}</Text>
             </View>
             <Press fade onPress={() => stop(t)} accessibilityLabel={done ? `Clear the ${t.label} timer` : `Stop the ${t.label} timer`} style={{ minHeight: 48, minWidth: 48, alignItems: "center", justifyContent: "center" }}>
               <X size={20} color={done ? p.onFill : p.ink} />
