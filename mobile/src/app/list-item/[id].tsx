@@ -1,5 +1,5 @@
 // The item sheet (full screen, always dark): what's in the pantry, the minimum, how many to get, a note, and
-// Got all / Remove from list, and Edit in pantry for the rest. Things not in the pantry yet get an aisle picker instead of stock.
+// Got all / Skip this shop / Remove from list, and Edit in pantry for the rest. Things not in the pantry yet get an aisle picker instead of stock.
 import { router, useLocalSearchParams } from "expo-router"
 import { ChevronRight } from "lucide-react-native"
 import * as React from "react"
@@ -7,7 +7,7 @@ import { ScrollView, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { isBulk, isStaple } from "../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../data/store"
-import { removeFromList, removeQuestion, restoreTicks, setCategory, setListNote, setToGet, tickAll, untick } from "../../logic/actions"
+import { removeFromList, removeQuestion, restoreTicks, setCategory, setListNote, setToGet, skip, tickAll, untick } from "../../logic/actions"
 import { aislesOf, tickedText, rowsOf } from "../../logic/list"
 import { minText, phrase } from "../../logic/phrases"
 import { AislePicker, Button, Field, Press, Stepper } from "../../ui/kit"
@@ -15,7 +15,7 @@ import { focus, font, radius } from "../../ui/theme"
 
 export default function ListItemSheet() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const { state, change, say } = useStore()
+  const { state, change, local, say } = useStore()
   const insets = useSafeAreaInsets()
   const row = rowsOf(state).find((r) => r.id === id)
   const item = state.items[id]
@@ -54,6 +54,13 @@ export default function ListItemSheet() {
     saveNote()
     router.back()
     router.navigate({ pathname: "/pantry/item/[id]", params: { id } })
+  }
+  // Not this time: off the list while you shop here, still to buy. Only on this phone, so it isn't in History.
+  const skipThis = () => {
+    saveNote()
+    local((s) => skip(s, id))
+    router.back()
+    say(`Skipped ${item.name.toLowerCase()} this shop. It's still on your list for next time.`, () => local((s) => skip(s, id, false)))
   }
   const gotAll = () => {
     if (row.done) {
@@ -115,6 +122,7 @@ export default function ListItemSheet() {
       </ScrollView>
       <View style={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 16, gap: 8 }}>
         <Button kind="gold" height={64} label={row.done ? "Not got it" : `Got all (${row.need})`} onPress={gotAll} />
+        {!row.done && <Button kind="goldOutline" height={52} label="Skip this shop" accessibilityLabel={`Skip ${item.name} this shop. It stays on your list`} onPress={skipThis} />}
         {asking ? (
           // Asks first, in place: says what removing will do, then Remove or Keep it.
           <View accessibilityLiveRegion="polite" style={{ gap: 12, paddingTop: 4 }}>

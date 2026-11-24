@@ -4,7 +4,7 @@ import {
   cap, guessPlace, ingredientName, isBulk, isListedItem, isStaple, needOf, normalise, openUnit, recipeInfo, withStock,
   type Category, type Item, type Items, type Location, type Recipe, type Store,
 } from "../../../prototypes/pantry-app/src/model"
-import type { PhoneState } from "../data/state"
+import type { PhoneState, Shop } from "../data/state"
 import { bought, refreshShop, unbought } from "./list"
 
 const now = () => new Date().toISOString()
@@ -307,7 +307,26 @@ export const approve = (s: PhoneState, id: string) => edit(s, id, (x) => ({ ...x
 
 // ---------- stores and aisles ----------
 
-export const chooseStore = (s: PhoneState, storeId: string): PhoneState => ({ ...s, storeId, aisle: 0 })
+/** Shopping somewhere else: what you skipped in the last store is back on the list. */
+export const chooseStore = (s: PhoneState, storeId: string): PhoneState =>
+  storeId === s.storeId ? { ...s, aisle: 0 } : { ...s, storeId, aisle: 0, shop: s.shop ? unskipAll(s.shop) : s.shop }
+
+/**
+ * Skip this shop (Batch 3, 24 Nov 2026): the row leaves the list while you shop here. Nothing changes in the
+ * pantry, so it still needs buying and comes back when you change store or start a new list. Only on this phone.
+ */
+export function skip(s: PhoneState, id: string, on = true): PhoneState {
+  const shop = refreshShop(s.shop, s.items)
+  const row = shop.rows[id]
+  if (!row || !!row.skipped === on) return { ...s, shop }
+  return { ...s, shop: { ...shop, rows: { ...shop.rows, [id]: { ...row, skipped: on || undefined } } } }
+}
+
+/** Brings back everything skipped this shop. */
+export function unskipAll(shop: Shop): Shop {
+  if (!Object.values(shop.rows).some((r) => r.skipped)) return shop
+  return { ...shop, rows: Object.fromEntries(Object.entries(shop.rows).map(([id, r]) => [id, { ...r, skipped: undefined }])) }
+}
 
 export function renameStore(s: PhoneState, storeId: string, name: string): PhoneState {
   // Same name: no change, so saving twice (on blur and on Done) makes one History entry.

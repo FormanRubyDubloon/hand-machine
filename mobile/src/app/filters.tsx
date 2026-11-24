@@ -1,5 +1,5 @@
 // List filters (sheet): the same two as the pantry app's shopping list. Show: why it's on the list (Staples,
-// For recipes, Added). Stock: Low, Out or Ordered. Each choice applies at once; the counts are of everything
+// For recipes, Added). Stock: Low, Out or Ordered. Store: only items for the store you're in (Batch 3). Each choice applies at once; the counts are of everything
 // on the list. The filters stay on through a shop and clear when a new list starts.
 import { router } from "expo-router"
 import * as React from "react"
@@ -30,10 +30,11 @@ export default function Filters() {
   const insets = useSafeAreaInsets()
   const f = state.filter ?? NO_FILTER
   const rows = rowsOf(state)
-  const shown = rows.filter((r) => matchesFilter(r, f)).length
+  const store = state.stores.find((x) => x.id === state.storeId)
+  const shown = rows.filter((r) => matchesFilter(r, f, state.storeId)).length
   // Changing a filter goes back to the first aisle, since the aisles shown change with it.
   const set = (next: ListFilter) => local((s) => ({ ...s, filter: filtersOn(next) ? next : undefined, aisle: s.aisle === "all" ? "all" : 0 }))
-  const n = (p: Partial<ListFilter>) => rows.filter((r) => matchesFilter(r, { ...NO_FILTER, ...p })).length
+  const n = (p: Partial<ListFilter>) => rows.filter((r) => matchesFilter(r, { ...NO_FILTER, ...p }, state.storeId)).length
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -58,6 +59,15 @@ export default function Filters() {
             ))}
           </View>
         </View>
+        {state.stores.length > 1 && (
+          <View style={{ gap: 10 }}>
+            <Label>Store</Label>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <Chip label={`Only items for ${store?.name ?? "this store"} · ${n({ thisStore: true })}`} on={!!f.thisStore} onPress={() => set({ ...f, thisStore: !f.thisStore || undefined })} />
+            </View>
+            <Caption>Hides things you buy at another store. Items with no store chosen stay.</Caption>
+          </View>
+        )}
         <Caption>{filtersOn(f) ? `Showing ${shown} of ${rows.length} on the list.` : `Showing everything on the list (${rows.length}).`}</Caption>
       </ScrollView>
       {/* The foot: clear everything, or close. Clear is off when no filter is on. */}
