@@ -1,6 +1,7 @@
 // Batch 4a (24 Nov 2026): aisles sit on each item, per store; tags are labels; the list can go by aisle or by tag.
 import { describe, expect, it } from "vitest"
-import { aisleTiles, compareAisles, storeAisles, highestAisle } from "../../prototypes/pantry-app/src/model"
+import { aisleTiles, compareAisles, hasTag, storeAisles, highestAisle, tagsOf, withTags } from "../../prototypes/pantry-app/src/model"
+import { toItem, toRow, type Row } from "../../prototypes/shared/src/rows"
 import { demoState } from "../src/data/demo"
 import type { PhoneState } from "../src/data/state"
 import { addNew, addPlace, removePlace, removeStore, setAisleCount, setAisleLabel, setItemAisle, tickAll, tickOne, untick } from "../src/logic/actions"
@@ -122,5 +123,33 @@ describe("the bought date", () => {
     const t = tickOne(s, "eggs")
     expect(t.items.eggs.boughtAt).toBe(today())
     expect(untick(tickAll(s, "eggs"), "eggs").items.eggs.boughtAt).toBe(before)
+  })
+})
+
+describe("several tags (Batch 4b)", () => {
+  const row = (over: Partial<Row>): Row => ({
+    id: "eggs", name: "Eggs", category_id: null, type: "counted", target: 6, in_stock: 4, unit: null, notes: null, location: "fridge",
+    other_names: [], open: null, pack_size_amount: null, pack_size_measure: null, price: null, brand: null, use_by: [], one_off: false,
+    uses: 0, list_entries: null, opened_at: [], edited_at: "2026-11-24T10:00:00Z", ...over,
+  })
+
+  it("reads tags, falling back to the one category on older rows", () => {
+    expect(toItem(row({ category_id: "dairy", tag_ids: [] })).tagIds).toEqual(["dairy"])
+    expect(toItem(row({ category_id: "dairy", tag_ids: ["dairy", "breakfast"] })).tagIds).toEqual(["dairy", "breakfast"])
+    expect(toItem(row({ category_id: null, tag_ids: [] })).tagIds).toEqual([])
+  })
+
+  it("follows an app that only changed the category: it replaces the first tag", () => {
+    expect(toItem(row({ category_id: "chilled", tag_ids: ["dairy", "breakfast"] })).tagIds).toEqual(["chilled", "breakfast"])
+  })
+
+  it("writes every known tag, with the first as the category", () => {
+    const item = withTags(toItem(row({})), ["breakfast", "dairy", "breakfast", "gone"])
+    expect(item.tagIds).toEqual(["breakfast", "dairy", "gone"])
+    const r = toRow(item, new Set(["dairy", "breakfast"]))
+    expect([r.category_id, r.tag_ids]).toEqual(["breakfast", ["breakfast", "dairy"]])
+    expect(toRow(withTags(item, []), new Set(["dairy"]))).toMatchObject({ category_id: null, tag_ids: [] })
+    expect(hasTag(item, "dairy")).toBe(true)
+    expect(tagsOf({ ...item, tagIds: undefined, categoryId: "dairy" })).toEqual(["dairy"])
   })
 })

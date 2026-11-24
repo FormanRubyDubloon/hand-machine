@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { aisleTitle, isBulk, isStaple, itemAisle, tagsOf } from "../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../data/store"
 import { removeFromList, removeQuestion, restoreTicks, setListNote, setToGet, skip, tickAll, untick } from "../../logic/actions"
-import { tickedText, rowsOf } from "../../logic/list"
+import { asksForAisle, tickedText, rowsOf } from "../../logic/list"
 import { minText, phrase } from "../../logic/phrases"
 import { AisleField, Button, Field, Press, Stepper } from "../../ui/kit"
 import { focus, font, radius } from "../../ui/theme"
@@ -69,6 +69,12 @@ export default function ListItemSheet() {
     }
     const before = row.got
     change((s) => tickAll(s, id), { title: `Got ${item.name.toLowerCase()} on the phone`, key: `shop:${id}` })
+    // No aisle here yet: ask, as ticking it on the list does (Isaac's change, 24 Nov 2026). The aisle sheet takes this
+    // one's place and has its own Undo for the tick-off, so there's no toast.
+    if (asksForAisle(state, item)) {
+      router.replace({ pathname: "/aisle", params: { id, from: "tick", got: String(before) } })
+      return
+    }
     router.back()
     say(tickedText(row, row.need), () => change((s) => restoreTicks(s, id, before), { title: `Took ${item.name.toLowerCase()} off what you got`, key: `shop:${id}` }))
   }

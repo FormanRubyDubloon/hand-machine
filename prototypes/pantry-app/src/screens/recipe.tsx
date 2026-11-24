@@ -43,7 +43,8 @@ function NewItemsDialog({ recipe, positions, onClose }: { recipe: Recipe; positi
   const [tried, setTried] = React.useState(false)
   const firstName = React.useRef<HTMLInputElement>(null)
   const set = (k: number, patch: Partial<Draft>) => setDrafts((d) => d.map((x, n) => (n === k ? { ...x, ...patch } : x)))
-  const complete = drafts.every((d) => d.name.trim() && d.categoryId)
+  // A tag is optional (Batch 4b, 24 Nov 2026).
+  const complete = drafts.every((d) => d.name.trim())
   const one = drafts.length === 1
   const save = () => {
     setTried(true)
@@ -90,16 +91,16 @@ function NewItemsDialog({ recipe, positions, onClose }: { recipe: Recipe; positi
                 </Field>
               </div>
               <div className="flex flex-col gap-2">
-                <Eyebrow>Aisle</Eyebrow>
-                <Select value={d.categoryId || undefined} onValueChange={(categoryId) => set(k, { categoryId })}>
-                  <SelectTrigger className="w-full" aria-label="Aisle" aria-invalid={tried && !d.categoryId}>
-                    <SelectValue placeholder="Choose an aisle" />
+                <Eyebrow>Tag</Eyebrow>
+                <Select value={d.categoryId || "none"} onValueChange={(v) => set(k, { categoryId: v === "none" ? "" : v })}>
+                  <SelectTrigger className="w-full" aria-label="Tag">
+                    <SelectValue placeholder="No tag" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">No tag</SelectItem>
                     {categoriesAtoZ(db.categories).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                {tried && !d.categoryId && <span className="text-xs text-destructive">Choose an aisle.</span>}
               </div>
               <div className="flex flex-col gap-2">
                 <Eyebrow>Location</Eyebrow>

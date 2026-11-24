@@ -8,12 +8,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { FilterChips } from "@/components/ui/filter-chips"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  aisleNumber, aisleOrder, cap, containsText, fullOf, haveText, inStockText, isBulk, isStaple, isToday, listRows, listTotal, locationLabel, money, namesOf, needOf, numberedAisles,
-  plural, soldAt, stockOf, timeText, shortDate, unitWord, type Category, type ListRow, type Reason, categoriesAtoZ,
+  aisleKey, aisleLabel, aisleTitle, cap, compareAisles, containsText, fullOf, haveText, inStockText, isBulk, isStaple, isToday, itemAisle, listRows, listTotal, locationLabel,
+  money, namesOf, needOf, plural, soldAt, stockOf, storeAisles, tagsOf, timeText, shortDate, unitWord, type AisleValue, type ListRow, type Reason,
 } from "../model"
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
-import { CategoryLabel, CategoryMark } from "../category-look"
 import { EstimateMark, Eyebrow, PageTitle, Segmented, SidePanel, Stepper, StockPill, TagPill } from "../components"
 import { ItemPanel } from "./item-panel"
 
@@ -119,12 +118,22 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
   const filterNames = [group !== "all" && groupNames[group], stock !== "all" && cap(stock)].filter(Boolean)
   const counts = { staples: rows.filter((r) => r.group === "staples").length, recipes: rows.filter((r) => r.group === "recipes").length, added: rows.filter((r) => r.group === "added").length }
 
-  // Group by aisle in this store's walking order. Things it doesn't sell go at the end.
-  const aisles = store ? aisleOrder(store, db.categories) : categoriesAtoZ(db.categories)
+  // Group by each item's aisle in this store, in walking order: No aisle, the numbers, then the store's places
+  // (Batch 4b, 24 Nov 2026). A store with no aisle numbers is one A to Z group. Items for another store go at the end.
+  const here = shown.filter((r) => !store || soldAt(r.item, store))
+  const byAisle = new Map<string, { aisle: AisleValue | null; rows: ListRow[] }>()
+  for (const r of here) {
+    const a = itemAisle(r.item, store)
+    const k = a === null ? "none" : aisleKey(a)
+    const g = byAisle.get(k) ?? { aisle: a, rows: [] }
+    g.rows.push(r)
+    byAisle.set(k, g)
+  }
   const groups = [
-    ...aisles.map((c) => ({ key: c.id, name: c.name, category: c as Category | undefined, number: store ? aisleNumber(store, c.id) : null, rows: shown.filter((r) => r.item.categoryId === c.id && (!store || soldAt(r.item, store))) })),
-    // Items for another store, and any whose category isn't known, so nothing on the list is hidden.
-    { key: "elsewhere", category: undefined, name: store ? `Not at ${store.name.split(",")[0]}` : "Other", number: null, rows: shown.filter((r) => !store || !soldAt(r.item, store) || !aisles.some((c) => c.id === r.item.categoryId)) },
+    ...[...byAisle.entries()]
+      .sort(([, x], [, y]) => compareAisles(store, x.aisle, y.aisle))
+      .map(([key, g]) => ({ key, name: store?.noAisleNumbers ? "A to Z" : aisleTitle(g.aisle), label: aisleLabel(store, g.aisle), rows: g.rows })),
+    { key: "elsewhere", name: store ? `Not at ${store.name.split(",")[0]}` : "Other", label: undefined, rows: shown.filter((r) => store && !soldAt(r.item, store)) },
   ].filter((g) => g.rows.length)
 
   return (
@@ -181,7 +190,7 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
                 <React.Fragment key={g.key}>
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={6} className="border-b border-primary pt-5 pb-1.5 pl-3">
-                      <span className="flex items-center gap-2"><CategoryMark category={g.category} size="sm" /><Eyebrow>{g.name} · {plural(g.rows.length, "item")}{g.number !== null ? ` (Aisle ${g.number})` : ""}</Eyebrow></span>
+                      <span className="flex items-center gap-2"><Eyebrow>{[g.name, g.label, plural(g.rows.length, "item")].filter(Boolean).join(" · ")}</Eyebrow></span>
                     </TableCell>
                   </TableRow>
                   {g.rows.map((r) => (
@@ -265,7 +274,7 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
         <div className="flex flex-col gap-2">
           <Eyebrow>Shop at</Eyebrow>
           {db.stores.map((s) => {
-            const here = rows.filter((r) => soldAt(r.item, s)).length
+            const count = rows.filter((r) => soldAt(r.item, s)).length
             const on = s.id === store?.id
             return (
               <button
@@ -276,7 +285,7 @@ export function ListScreen({ route }: { route: Extract<Route, { name: "list" }> 
                 className={cn("flex items-center justify-between gap-3 border px-4 py-3 text-left text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50", on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-muted")}
               >
                 <span className="font-semibold">{s.name}</span>
-                <span className={cn("shrink-0 text-xs", on ? "text-primary-foreground/70" : "text-muted-foreground")}>{plural(here, "item")} · {numberedAisles(s) > 1 ? "aisles set" : "no aisles"}</span>
+                <span className={cn("shrink-0 text-xs", on ? "text-primary-foreground/70" : "text-muted-foreground")}>{plural(count, "item")} · {s.noAisleNumbers ? "A to Z" : storeAisles(s, Object.values(items)).length ? "aisles known" : "no aisles yet"}</span>
               </button>
             )
           })}
@@ -381,8 +390,8 @@ function AddToList({ open, onClose }: { open: boolean; onClose: () => void }) {
                           <span className="text-sm">{unitWord(i, qty) || "each"}</span>
                         </div>
                         <div className="flex flex-col gap-1">
-                          <Eyebrow>Aisle</Eyebrow>
-                          <CategoryLabel category={db.categories.find((c) => c.id === i.categoryId)} className="text-sm" />
+                          <Eyebrow>Tags</Eyebrow>
+                          <span className="text-sm">{tagsOf(i).map((t) => db.categories.find((c) => c.id === t)?.name).filter(Boolean).join(", ") || "None"}</span>
                         </div>
                       </div>
                       {!isStaple(i) && (

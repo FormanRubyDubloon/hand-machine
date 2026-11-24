@@ -524,8 +524,17 @@ export const DEFAULT_AISLES = 20
  */
 export const aisleTiles = (store: Store, items: Item[]) => store.aisleCount ?? Math.max(DEFAULT_AISLES, highestAisle(store, items))
 
-/** An item's tags. One today (its category); several once Collca on the web can set them (Batch 4b). */
-export const tagsOf = (i: Item): string[] => (i.categoryId ? [i.categoryId] : [])
+/** An item's tags (what the code calls categories), in order. Items from before Batch 4b have only categoryId. */
+export const tagsOf = (i: Item): string[] => i.tagIds ?? (i.categoryId ? [i.categoryId] : [])
+
+/** Whether an item has a tag. */
+export const hasTag = (i: Item, tagId: string) => tagsOf(i).includes(tagId)
+
+/** Gives an item these tags. categoryId follows the first, for apps that know one tag. */
+export const withTags = (i: Item, tags: string[]): Item => {
+  const unique = [...new Set(tags.filter(Boolean))]
+  return { ...i, tagIds: unique, categoryId: unique[0] ?? "" }
+}
 
 // ---------- recipes ----------
 

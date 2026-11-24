@@ -164,7 +164,7 @@ function HaveDialog({
   const [tried, setTried] = React.useState(false)
   const picked = pickedId ? items[pickedId] : undefined
   const existing = !linked && tab === "existing"
-  const ok = linked || (existing ? !!picked : name.trim() && categoryId)
+  const ok = linked || (existing ? !!picked : !!name.trim())
   const typedUnit = unitName_.trim()
   const nameInput = React.useRef<HTMLInputElement>(null)
   const searchInput = React.useRef<HTMLInputElement>(null)
@@ -213,16 +213,16 @@ function HaveDialog({
         </Field>
       </div>
       <div className="flex flex-col gap-2">
-        <Eyebrow>Aisle</Eyebrow>
-        <Select value={categoryId || undefined} onValueChange={setCategoryId}>
-          <SelectTrigger className="w-full" aria-label="Aisle" aria-invalid={tried && !categoryId}>
-            <SelectValue placeholder="Choose an aisle" />
+        <Eyebrow>Tag</Eyebrow>
+        <Select value={categoryId || "none"} onValueChange={(v) => setCategoryId(v === "none" ? "" : v)}>
+          <SelectTrigger className="w-full" aria-label="Tag">
+            <SelectValue placeholder="No tag" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="none">No tag</SelectItem>
             {categoriesAtoZ(db.categories).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        {tried && !categoryId && <span className="text-xs text-destructive">Choose an aisle.</span>}
       </div>
       <div className="flex flex-col gap-2">
         <Eyebrow>Location</Eyebrow>

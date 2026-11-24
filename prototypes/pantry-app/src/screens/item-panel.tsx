@@ -12,9 +12,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import {
-  addListBox, aisleNumber, amountOf, cap, categoriesAtoZ, dateText, daysUntil, entryTotal, haveText, isBulk, isStaple, listBox, locationLabel, locations,
+  addListBox, aisleTiles, aisleTitle, amountOf, cap, categoriesAtoZ, dateText, daysUntil, entryTotal, haveText, isBulk, isStaple, listBox, locationLabel, locations,
   lower, matchesName, measureText, money, nameList, needOf, normalise, openUnit, plural, recipesUsing, todayIso, unitNames, unitsOf, whenText,
-  withUnits, type Item, type ListBox, type Location, type Unit,
+  itemAisle, tagsOf, withAisle, withTags, withUnits, type AisleValue, type Item, type ListBox, type Location, type Store, type Unit,
 } from "../model"
 import { navigate } from "../router"
 import { usePantry } from "../state"
@@ -76,6 +76,77 @@ const quietButton = "h-10 rounded-[4px] border border-border bg-background px-4 
 const primaryButton = "h-10 rounded-[4px] border border-primary bg-primary px-4 text-xs font-semibold tracking-[0.1em] text-primary-foreground uppercase hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-45"
 const textLink = "self-start text-sm text-foreground underline underline-offset-4 hover:text-primary"
 const focus = "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+
+/**
+ * An item's tags (Batch 4b, 24 Nov 2026): every tag as a chip, A to Z, on when the item has it. Optional, and an
+ * item can have several. The first one chosen is kept as its category for the apps that know one tag.
+ */
+function TagPicker({ value, onChange }: { value: string[]; onChange: (tags: string[]) => void }) {
+  const { db } = usePantry()
+  return (
+    <div role="group" aria-label="Tags" className="flex flex-wrap gap-1.5">
+      {categoriesAtoZ(db.categories).map((c) => {
+        const on = value.includes(c.id)
+        return (
+          <button
+            key={c.id}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(on ? value.filter((t) => t !== c.id) : [...value, c.id])}
+            className={cn(
+              "h-8 rounded-full border px-3 text-[13px] transition-colors",
+              on ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border bg-background hover:bg-muted",
+              focus,
+            )}
+          >
+            {c.name}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** An aisle as a <select> value: "" for none, "n:4" for a number, "p:Freezer" for a place. */
+const aisleValue = (a: AisleValue | null) => (a === null ? "" : typeof a === "number" ? `n:${a}` : `p:${a}`)
+const fromAisleValue = (v: string): AisleValue | null => (v.startsWith("n:") ? Number(v.slice(2)) : v.startsWith("p:") ? v.slice(2) : null)
+
+/**
+ * The item's aisle in each store that has aisle numbers (Batch 4b): numbers up to the store's number of aisles (or
+ * further, if the item is already there), then its places. The phone learns these at tick-offs; this is for fixing.
+ */
+function AislePickers({ item, onChange }: { item: Item; onChange: (storeId: string, a: AisleValue | null) => void }) {
+  const { db, items } = usePantry()
+  const numbered = db.stores.filter((s) => !s.noAisleNumbers)
+  if (!numbered.length) return null
+  const options = (s: Store) => {
+    const current = itemAisle(item, s)
+    const top = Math.max(aisleTiles(s, Object.values(items)), typeof current === "number" ? current : 0)
+    const places = [...(s.places ?? []), ...(typeof current === "string" && !(s.places ?? []).some((p) => p.toLowerCase() === current.toLowerCase()) ? [current] : [])]
+    return { current, numbers: Array.from({ length: top }, (_, k) => k + 1), places }
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <span className={label}>Aisle</span>
+      <div className="grid grid-cols-[1fr_140px] items-center gap-x-4 gap-y-1">
+        {numbered.map((s) => {
+          const o = options(s)
+          return (
+            <React.Fragment key={s.id}>
+              <span className="truncate text-sm">{s.name}</span>
+              <select aria-label={`Aisle at ${s.name}`} className={cn(lineInput, "h-9", o.current === null && "text-muted-foreground")} value={aisleValue(o.current)} onChange={(e) => onChange(s.id, fromAisleValue(e.target.value))}>
+                <option value="">No aisle</option>
+                {o.numbers.map((n) => <option key={n} value={`n:${n}`}>{aisleTitle(n)}</option>)}
+                {o.places.map((p) => <option key={p} value={`p:${p}`}>{p}</option>)}
+              </select>
+            </React.Fragment>
+          )
+        })}
+      </div>
+      <span className={hint}>Each store has its own aisles. The phone asks for them as you shop; set more aisles or places in Settings, Stores.</span>
+    </div>
+  )
+}
 
 function IconButton({ label: name, children, className, ...props }: React.ComponentProps<"button"> & { label: string }) {
   return (
@@ -385,8 +456,8 @@ function AddPanel({ prefill, seed, onSaved, onClose }: { prefill?: string; seed?
   const nameOk = !!name && name.toLowerCase() !== DEFAULT_NAME.toLowerCase()
   const dup = nameOk ? Object.values(items).find((x) => !x.oneOff && matchesName(x, name)) : undefined
   const showDup = !!dup && f.dupDismissed !== dup.id
-  const missing = [!nameOk && "a name", !i.location && "a location", !i.categoryId && "a shop aisle"].filter(Boolean) as string[]
-  const category = db.categories.find((c) => c.id === i.categoryId)
+  // Tags are optional (Batch 4b, 24 Nov 2026).
+  const missing = [!nameOk && "a name", !i.location && "a location"].filter(Boolean) as string[]
   const n = i.inStock
 
   const setQty = (q: number) =>
@@ -438,7 +509,7 @@ function AddPanel({ prefill, seed, onSaved, onClose }: { prefill?: string; seed?
     const stock = n ? cap(unitText2(item, n)) : "No stock yet"
     setDone({
       title: `${name} added`,
-      line: `${stock} ${placeText(i.location)}, on the ${category?.name ?? ""} aisle. ${isStaple(item) ? `It's a Staple with a minimum of ${item.target}.` : "It isn't a Staple."}`,
+      line: `${stock} ${placeText(i.location)}. ${isStaple(item) ? `It's a Staple with a minimum of ${item.target}.` : "It isn't a Staple."}`,
     })
   }
 
@@ -450,8 +521,8 @@ function AddPanel({ prefill, seed, onSaved, onClose }: { prefill?: string; seed?
   }
 
   const stores = db.stores.map((s) => {
-    const aisle = i.categoryId ? aisleNumber(s, i.categoryId) : null
-    return { id: s.id, label: aisle !== null ? `${s.name} · aisle ${aisle}` : s.name }
+    const aisle = itemAisle(i, s)
+    return { id: s.id, label: aisle !== null ? `${s.name} · ${aisleTitle(aisle)}` : s.name }
   })
 
   if (done) {
@@ -538,13 +609,10 @@ function AddPanel({ prefill, seed, onSaved, onClose }: { prefill?: string; seed?
         <section aria-labelledby="add-where" className="flex flex-col gap-3.5">
           <SmallLabel id="add-where">Where it lives</SmallLabel>
           <LocationPicker value={i.location} onChange={(location) => set({ location })} />
-          <label className="mt-2.5 flex flex-col gap-1.5">
-            <span className={label}>Shop aisle</span>
-            <select className={cn(lineInput, !i.categoryId && "text-muted-foreground")} value={i.categoryId} onChange={(e) => set({ categoryId: e.target.value })}>
-              <option value="">Choose an aisle</option>
-              {categoriesAtoZ(db.categories).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </label>
+          <div className="mt-2.5 flex flex-col gap-2">
+            <span className={label}>Tags <span className="font-normal text-muted-foreground">(optional)</span></span>
+            <TagPicker value={tagsOf(i)} onChange={(tags) => setF((s) => ({ ...s, item: withTags(s.item, tags) }))} />
+          </div>
         </section>
 
         <section aria-labelledby="add-stock" className="flex flex-col gap-4">
@@ -644,7 +712,7 @@ function AddPanel({ prefill, seed, onSaved, onClose }: { prefill?: string; seed?
                 <option value="any">Any store</option>
                 {stores.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
-              <span className={hint}>{category ? `Aisle numbers are for ${category.name}.` : "Choose an aisle to see each store's aisle number."}</span>
+              <span className={hint}>Any store puts it on every store's shopping list. Its aisle in each store is learned when you shop.</span>
             </label>
           )}
           {f.extras.includes("price") && (
@@ -753,7 +821,7 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
   const n = units.length
   const openN = units.filter((u) => u.open).length
   const hasUseBy = !i.noExpiry
-  const category = db.categories.find((c) => c.id === i.categoryId)
+  const tagNames = tagsOf(i).map((t) => db.categories.find((c) => c.id === t)?.name).filter(Boolean)
   const key = `panel:${i.id}`
 
   const save = (next: Item, opts?: { title?: string; merge?: boolean }) => {
@@ -822,10 +890,10 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
     setMenuOpen(false)
   }
 
-  // Every store, with this item's aisle number there when it has one.
+  // Every store, with this item's aisle there when it has one.
   const stores = db.stores.map((s) => {
-    const aisle = aisleNumber(s, i.categoryId)
-    return { id: s.id, name: s.name, label: aisle !== null ? `${s.name} · aisle ${aisle}` : s.name }
+    const aisle = itemAisle(i, s)
+    return { id: s.id, name: s.name, label: aisle !== null ? `${s.name} · ${aisleTitle(aisle)}` : s.name }
   })
   const store = stores.find((s) => s.id === i.where[0])
   const priceSummary = i.price ? `${money(i.price)}${i.priceEstimate ? " (estimate)" : ""}` : "No price"
@@ -851,7 +919,7 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
         <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-8 pt-6 pb-8">
           <div className="flex items-start gap-2">
             <div className="flex min-w-0 flex-1 flex-col gap-2">
-              <SmallLabel>{[locationLabel(i.location), category?.name].filter(Boolean).join(" · ")}</SmallLabel>
+              <SmallLabel>{[locationLabel(i.location), ...tagNames].filter(Boolean).join(" · ")}</SmallLabel>
               {renaming ? (
                 <form
                   className="flex items-center gap-2"
@@ -1037,25 +1105,16 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
               )}
             </Fold>
 
-            <Fold title="Where it lives" open={group === "where"} onToggle={() => toggle("where")} summary={[locationLabel(i.location), category?.name ?? "No aisle"].join(" · ")}>
+            <Fold title="Where it lives" open={group === "where"} onToggle={() => toggle("where")} summary={[locationLabel(i.location), tagNames.length ? tagNames.join(", ") : "No tags"].join(" · ")}>
               <div className="flex flex-col gap-2">
                 <span className={label}>Location</span>
                 <LocationPicker value={i.location} onChange={(location) => set({ location })} />
               </div>
-              <label className="flex flex-col gap-1.5">
-                <span className={label}>Shop aisle</span>
-                <select
-                  className={lineInput}
-                  value={i.categoryId}
-                  onChange={(e) => {
-                    set({ categoryId: e.target.value })
-                  }}
-                >
-                  {!i.categoryId && <option value="">Choose an aisle</option>}
-                  {categoriesAtoZ(db.categories).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <span className={hint}>Sets where it appears on the shopping list.</span>
-              </label>
+              <div className="flex flex-col gap-2">
+                <span className={label}>Tags</span>
+                <TagPicker value={tagsOf(i)} onChange={(tags) => save(withTags(i, tags))} />
+                <span className={hint}>Labels for finding and filtering. They don't set the aisle.</span>
+              </div>
             </Fold>
 
             <Fold title="Store, price, brand" open={group === "store"} onToggle={() => toggle("store")} summary={[store?.name ?? "Any store", priceSummary, i.brand || "Any brand"].join(" · ")}>
@@ -1066,6 +1125,12 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
                   {stores.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                 </select>
                 <span className={hint}>Any store puts it on every store's shopping list. Choose one to keep it to that store.</span>
+              </label>
+              <AislePickers item={i} onChange={(storeId, a) => save(withAisle(i, storeId, a))} />
+              <label className="flex flex-col gap-1.5">
+                <span className={label}>Last bought</span>
+                <input type="date" className={cn(lineInput, "w-48", !i.boughtAt && "text-muted-foreground")} value={i.boughtAt ?? ""} max={todayIso()} onChange={(e) => save({ ...i, boughtAt: e.target.value || undefined })} />
+                <span className={hint}>Set by itself when you tick it off or add stock.</span>
               </label>
               <div className="flex gap-5">
                 <label className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -1244,7 +1309,7 @@ export function MergeDialog({ open, onOpenChange, keepId, onDone }: { open: bool
             {row("Use-by dates", dates(keep), dates(gone), dates(merged))}
             {row("Other names", (keep.otherNames ?? []).join(", ") || "–", (gone.otherNames ?? []).join(", ") || "–", [...new Set([...(keep.otherNames ?? []), gone.name, ...(gone.otherNames ?? [])])].join(", "), `So recipes that say ${gone.name.toLowerCase()} match it`)}
             {row("Recipes", recipesOf(keep).length, recipesOf(gone).length ? `${recipesOf(gone).length} · ${recipesOf(gone).map((r) => r.name).join(", ")}` : 0, plural(new Set([...recipesOf(keep), ...recipesOf(gone)].map((r) => r.id)).size, "recipe"), recipesOf(gone).length ? `${nameList(recipesOf(gone).map((r) => r.name))} now ${recipesOf(gone).length === 1 ? "links" : "link"} to ${keep.name}` : undefined)}
-            {row("Shop, price, brand", [db.categories.find((c) => c.id === keep.categoryId)?.name, keep.price && money(keep.price), keep.brand].filter(Boolean).join(" · ") || "–", [db.categories.find((c) => c.id === gone.categoryId)?.name, gone.price && money(gone.price), gone.brand].filter(Boolean).join(" · ") || "–", `Kept from ${keep.name}`)}
+            {row("Tags, price, brand", [tagsOf(keep).map((t) => db.categories.find((c) => c.id === t)?.name).filter(Boolean).join(", "), keep.price && money(keep.price), keep.brand].filter(Boolean).join(" · ") || "–", [db.categories.find((c) => c.id === gone.categoryId)?.name, gone.price && money(gone.price), gone.brand].filter(Boolean).join(" · ") || "–", `Kept from ${keep.name}`)}
             {(entryTotal(keep) > 0 || entryTotal(gone) > 0) && row("Shopping list", needOf(keep) || "–", needOf(gone) || "–", "Both list entries are kept")}
           </div>
         )}
