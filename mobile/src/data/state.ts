@@ -65,6 +65,8 @@ export type PhoneState = {
   groupBy?: GroupBy
   /** "Ask for the aisle after ticking off" turned off (Batch 4). Kept on this phone, not synced. */
   noAislePrompt?: boolean
+  /** What you've searched for, newest first (Batch 5). Kept on this phone, not synced. */
+  recentSearches?: string[]
   shop: Shop | null
   /** The list filters. Kept through a shop; cleared when a new list starts. */
   filter?: ListFilter

@@ -8,7 +8,7 @@ import { Platform, ScrollView, Text, View } from "react-native"
 import { aisleTitle, isBulk, isStaple, itemAisle, locationLabel, tagsOf, type Location } from "../../../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../../../data/store"
 import { addOne, approve, openOne, setLocation, setMin, setNotes, setStore, setUseBy, usedOne } from "../../../../logic/actions"
-import { phrase, stockStatus, expiryText } from "../../../../logic/phrases"
+import { stockStatus, expiryText } from "../../../../logic/phrases"
 import { AisleField, BackLink, Body, Button, Caption, Chip, Display, Field, InfoBox, Label, Picker, Press, Stepper } from "../../../../ui/kit"
 import { LOCATIONS } from "../../../../ui/locations"
 import { font, space, useColours } from "../../../../ui/theme"
@@ -56,6 +56,8 @@ export default function PantryItem() {
         <View style={{ gap: 6 }}>
           <Label>{[locationLabel(item.location), ...tags].join(" · ")}</Label>
           <Display size={32}>{item.name}</Display>
+          {/* The stock's state as the subheading; the count itself is in the In stock stepper (Isaac's change, 24 Nov 2026). */}
+          <Text accessibilityLiveRegion="polite" style={{ fontFamily: font.medium, fontSize: 18, lineHeight: 24, color: c.muted }}>{stockStatus(item)}</Text>
         </View>
 
         {item.review && (
@@ -64,11 +66,6 @@ export default function PantryItem() {
             <Button label="Looks right, save it" height={48} onPress={() => { change((s) => approve(s, id), note(`Checked ${name}`)); say(`Saved ${name}.`) }} />
           </InfoBox>
         )}
-
-        <View style={{ gap: 4 }}>
-          <Text accessibilityLiveRegion="polite" style={{ fontFamily: font.semibold, fontSize: 26, color: c.ink }}>{phrase(item)}</Text>
-          <Caption style={{ fontSize: 15, lineHeight: 21 }}>{stockStatus(item)}</Caption>
-        </View>
 
         <View style={{ gap: 16 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
