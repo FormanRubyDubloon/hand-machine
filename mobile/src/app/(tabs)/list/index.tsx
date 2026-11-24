@@ -90,7 +90,9 @@ export default function ListScreen() {
     waiting.current = setTimeout(() => {
       waiting.current = null
       asked.current.add(r.id)
-      router.push({ pathname: "/aisle", params: { id: r.id, from: "tick" } })
+      // The sheet covers the tick's toast, so it carries what was got before this run of taps, for its own Undo.
+      const got = run.current?.id === r.id ? run.current.before : r.got
+      router.push({ pathname: "/aisle", params: { id: r.id, from: "tick", got: String(got) } })
     }, wait ? ASK_AFTER_MS : 350)
   }
   const tick = (r: Row) => {

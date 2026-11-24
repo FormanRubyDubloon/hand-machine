@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   daysUntil, dateText, haveText, isBulk, isStaple, locationLabel, locations, money, needOf, plural, shortfall, soonest, stockOf, unitWord,
-  type Item, type Location, categoriesAtoZ,
+  type Item, type Location, categoriesAtoZ, hasTag, tagsOf,
 } from "../model"
 import { navigate, type Route } from "../router"
 import { usePantry } from "../state"
@@ -68,7 +68,7 @@ function matches(i: Item, f: Filters, skip?: keyof Filters) {
   if (skip !== "location" && f.location !== "all" && i.location !== f.location) return false
   if (skip !== "show" && f.show && !showTests[f.show](i)) return false
   if (skip !== "type" && f.type && i.type !== f.type) return false
-  if (skip !== "aisle" && f.aisle && i.categoryId !== f.aisle) return false
+  if (skip !== "aisle" && f.aisle && !hasTag(i, f.aisle)) return false
   // Several statuses can be ticked: an item matching any of them shows. None ticked shows everything.
   if (skip !== "stock" && f.stock.length && !f.stock.some((k) => stockTests[k](i))) return false
   return true
@@ -149,10 +149,10 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
           ]}
         />
         <FilterGroup
-          label="Shop or aisle"
+          label="Tag"
           value={f.aisle}
           onChange={(v) => set("aisle", v)}
-          options={categoriesAtoZ(db.categories).map((c) => ({ value: c.id, label: c.name, icon: <CategoryMark category={c} size="sm" />, count: count("aisle", (i) => i.categoryId === c.id) })).filter((o) => o.count > 0)}
+          options={categoriesAtoZ(db.categories).map((c) => ({ value: c.id, label: c.name, icon: <CategoryMark category={c} size="sm" />, count: count("aisle", (i) => hasTag(i, c.id)) })).filter((o) => o.count > 0)}
         />
       </FilterSidebar>
 
@@ -178,7 +178,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
         <Table className="text-sm">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              {["Item", "Location", "In stock", "Minimum", "Status", "Use by", "Preferred brand", "Shop or aisle", "Price"].map((h) => (
+              {["Item", "Location", "In stock", "Minimum", "Status", "Use by", "Preferred brand", "Tags", "Price"].map((h) => (
                 <TableHead key={h} className={cn("sticky -top-7 z-10 h-10 bg-background text-[10px] font-semibold tracking-widest shadow-[inset_0_-1px_0_var(--border)]", (h === "Minimum" || h === "Price") && "text-right")}>
                   {h === "Status" ? <HeadingTip label={h} tip={statusHelp} /> : h}
                 </TableHead>
@@ -221,7 +221,7 @@ export function PantryScreen({ route }: { route: Extract<Route, { name: "pantry"
                   </TableCell>
                   <TableCell className={cn(d && daysUntil(d) <= 3 && "font-semibold", i.noExpiry && "text-xs text-muted-foreground")}>{i.noExpiry ? "No expiry" : dateText(d)}</TableCell>
                   <TableCell>{i.brand || "Any"}</TableCell>
-                  <TableCell><CategoryLabel category={db.categories.find((c) => c.id === i.categoryId)} /></TableCell>
+                  <TableCell className="whitespace-normal">{tagsOf(i).length ? <span className="flex flex-wrap gap-x-3 gap-y-1">{tagsOf(i).map((t) => <CategoryLabel key={t} category={db.categories.find((c) => c.id === t)} />)}</span> : <span className="text-xs text-muted-foreground">No tags</span>}</TableCell>
                   <TableCell className="pr-3 text-right tabular-nums whitespace-nowrap">{i.price ? <>{i.priceEstimate && <EstimateMark tip="Estimated price" />}{money(i.price)}</> : "–"}</TableCell>
                 </TableRow>
               )

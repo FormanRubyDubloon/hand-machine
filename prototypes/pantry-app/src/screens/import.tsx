@@ -107,7 +107,7 @@ export function ImportScreen() {
   const rows = parsed.map((r) => ({ ...r, ...edits[r.key] }))
   const edit = (key: string, patch: Partial<Row>) => setEdits({ ...edits, [key]: { ...edits[key], ...patch } })
   const chosen = rows.filter((r) => r.include)
-  const blocked = chosen.filter((r) => !r.location || !r.categoryId)
+  const blocked = chosen.filter((r) => !r.location)
   const fresh = chosen.filter((r) => !r.existing).length
 
   const add = () => {
@@ -125,7 +125,7 @@ export function ImportScreen() {
     navigate({ name: "pantry" })
   }
 
-  const happens = (r: Row) => (r.existing ? "Adds to existing" : !r.location ? "Needs a location" : !r.categoryId ? "Needs an aisle" : r.target > 0 ? "New Staple" : "New")
+  const happens = (r: Row) => (r.existing ? "Adds to existing" : !r.location ? "Needs a location" : r.target > 0 ? "New Staple" : "New")
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 py-7">
@@ -180,14 +180,14 @@ export function ImportScreen() {
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      {["", "Item", "Type", "Have", "Location", "Minimum", "Shop or aisle", "What happens"].map((h) => (
+                      {["", "Item", "Type", "Have", "Location", "Minimum", "Tag", "What happens"].map((h) => (
                         <TableHead key={h} className="h-9 text-[10px] font-semibold tracking-widest">{h}</TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {rows.map((r) => (
-                      <TableRow key={r.key} className={cn(!r.include && "opacity-50", r.include && (!r.location || !r.categoryId) && "bg-muted")}>
+                      <TableRow key={r.key} className={cn(!r.include && "opacity-50", r.include && !r.location && "bg-muted")}>
                         <TableCell className="w-8"><Checkbox checked={r.include} onCheckedChange={(c) => edit(r.key, { include: !!c })} aria-label={`Include ${r.name}`} /></TableCell>
                         <TableCell className="font-semibold">{r.name}</TableCell>
                         <TableCell className="text-muted-foreground">{r.type === "bulk" ? `Bulk${r.packSize ? ` · ${r.packSize >= 1000 ? `${r.packSize / 1000} kg` : `${r.packSize} g`}` : ""}` : "Counted"}</TableCell>
@@ -207,13 +207,13 @@ export function ImportScreen() {
                         </TableCell>
                         <TableCell className="w-[170px]">
                           {r.existing ? <span className="text-muted-foreground">{db.categories.find((c) => c.id === r.categoryId)?.name}</span> : (
-                            <Select value={r.categoryId || undefined} onValueChange={(categoryId) => edit(r.key, { categoryId })}>
-                              <SelectTrigger size="sm" className="h-7 w-full" aria-label={`Aisle for ${r.name}`}><SelectValue placeholder="Choose" /></SelectTrigger>
-                              <SelectContent>{categoriesAtoZ(db.categories).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                            <Select value={r.categoryId || "none"} onValueChange={(v) => edit(r.key, { categoryId: v === "none" ? "" : v })}>
+                              <SelectTrigger size="sm" className="h-7 w-full" aria-label={`Tag for ${r.name}`}><SelectValue placeholder="No tag" /></SelectTrigger>
+                              <SelectContent><SelectItem value="none">No tag</SelectItem>{categoriesAtoZ(db.categories).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                             </Select>
                           )}
                         </TableCell>
-                        <TableCell className={cn("text-xs", (!r.location || !r.categoryId) && r.include && "font-semibold")}>{happens(r)}</TableCell>
+                        <TableCell className={cn("text-xs", !r.location && r.include && "font-semibold")}>{happens(r)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -222,7 +222,7 @@ export function ImportScreen() {
               </div>
             </div>
             <div className="flex items-center justify-between gap-4 border-t border-border pt-5">
-              <span className="text-sm">{blocked.length ? `Set a location and aisle for ${blocked.map((r) => r.name).join(", ")}, or untick ${blocked.length === 1 ? "it" : "them"}.` : `Ready to add ${plural(chosen.length, "item")}.`}</span>
+              <span className="text-sm">{blocked.length ? `Set a location for ${blocked.map((r) => r.name).join(", ")}, or untick ${blocked.length === 1 ? "it" : "them"}.` : `Ready to add ${plural(chosen.length, "item")}.`}</span>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => navigate({ name: "pantry" })}>Cancel</Button>
                 <Button disabled={!chosen.length || blocked.length > 0} onClick={add}>Add {plural(chosen.length, "item")}</Button>

@@ -34,8 +34,10 @@ export type SharedItem = {
   open?: number
   unit?: [string, string]
   notes?: string
-  /** Shop or aisle. */
+  /** Its first tag (what the code calls a category), or "". Kept in step with tagIds for apps that know one tag. */
   categoryId: string
+  /** All its tags, in order (Batch 4b, 24 Nov 2026). Unset on items from before: their one tag is categoryId. */
+  tagIds?: string[]
   /** Store ids to buy it at (Supabase store_ids). Empty means any store. */
   where: string[]
   /** Its aisle in each store, by store id: a number or a named place (Batch 4, 24 Nov 2026). Blank until set. */

@@ -26,6 +26,11 @@ function unitPair(u) {
   if (/[^f]f$/i.test(one)) return [one, `${one.slice(0, -1)}ves`];
   return [one, `${one}s`];
 }
+function tagIdsOf(r) {
+  const tags = r.tag_ids ?? [];
+  if (!r.category_id || tags.includes(r.category_id)) return tags.length || !r.category_id ? tags : [r.category_id];
+  return [r.category_id, ...tags.slice(1)];
+}
 function toItem(r) {
   return {
     id: r.id,
@@ -36,6 +41,7 @@ function toItem(r) {
     unit: unitPair(r.unit),
     notes: r.notes ?? void 0,
     categoryId: r.category_id ?? "",
+    tagIds: tagIdsOf(r),
     where: r.store_ids ?? [],
     aisleAt: r.aisles && Object.keys(r.aisles).length ? r.aisles : void 0,
     boughtAt: r.bought_at ?? void 0,
@@ -83,11 +89,13 @@ function toRecipe(r) {
   };
 }
 var unitText = (u) => u?.[0] ?? null;
+var tagsKnown = (i, known) => (i.tagIds ?? (i.categoryId ? [i.categoryId] : [])).filter((t) => known.has(t));
 function toRow(i, knownCategories) {
   return {
     id: i.id,
     name: i.name,
-    category_id: i.categoryId && knownCategories.has(i.categoryId) ? i.categoryId : null,
+    category_id: tagsKnown(i, knownCategories)[0] ?? null,
+    tag_ids: tagsKnown(i, knownCategories),
     type: i.type,
     target: i.target,
     in_stock: i.inStock,

@@ -14,7 +14,7 @@ import { deleteCategories } from "../../shared/src/pantry-remote"
 import { href } from "./router"
 import type { CategoryColour, CategoryIcon } from "../../shared/src/category-look"
 import {
-  amountOf, cap, haveText, unitText, nameList, isBulk, isToday, lower, needOf, normalise, openUnit, plural, settle, todayIso, unitsOf, withStock, withUnits,
+  amountOf, cap, hasTag, haveText, tagsOf, withAisle, withTags, unitText, nameList, isBulk, isToday, lower, needOf, normalise, openUnit, plural, settle, todayIso, unitsOf, withStock, withUnits,
   type Db, type HistoryEntry, type Item, type Items, type Recipe, type Snapshot, type Store, type Who,
 } from "./model"
 
@@ -166,7 +166,9 @@ function itemChanges(before: Item, draft: Item) {
   if (JSON.stringify(before.unit) !== JSON.stringify(draft.unit)) changes.push("unit type")
   if (JSON.stringify(before.packSize) !== JSON.stringify(draft.packSize)) changes.push("size")
   if (before.location !== draft.location) changes.push("location")
-  if (before.categoryId !== draft.categoryId) changes.push("shop aisle")
+  if (JSON.stringify(tagsOf(before)) !== JSON.stringify(tagsOf(draft))) changes.push("tags")
+  if (JSON.stringify(before.aisleAt ?? {}) !== JSON.stringify(draft.aisleAt ?? {})) changes.push("aisle")
+  if (before.boughtAt !== draft.boughtAt) changes.push("bought date")
   if (JSON.stringify(before.where) !== JSON.stringify(draft.where)) changes.push("store")
   if (before.price !== draft.price) changes.push("price")
   else if (!!before.priceEstimate !== !!draft.priceEstimate) changes.push(draft.priceEstimate ? "price marked as an estimate" : "price no longer an estimate")
@@ -329,7 +331,9 @@ function usePantryState() {
       commit(
         (s) => {
           const bought = before ? draft.inStock - before.inStock : 0
-          const item = normalise({ ...draft, entries: bought > 0 ? settle(draft.entries, bought) : draft.entries, editedAt: new Date().toISOString(), addedAt: draft.addedAt ?? new Date().toISOString() })
+          // More in stock (or a new item with some) is a purchase: today is its bought date, unless it was set by hand.
+          const boughtAt = (bought > 0 || (!before && draft.inStock > 0)) && draft.boughtAt === before?.boughtAt ? todayIso() : draft.boughtAt
+          const item = normalise({ ...draft, boughtAt, entries: bought > 0 ? settle(draft.entries, bought) : draft.entries, editedAt: new Date().toISOString(), addedAt: draft.addedAt ?? new Date().toISOString() })
           return setItems(s, { [draft.id]: item })
         },
         {
@@ -669,14 +673,35 @@ function usePantryState() {
     },
     deleteStore(id: string) {
       commit((s) => {
-        // Items bought at this store go back to any store.
+        // Items bought at this store go back to any store, and lose their aisle there.
         const patch: Items = {}
-        for (const i of Object.values(s.items)) if (i.where.includes(id)) patch[i.id] = { ...i, where: i.where.filter((x) => x !== id), editedAt: new Date().toISOString() }
+        for (const i of Object.values(s.items)) {
+          if (i.where.includes(id) || i.aisleAt?.[id] !== undefined) patch[i.id] = { ...withAisle(i, id, null), where: i.where.filter((x) => x !== id), editedAt: new Date().toISOString() }
+        }
         return setDb(setItems(s, patch), {
           stores: s.db.stores.filter((x) => x.id !== id),
           defaultStoreId: s.db.defaultStoreId === id ? s.db.stores.find((x) => x.id !== id)?.id ?? "" : s.db.defaultStoreId,
         })
       })
+    },
+    /** Removes a named place from a store. Its items go back to No aisle there, and its label goes. */
+    removePlace(storeId: string, place: string) {
+      const s0 = ref.current
+      const store = s0.db.stores.find((x) => x.id === storeId)
+      if (!store) return
+      const same = (a: unknown) => typeof a === "string" && a.toLowerCase() === place.toLowerCase()
+      const moved = Object.values(s0.items).filter((i) => same(i.aisleAt?.[storeId])).map((i) => i.id)
+      commit(
+        (s) => {
+          const next = moved.reduce((acc, id) => edit(acc, id, (x) => withAisle(x, storeId, null)), s)
+          const labels = { ...(store.aisleLabels ?? {}) }
+          delete labels[place.toLowerCase()]
+          return setDb(next, {
+            stores: next.db.stores.map((x) => (x.id === storeId ? { ...x, places: (x.places ?? []).filter((p) => !same(p)), aisleLabels: Object.keys(labels).length ? labels : undefined } : x)),
+          })
+        },
+        { title: `${store.name}: removed the place ${place}`, detail: moved.length ? `${plural(moved.length, "item")} back to No aisle there` : undefined, itemIds: moved },
+      )
     },
     setDefaultStore(id: string) {
       commit((s) => setDb(s, { defaultStoreId: id }))
@@ -696,22 +721,16 @@ function usePantryState() {
         }),
       }))
     },
-    /** A new category. With a store, it gets the next aisle number there; every other store has none. */
-    addCategory(storeId: string | null, name: string) {
+    /**
+     * A new tag (what the code calls a category). Tags don't set aisles any more (Batch 4), but stores still keep a
+     * retired number per category, so the old apps see it too.
+     */
+    addCategory(name: string) {
       const id = uid("aisle")
-      commit((s) => {
-        const store = s.db.stores.find((x) => x.id === storeId)
-        const top = Math.max(0, ...Object.values(store?.aisles ?? {}).map((n) => n ?? 0))
-        return setDb(s, {
-          categories: [...s.db.categories, { id, name }],
-          // Added from a store with no aisle numbers: it's ticked as sold there instead.
-          stores: s.db.stores.map((x) => ({
-            ...x,
-            aisles: { ...x.aisles, [id]: x.id === storeId && !x.noAisleNumbers ? top + 1 : null },
-            ...(x.id === storeId && x.noAisleNumbers ? { sells: [...(x.sells ?? []), id] } : {}),
-          })),
-        })
-      })
+      commit((s) => setDb(s, {
+        categories: [...s.db.categories, { id, name }],
+        stores: s.db.stores.map((x) => ({ ...x, aisles: { ...x.aisles, [id]: null } })),
+      }))
       return id
     },
     /** SET-06, first step: moves every item in one category to another, so the first can be removed. */
@@ -719,21 +738,25 @@ function usePantryState() {
       const s0 = ref.current
       const a = s0.db.categories.find((c) => c.id === from)
       const b = s0.db.categories.find((c) => c.id === to)
-      const moved = Object.values(s0.items).filter((i) => i.categoryId === from).map((i) => i.id)
+      const moved = Object.values(s0.items).filter((i) => hasTag(i, from)).map((i) => i.id)
       if (!a || !b || from === to || !moved.length) return
       commit(
-        (s) => moved.reduce((next, id) => edit(next, id, (x) => ({ ...x, categoryId: to })), s),
+        (s) => moved.reduce((next, id) => edit(next, id, (x) => withTags(x, tagsOf(x).map((t) => (t === from ? to : t)))), s),
         { title: `Moved ${plural(moved.length, "item")} from ${a.name} to ${b.name}`, itemIds: moved },
       )
       toast(`Moved ${plural(moved.length, "item")} to ${b.name}`)
     },
-    /** SET-06: removes a category from every store. Only an empty one: its items have to be moved first. */
+    /**
+     * SET-06: removes a tag. Items keep their other tags; it's taken off any that have it (Batch 4b, 24 Nov 2026:
+     * tags are optional, so an item can be left with none).
+     */
     removeCategory(id: string) {
       const s0 = ref.current
       const gone = s0.db.categories.find((c) => c.id === id)
-      if (!gone || Object.values(s0.items).some((i) => i.categoryId === id)) return
+      if (!gone) return
+      const tagged = Object.values(s0.items).filter((i) => hasTag(i, id)).map((i) => i.id)
       commit(
-        (s) => setDb(s, {
+        (s) => setDb(tagged.reduce((next, itemId) => edit(next, itemId, (x) => withTags(x, tagsOf(x).filter((t) => t !== id))), s), {
           categories: s.db.categories.filter((c) => c.id !== id),
           stores: s.db.stores.map((x) => {
             const aisles = { ...x.aisles }
@@ -741,7 +764,7 @@ function usePantryState() {
             return { ...x, aisles }
           }),
         }),
-        { title: `Removed the tag ${gone.name}`, detail: "It had no items" },
+        { title: `Removed the tag ${gone.name}`, detail: tagged.length ? `Taken off ${plural(tagged.length, "item")}` : "It had no items", itemIds: tagged },
       )
       toast(`Removed ${gone.name}`, { description: "You can undo this from History today." })
     },

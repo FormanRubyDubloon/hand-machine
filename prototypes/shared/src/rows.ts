@@ -27,6 +27,7 @@ export type Row = {
   id: string
   name: string
   category_id: string | null
+  tag_ids?: string[] | null
   type: "counted" | "bulk"
   target: number | null
   in_stock: number | null
@@ -69,6 +70,17 @@ export function unitPair(u: string | null): [string, string] | undefined {
   return [one, `${one}s`]
 }
 
+/**
+ * An item's tags from its row. category_id is kept as the first tag; an app that only knows one tag (the Claude
+ * connection until Batch 4c, older phone builds) may change it without touching tag_ids, so a category_id that
+ * isn't among the tags replaces the first one.
+ */
+function tagIdsOf(r: Pick<Row, "category_id" | "tag_ids">): string[] {
+  const tags = r.tag_ids ?? []
+  if (!r.category_id || tags.includes(r.category_id)) return tags.length || !r.category_id ? tags : [r.category_id]
+  return [r.category_id, ...tags.slice(1)]
+}
+
 export function toItem(r: Row): SharedItem {
   return {
     id: r.id,
@@ -79,6 +91,7 @@ export function toItem(r: Row): SharedItem {
     unit: unitPair(r.unit),
     notes: r.notes ?? undefined,
     categoryId: r.category_id ?? "",
+    tagIds: tagIdsOf(r),
     where: r.store_ids ?? [],
     aisleAt: r.aisles && Object.keys(r.aisles).length ? r.aisles : undefined,
     boughtAt: r.bought_at ?? undefined,
@@ -159,12 +172,16 @@ export function toRecipe(r: RecipeRow): SharedRecipe {
 /** The database keeps one free-text unit ("bag"); the app guesses the plural back (see unitPair). */
 const unitText = (u: SharedItem["unit"]) => u?.[0] ?? null
 
-/** An item as an `items` row. A category Supabase doesn't have is left blank. List entries are their own table. */
+/** An item's tags, as Supabase can store them (tags it has). */
+const tagsKnown = (i: SharedItem, known: Set<string>) => (i.tagIds ?? (i.categoryId ? [i.categoryId] : [])).filter((t) => known.has(t))
+
+/** An item as an `items` row. A tag Supabase doesn't have is left out. List entries are their own table. */
 export function toRow(i: SharedItem, knownCategories: Set<string>) {
   return {
     id: i.id,
     name: i.name,
-    category_id: i.categoryId && knownCategories.has(i.categoryId) ? i.categoryId : null,
+    category_id: tagsKnown(i, knownCategories)[0] ?? null,
+    tag_ids: tagsKnown(i, knownCategories),
     type: i.type,
     target: i.target,
     in_stock: i.inStock,

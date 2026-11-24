@@ -108,13 +108,6 @@ export default function PantryItem() {
           <AisleField label={`Aisle at ${store.name}`} value={aisle === null ? null : aisleTitle(aisle)} onPress={() => router.push({ pathname: "/aisle", params: { id, from: "edit" } })} />
         )}
 
-        {/* Tags are given to items in Collca on the web (Isaac's decision, 24 Nov 2026), so here they're only shown. */}
-        <View style={{ gap: 6 }}>
-          <Label>Tags</Label>
-          <Body>{tags.length ? tags.join(", ") : "No tags"}</Body>
-          <Caption>Change tags in Collca on the web.</Caption>
-        </View>
-
         {state.stores.length > 1 && (
           <View style={{ gap: 6 }}>
             <Picker
@@ -126,6 +119,13 @@ export default function PantryItem() {
             <Caption>{item.where.length ? "It's only on the list when you shop there." : "On the list wherever you shop."}</Caption>
           </View>
         )}
+
+        {/* Tags are given to items in Collca on the web (Isaac's decision, 24 Nov 2026), so here they're only shown. Below Store (Isaac's change, 24 Nov 2026). */}
+        <View style={{ gap: 6 }}>
+          <Label>Tags</Label>
+          <Body>{tags.length ? tags.join(", ") : "No tags"}</Body>
+          <Caption>Change tags in Collca on the web.</Caption>
+        </View>
 
         <Field
           label="Notes"
