@@ -9,6 +9,7 @@ import { useStore } from "../../data/store"
 import type { Theme } from "../../data/state"
 import { initials, plural, whenText } from "../../logic/phrases"
 import { Button, Caption, Label, Press, Segmented } from "../../ui/kit"
+import { useLeaveSettings } from "../../ui/leave-settings"
 import { SheetHeader } from "../../ui/sheet"
 import { font, radius, useColours } from "../../ui/theme"
 
@@ -16,6 +17,7 @@ export default function Settings() {
   const { state, local, status, online, pending, syncNow, signOut } = useStore()
   const c = useColours()
   const [asking, setAsking] = React.useState(false)
+  const leave = useLeaveSettings()
   const email = state.owner?.email ?? ""
   const offline = !online || status === "offline"
   const syncLine = status === "syncing"
@@ -29,7 +31,7 @@ export default function Settings() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <SheetHeader title="Settings" full />
+      <SheetHeader title="Settings" full onDone={() => leave()} />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 48 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
           <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: c.olive, alignItems: "center", justifyContent: "center" }}>

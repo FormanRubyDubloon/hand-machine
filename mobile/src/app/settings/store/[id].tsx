@@ -8,6 +8,7 @@ import { useStore } from "../../../data/store"
 import { addAisle, chooseStore, removeStore, renameStore, setAisleNumber } from "../../../logic/actions"
 import { plural } from "../../../logic/phrases"
 import { Body, Button, Caption, Field, InfoBox, Label, Stepper } from "../../../ui/kit"
+import { useLeaveSettings } from "../../../ui/leave-settings"
 import { SheetHeader } from "../../../ui/sheet"
 import { font, useColours } from "../../../ui/theme"
 
@@ -19,16 +20,21 @@ export default function StorePage() {
   const [name, setName] = React.useState(store?.name ?? "")
   const [aisle, setAisle] = React.useState("")
   const [asking, setAsking] = React.useState(false)
+  const leave = useLeaveSettings()
   if (!store) return null
+  // The name saves as you go: on leaving the field, and on Done in case the field still has focus.
+  function saveName() {
+    if (store && name.trim() && name.trim() !== store.name) change((s) => renameStore(s, store.id, name), { title: `Renamed a store to ${name.trim()}` })
+  }
   const current = store.id === state.storeId
   const count = (catId: string) => Object.values(state.items).filter((i) => !i.oneOff && i.categoryId === catId).length
   const highest = Math.max(0, ...Object.values(store.aisles).map((n) => n ?? 0))
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <SheetHeader back={{ label: "Stores", onPress: () => router.back() }} full onDone={() => router.dismissAll()} />
+      <SheetHeader back={{ label: "Stores", onPress: () => router.back() }} full onDone={() => { saveName(); leave(aisle.trim()) }} />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
-        <Field label="Name" value={name} onChangeText={setName} onBlur={() => name.trim() && name.trim() !== store.name && change((s) => renameStore(s, store.id, name), { title: `Renamed a store to ${name.trim()}` })} />
+        <Field label="Name" value={name} onChangeText={setName} onBlur={saveName} />
         {current ? <Caption style={{ fontSize: 15 }}>You're shopping here now.</Caption> : <Button kind="secondary" label="Shop here now" onPress={() => { local((s) => chooseStore(s, store.id)); say(`Shopping at ${store.name}.`) }} />}
 
         {store.noAisleNumbers ? (
