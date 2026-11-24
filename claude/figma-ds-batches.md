@@ -56,7 +56,10 @@ The shadcn primitives everything else is built from, in the warm theme.
 - Button: start with `state` default, hover, focus-visible and disabled only, to avoid the 240-variant problem. Add `aria-invalid` if you want it.
 - Icons: a real swappable Lucide icon component (instance swap), not the placeholder vector the old mirror used. That needs a small icon set first: the ones the apps use most.
 
-## Batch 3: Containers and overlays (web)
+## Batch 3: Containers and overlays (web) (done 24 Nov 2026)
+
+Details and gaps in `GAPS-COLLCA.md`.
+
 
 `card`, `alert`, `dialog`, `sheet`, `drawer`, `popover`, `command`, `tabs`, `table`, `sonner` (dark toast), `skeleton`, `progress`, `avatar`.
 

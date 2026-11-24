@@ -148,3 +148,66 @@ Spacing `8_25` (33) and `6_25` (25) for the switch. Text styles `role/badge`, `r
 ### Not in Batch 2
 
 `input-otp`, `kbd` and `field` aren't in the repo. Prototype interactions and transitions aren't built.
+
+## Batch 3: Containers and overlays (24 November 2026)
+
+On the Components page: card (with `card-header`, `card-content`, `card-footer`), alert, skeleton, progress, avatar and `avatar-group`, `dialog-content` and `dialog`, sheet, `drawer-content`, `popover-content`, `tabs-trigger` and `tabs-list`, `table-row` and `table`, `command-item` and `command`, and `toast` (Sonner). Checked in Light and Dark.
+
+### Which pieces the warm theme rounds
+
+Card, dialog, popover, command, the table container and the toast are rounded to `radius` (4). Alert, sheet, drawer, tabs, skeleton and progress aren't in the theme's list, so they stay square. The toast's action button stays square (`!rounded-none`). Titles stay in Stevie Sans: `font-heading` is the sans in the warm theme, which only moves display, title and lead to Dejanire.
+
+### Tokens and styles added
+
+- `state/`: `foreground-5` (card ring), `overlay` (black 20%), `destructive-90`, `muted-50`, `primary-foreground-70`, `tab-text`, `tab-active-bg`, `tab-active-border` (transparent in Light, `input` in Dark). Raw values, invented names.
+- `spacing/card-spacing` (aliases `spacing-8`) and `spacing/card-spacing-sm` (aliases `spacing-5`); the second name is invented, since the code switches one variable with `data-[size=sm]`.
+- Text styles: `role/card-title` (also sheet and drawer titles), `role/card-description` (all the leading-relaxed descriptions), `role/dialog-title`, `role/popover-title`, `role/tabs-trigger`, `role/table-head`, `role/shortcut`, `role/alert-title`, `role/toast-title`, `role/toast-description`.
+- Effect styles: `card` (shadow-sm plus a 1px foreground/5 ring), `toast` (Sonner's own 0 4px 12px shadow).
+
+### Card
+
+- `card` (size default, sm) holds instances of `card-header`, `card-content` and `card-footer` of the same size; `header`, `content` and `footer` toggles. The header instance is exposed, so its `title`, `description`, `show-description` and `action` show on the card.
+- Width 380 (code: fluid). The header is a grid in code (`1fr auto`); auto layout here. Not built: the optional header and footer borders, images, container queries.
+
+### Alert
+
+- `variant` × `action`; action is a variant because it changes the right padding (`pr-18`). The 2px indicator runs down the left edge over the border. Width 420.
+- **Linked properties share one starting value.** The destructive variants start with the default text and info icon; change them on the instance. (Same with the pill samples in Batch 2.)
+
+### Skeleton, Progress, Avatar
+
+- Skeleton: one muted rectangle, no pulse.
+- Progress: five steps (0 to 100), 2px tall, width 320.
+- Avatar: `size` (sm 24, default 32, lg 40), `initials`, `badge`. A plain border here; the code blends it (`mix-blend-darken`, `dark:mix-blend-lighten`), which Figma can't switch by mode. No image. Avatar group overlaps by 8 with a 2px background ring, later avatars on top as in the browser.
+
+### Dialog, Sheet, Drawer, Popover
+
+- `dialog-content`: 448 wide, header (gap-2 plus the description's `mt-0.5`, so 10), footer in its `sm:` layout (row, right-aligned), close button (ghost icon-sm on `bg-secondary`, `x` icon). `dialog`: the content centred on a 1200 × 760 overlay (20% black, 8px background blur; Figma's blur doesn't match a CSS pixel blur exactly).
+- `sheet`: right (384 wide, 760 tall) and bottom (1200 wide, hugs). Left and top not built. Footer buttons fill the width (`flex-col`).
+- `drawer-content`: bottom only, 390 wide (phone), centred header, muted handle. `md:text-left` not built.
+- `popover-content`: 288 wide, header and a body placeholder.
+- In each, the description's `mt-0.5` is folded into the header gap: Figma text layers can't take padding.
+
+### Tabs
+
+- `tabs-trigger`: `variant` (default, line) × `state` (default, hover, active, focus-visible, disabled), horizontal only, 31 high. Line's active bar is 2px, 5px below the trigger. Focus uses the control focus style; the code's `ring-[3px] ring-ring/50` and 1px outline are approximated.
+- `tabs-list`: three triggers, first active. Triggers hug their labels here; in code they share the width (`flex-1`). Vertical tabs not built.
+
+### Table
+
+- `table-row`: header, body (default, hover, selected) and footer, four cells with `col-1` to `col-4` text properties (body rows only). Cell widths are fixed placeholders; HTML tables size columns to content.
+- `table`: header, three rows, caption. The last row drops its border by hand (code: `[&_tr:last-child]:border-0`).
+
+### Command
+
+- `command-item`: default, selected, disabled; `icon`, `label`, `shortcut` properties. `command`: search (an `input-group` instance), two groups with headings, a separator. 320 wide. No shadow (CommandDialog puts it in dialog-content). Empty state and checked items not built.
+
+### Toast (Sonner)
+
+- Dark toast: primary fill and border, primary-foreground text, description at 70%. In Dark mode that's gold with dark text, as the code says.
+- Sonner's own CSS sets the layout (356 wide, 16 padding, 6 gap, 13px text); these numbers come from Sonner's defaults, not this repo, so they aren't bound to tokens.
+- Only the info icon is in the set (Sonner also uses circle-check, triangle-alert, octagon-x and a spinner). Cancel button not built.
+
+### Figma limit found
+
+- **Text layers can't take padding.** Setting it threw "object is not extensible"; spacing that the code puts on text (`mt-0.5`) goes into the parent's gap.
