@@ -28,6 +28,10 @@ export interface Backend {
   saveStores(stores: SharedStore[], sort: (id: string) => number, categories: Set<string>): Promise<void>
   /** Deletes stores; their aisle numbers go with them. */
   deleteStores(ids: string[]): Promise<void>
+  /** Adds a tag (what the code calls a category) at the end of the list. */
+  addCategory(c: Category, sort: number): Promise<void>
+  /** Renames a tag. Only its name changes: its colour and icon stay. */
+  renameCategory(id: string, name: string): Promise<void>
   addHistory(row: HistoryRow): Promise<void>
   history(limit: number): Promise<HistoryRow[]>
 }
@@ -106,6 +110,14 @@ export function supabaseBackend(db: SupabaseClient): Backend {
 
     async deleteStores(ids) {
       if (ids.length) check(await db.from("stores").delete().in("id", ids))
+    },
+
+    async addCategory(c, sort) {
+      check(await db.from("categories").insert({ id: c.id, name: c.name, sort }))
+    },
+
+    async renameCategory(id, name) {
+      check(await db.from("categories").update({ name }).eq("id", id))
     },
 
     async addHistory(row) {

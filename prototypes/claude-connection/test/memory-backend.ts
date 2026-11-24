@@ -38,6 +38,12 @@ export function memoryBackend(seed: PantryData) {
     async deleteStores(ids) {
       state.stores = state.stores.filter((x) => !ids.includes(x.id))
     },
+    async addCategory(c) {
+      state.categories.push(structuredClone(c))
+    },
+    async renameCategory(id, name) {
+      state.categories = state.categories.map((c) => (c.id === id ? { ...c, name } : c))
+    },
     async addHistory(row) {
       history.unshift(row)
     },

@@ -124,7 +124,7 @@ Each recipe records:
 - I can add a new tag from the phone. Giving items tags, renaming and removing tags, and merging items stay in the admin app.
 
 **Tags** (called categories until 24 Nov 2026)
-- I manage tags in the pantry admin app: adding, renaming and removing them, and choosing each item's tags. They aren't fixed. The phone can add a new tag too.
+- I manage tags in the pantry admin app: adding, renaming and removing them, and choosing each item's tags. They aren't fixed. The phone can add a new tag too, and Claude can add and rename tags.
 - An item can have any number of tags, or none. Renaming a tag renames it everywhere.
 - Tags are labels for finding and filtering things. They don't decide the aisle or the order of the shopping list.
 - Removing a tag takes it off every item that has it. The app tells me how many first, and it can be undone from History.
@@ -136,11 +136,11 @@ Each recipe records:
 
 **What Claude can do**
 - Claude can read pantry stock, the shopping list and my saved recipes, and search them.
-- Claude can add items, stock, list entries, recipes and stores without asking.
+- Claude can add items, stock, list entries, recipes, stores and tags without asking.
 - When I tell Claude what I've used ("I used the last of the rice"), it takes that off stock without asking. This doesn't count as an edit.
 - Claude must ask me to confirm before it edits or deletes anything else, including changing a store or an item's aisle.
 - Claude can read prices and the shopping list's estimated total. It can set the prices of many items at once, for example from a receipt or as estimates for items with none, after I confirm the whole batch once. It says whether the prices are estimates.
-- Claude can change an item's aisle in a store, but not add, rename or remove tags. Those stay in the admin app.
+- Claude can change an item's aisle in a store and its tags, and rename a tag, after asking. Removing a tag stays in the admin app.
 
 **Success looks like:**
 - I do four weekly shops in a row with nothing forgotten and nothing bought that I already had enough of.

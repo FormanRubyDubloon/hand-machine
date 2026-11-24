@@ -253,6 +253,12 @@ function supabaseBackend(db) {
     async deleteStores(ids) {
       if (ids.length) check(await db.from("stores").delete().in("id", ids));
     },
+    async addCategory(c, sort) {
+      check(await db.from("categories").insert({ id: c.id, name: c.name, sort }));
+    },
+    async renameCategory(id, name) {
+      check(await db.from("categories").update({ name }).eq("id", id));
+    },
     async addHistory(row) {
       check(await db.from("history").insert(row));
     },
@@ -741,7 +747,7 @@ function findTag(data, ref) {
   const c = data.categories.find((x) => x.id === q || x.name.toLowerCase() === q.toLowerCase());
   if (c) return c.id;
   throw new ToolError(
-    `There's no tag "${q}". Use ones that exist (${categoriesAtoZ(data.categories).map((x) => x.name).join(", ")}). Claude can't add tags: the user adds them in Collca or on the phone.`
+    `There's no tag "${q}". Use ones that exist (${categoriesAtoZ(data.categories).map((x) => x.name).join(", ")}), or add it first with add_tag if the user wants a new one.`
   );
 }
 function tagIds(data, v, legacy) {
@@ -1391,7 +1397,7 @@ ${recipeLine(recipe, ctx.data.items)}`;
               anyOf: [{ type: "object", properties: { amount: { type: "number" }, measure: { type: "string", enum: ["g", "ml"] } }, required: ["amount", "measure"] }, { type: "null" }],
               description: 'Bulk only: what one pack holds, e.g. { amount: 1000, measure: "g" }. Used to check a recipe has enough.'
             },
-            tags: { type: ["array", "null"], items: { type: "string" }, description: "Replaces its tags: existing tags by name or id. [] or null clears them. Claude can't add new tags." },
+            tags: { type: ["array", "null"], items: { type: "string" }, description: "Replaces its tags: existing tags by name or id. [] or null clears them. For a new tag, add it first with add_tag." },
             aisle: {
               type: "object",
               properties: {
@@ -1718,6 +1724,77 @@ ${recipeLine(next, ctx.data.items)}`;
       const cleared = Object.values(ctx.data.items).map((i) => removeRecipeEntries(i, r.name)).filter((i) => !!i);
       await commit(ctx, { items: cleared, deleteRecipes: [r.id], title: `Deleted ${r.name}`, detail: cleared.length ? `Took ${plural(cleared.length, "thing")} off the shopping list` : void 0, recipeId: r.id, itemIds: cleared.map((i) => i.id) });
       return `Deleted ${r.name}.${cleared.length ? ` Took its ${plural(cleared.length, "item")} off the list.` : ""}`;
+    }
+  },
+  {
+    name: "add_tag",
+    title: "Add a tag",
+    description: "Adds a tag: a label for items such as Dairy, Breakfast or Snacks (get_categories_and_stores lists the ones there are). Needs no asking. Tags don't set aisles. To give items the new tag, use update_item or add_items. Claude can't remove tags; the user does that in Collca.",
+    inputSchema: { type: "object", properties: { name: { type: "string", description: 'As the user would say it: "World foods".' } }, required: ["name"] },
+    annotations: { readOnlyHint: false, destructiveHint: false },
+    async run(args, ctx) {
+      const name = str(args.name);
+      if (!name) throw new ToolError("Give the tag a name.");
+      const clash = ctx.data.categories.find((c) => c.name.toLowerCase() === name.toLowerCase());
+      if (clash) throw new ToolError(`There's already a tag called ${clash.name} [id: ${clash.id}].`);
+      const id = freshId(slug(name), (x) => ctx.data.categories.some((c) => c.id === x));
+      await ctx.backend.addCategory({ id, name }, ctx.data.categories.length);
+      await ctx.backend.addHistory({
+        id: uid("h"),
+        at: ctx.now().toISOString(),
+        who: "claude",
+        title: `Added the tag ${name}`,
+        detail: null,
+        item_ids: [],
+        recipe_id: null,
+        undo: null,
+        undone: false,
+        key: null
+      });
+      ctx.data.categories = [...ctx.data.categories, { id, name }];
+      return `Added the tag ${name} [id: ${id}].`;
+    }
+  },
+  {
+    name: "rename_tag",
+    title: "Rename a tag",
+    description: "Renames a tag everywhere: every item with it shows the new name. Its colour and icon stay. An edit: ask the user first, saying the old and new names, then call with confirmed: true. It can't be undone from History, so to go back, rename it again.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tag: { type: "string", description: "The tag's name or id (get_categories_and_stores)." },
+        name: { type: "string", description: "The new name." },
+        confirmed
+      },
+      required: ["tag", "name", "confirmed"]
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+    async run(args, ctx) {
+      const id = findTag(ctx.data, args.tag);
+      if (!id) throw new ToolError("Say which tag: its name or id.");
+      const old = ctx.data.categories.find((c) => c.id === id);
+      const name = str(args.name);
+      if (!name) throw new ToolError("Give the new name.");
+      if (name === old.name) return `${old.name} already has that name.`;
+      const clash = ctx.data.categories.find((c) => c.id !== id && c.name.toLowerCase() === name.toLowerCase());
+      if (clash) throw new ToolError(`There's already a tag called ${clash.name}. Two tags can't share a name.`);
+      needConfirmed(args, `renaming ${old.name}`);
+      await ctx.backend.renameCategory(id, name);
+      const n = Object.values(ctx.data.items).filter((i) => tagsOf(i).includes(id)).length;
+      await ctx.backend.addHistory({
+        id: uid("h"),
+        at: ctx.now().toISOString(),
+        who: "claude",
+        title: `Renamed the tag ${old.name} to ${name}`,
+        detail: n ? `On ${plural(n, "item")}` : null,
+        item_ids: [],
+        recipe_id: null,
+        undo: null,
+        undone: false,
+        key: null
+      });
+      ctx.data.categories = ctx.data.categories.map((c) => c.id === id ? { ...c, name } : c);
+      return `Renamed ${old.name} to ${name}${n ? `, on ${plural(n, "item")}` : ""}. It can't be undone from History; to go back, rename it again.`;
     }
   },
   {

@@ -379,3 +379,28 @@ describe("tags and items (Batch 4c)", () => {
     expect((await call("search_pantry", { query: "tins" })).text).toContain("Eggs [id: eggs]")
   })
 })
+
+describe("adding and renaming tags", () => {
+  it("adds a tag without asking, once per name", async () => {
+    const { call, mem } = setup()
+    const r = await call("add_tag", { name: "World foods" })
+    expect(r.isError).toBe(false)
+    expect(mem.state.categories.some((c) => c.id === "world-foods" && c.name === "World foods")).toBe(true)
+    expect(mem.history[0]).toMatchObject({ who: "claude", title: "Added the tag World foods" })
+    expect((await call("add_tag", { name: "world foods" })).isError).toBe(true)
+    // The new tag can go straight onto an item.
+    await call("update_item", { item: "eggs", changes: { tags: ["World foods"] }, confirmed: true })
+    expect(mem.state.items.eggs.tagIds).toEqual(["world-foods"])
+  })
+
+  it("renames a tag only once confirmed, keeping its id, and not onto another tag's name", async () => {
+    const { call, mem } = setup()
+    expect((await call("rename_tag", { tag: "Baking", name: "Baking and spices" })).isError).toBe(true)
+    expect(mem.state.categories.find((c) => c.id === "baking")!.name).toBe("Baking")
+    const r = await call("rename_tag", { tag: "Baking", name: "Baking and spices", confirmed: true })
+    expect(r.isError).toBe(false)
+    expect(mem.state.categories.find((c) => c.id === "baking")!.name).toBe("Baking and spices")
+    expect(mem.history[0].title).toBe("Renamed the tag Baking to Baking and spices")
+    expect((await call("rename_tag", { tag: "baking", name: "Tins & jars", confirmed: true })).isError).toBe(true)
+  })
+})
