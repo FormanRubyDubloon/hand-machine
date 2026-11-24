@@ -54,6 +54,7 @@ function App() {
           <Stack.Screen name="add" options={sheet} />
           <Stack.Screen name="aisle" options={sheet} />
           <Stack.Screen name="filters" options={sheet} />
+          <Stack.Screen name="pantry-filters" options={sheet} />
           <Stack.Screen name="skipped" options={sheet} />
           <Stack.Screen name="stores" options={sheet} />
           <Stack.Screen name="cooking/[id]" options={{ ...full, contentStyle: { backgroundColor: "#3D2B1F" } }} />

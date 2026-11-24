@@ -54,6 +54,9 @@ const shows: Record<PantryShow, (i: Item) => boolean> = {
 export type PantryView = { sort: PantrySort; location: Location | "none" | null; show: PantryShow | null }
 export const defaultView: PantryView = { sort: "name", location: null, show: null }
 
+/** How many of All items' filters are on: a location, a Show filter, and showing everything (not In stock only). */
+export const pantryFiltersOn = (v: PantryView, all: boolean) => Number(v.location !== null) + Number(v.show !== null) + Number(all)
+
 /** The all-items view: one location and one Show filter at most, then sorted. */
 export function viewOf(items: Item[], v: PantryView): Item[] {
   return items

@@ -5,6 +5,7 @@
 // Claude connection all read and write the same items, recipes, categories and stores.
 import type { Category, HistoryEntry, Item, Items, ListEntry, Recipe, Store } from "../../../prototypes/pantry-app/src/model"
 import type { GroupBy, ListFilter } from "../logic/list"
+import type { PantryView } from "../logic/pantry"
 
 export type { Category, HistoryEntry, Item, Items, ListEntry, Recipe, Store }
 
@@ -72,6 +73,8 @@ export type PhoneState = {
   filter?: ListFilter
   /** The pantry's "In stock only" switch turned off: show everything. Kept on this phone, not synced. */
   pantryAll?: boolean
+  /** All items' sort and filters (its Filters sheet). Kept on this phone, not synced. */
+  pantryView?: PantryView
   theme: Theme
   syncedAt?: string
 }
