@@ -360,3 +360,43 @@ These would be a Batch 6b if they should be in the library. The list screen was 
 
 - **Code Connect** (optional in the plan): not set up.
 - **Prototype interactions and motion:** not built in any batch.
+
+## Batch 6b: Phone screen pieces (24 November 2026)
+
+Six component sets added to the Phone page's "phone kit" section, built from the screens Batch 7 found missing: `mobile/src/app/(tabs)/list/index.tsx` (`ListRow` and the heading), `home/index.tsx` (the tiles) and `pantry/index.tsx` with `ui/locations.tsx` (the cards). Checked by screenshot in Light, Dark and Focus with a mock screen (removed afterwards). Built from the code as committed on `main` at `1dc8a76`; nothing in the app was changed.
+
+### Components
+
+- **phone-count-box** (2): to get (the number left) and done (filled olive, check 24 at stroke 2.5). 48 square, radius 4, 1px olive line. Not the web `count-box` (52, square, dashed variants): the phone's is its own thing.
+- **phone-list-row** (3): to get, done (name muted and struck through, box done), ordered (name muted, box still counts). `name`, `note` and `show note` properties; the count box is exposed. Min height 64, gap 12, 1px border line. There's no skipped row: skipped items leave the list.
+- **phone-aisle-header** (4): `by` aisle or tag (the tag mark, md, leads the title) × `filters` off or on (the icon button outline or filled). Store picker, Display 32 title with the 2pt olive underline, and the meta line (aisle label in bold ink, what's left, "n skipped" in bold olive). `title` and `store` properties; the filter button and tag mark are exposed.
+- **phone-home-tile** (2): default and pressed. Number, label and an optional sub-line. **phone-home-tiles** (2): three tiles (to buy, to use soon, to review) or two (nothing to review), sharing the width and matching the tallest.
+- **phone-location-card** (2): default and pressed. Icon square, serif name, optional "n to use soon", count. `icon` is a swap with the seven location icons as preferred values.
+
+### Tokens, styles and icons added
+
+- **Icons:** `icon/refrigerator`, `icon/circle-dashed`, `icon/layout-list` (Lucide 1.70.0, the version on the Icons page; the phone has 1.77.0) and `icon/cupboard`, the app's own two-door cupboard, which isn't Lucide.
+- **Text styles** under `phone/`: `display-32` (the list heading; the kit's Display takes any size), `list-name` (500 20/25), `count` (600 20, shown as Bold), `meta` and `meta-strong` (the heading's caption at 15), `store` (500 15), `tile-number` (700 30/34), `tile-label` (500 14/18), `caption-sm` (13), `location` (serif 700 26, spacing 1, uppercase) and `location-count` (400 20). These are one-off sizes in the screens, not kit styles; each says where it comes from.
+- No new colour tokens. Phone colours map as before: ink → foreground, muted → muted-foreground, olive → primary, onOlive → primary-foreground, panel → muted, line → border, stone → line-strong.
+
+### Gaps
+
+- **Strikethrough is drawn, not set.** In Figma a text property carries its text decoration into every variant that uses it: striking the done row's name struck the to-get and ordered rows too, and clearing it cleared all three. The done row's name is a hugging frame with a 1.5px line across it (muted, stretched to the text). It follows the name's width but only covers one line, and that name doesn't wrap (the others do).
+- **Filter icon is 20, not 22.** The heading reuses `phone-icon-button`, whose icon is held at 20; the code passes a 22 icon. Resizing the swapped icon in the instance had no effect.
+- **The meta line is one text with styled runs,** so it has no text property: edit the text directly. "n skipped" only shows when something is skipped; delete that run for a list with none.
+- **Stevie Sans is wider than Figtree.** At 110 wide, "things to buy" wraps to two lines in Figma; the app (Figtree) fits it on one, so Figma's three-tile row is taller (119 against about 99). Expected while the app draws Figtree.
+- **Location icons** are drawn at 26 with stroke 1.9: the code's 1.75 scales with the icon in React Native, and Figma strokes don't scale.
+- **Not built:** the empty and no-match states of the heading (the underline goes, the button fades to 40%), the "Done here · next" banner, the "Shop done" banner, the Pantry tab's olive "n new items to review" banner, the Home emblem at 170 (the `collca-emblem` from Batch 5 in one colour) and the Use soon and Want to cook rows (`phone-row` fits them). Press scale (0.97) and the aisle slide aren't shown, as elsewhere.
+- **Focus:** none of these screens are Focus screens; the Focus check only confirms nothing breaks.
+
+### Compared with the simulator
+
+Home was compared with the app running on demo data in dark mode (iPhone 17, another session's Metro): tile fill, stone line, radius, number and label sizes match, apart from the wrap above. The list and Pantry tabs weren't compared live: a third simulator started for this hung on every `simctl` command (install worked, launch and open-URL never returned), and the two running simulators were being used by other sessions, so they weren't driven. Those pieces are checked against the code only.
+
+### Figma and tool slips found
+
+- **Setting `textDecoration` silently did nothing** the first time (it read back NONE); `setRangeTextDecoration` worked, then turned out to apply to every variant (above).
+- **`resetOverrides()` on an instance also resets its layer name,** so a later find by name failed. And swapping the icon on an instance that already had stroke overrides mixed the old vectors' colours into the new icon; resetting overrides first fixed it.
+- **Instance-swap preferred values need component keys,** not node ids; ids are accepted without complaint and give an empty list.
+- **One `figma_execute` timed out after five seconds** while loading fonts for eleven text styles; half were made. Rerun with a longer timeout.
+- `setRangeTextStyleId` and `mainComponent` need their async forms in this file (`setRangeTextStyleIdAsync`, `getMainComponentAsync`).
