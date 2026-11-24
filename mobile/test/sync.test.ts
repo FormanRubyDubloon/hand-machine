@@ -74,4 +74,17 @@ describe("sync", () => {
     // It differs from what Supabase now has, so it goes next time.
     expect(pendingCount(after)).toBe(1)
   })
+
+  it("an item deleted elsewhere goes from the phone too, list and all", async () => {
+    const salmon = egg({ id: "salmon-fillets", name: "Salmon fillets", inStock: 2 })
+    db.items = { eggs: egg() }
+    const s = phone({ items: { eggs: egg(), "salmon-fillets": salmon }, synced: { items: { eggs: egg(), "salmon-fillets": salmon }, categories: [], stores: [], recipes: [] } })
+    const after = applySync(s, s, await runSync(s))
+    expect(after.items["salmon-fillets"]).toBeUndefined()
+    expect(after.synced?.items["salmon-fillets"]).toBeUndefined()
+    expect(db.written).toEqual([])
+    // And it stays gone on the next sync.
+    const again = applySync(after, after, await runSync(after))
+    expect(again.items["salmon-fillets"]).toBeUndefined()
+  })
 })

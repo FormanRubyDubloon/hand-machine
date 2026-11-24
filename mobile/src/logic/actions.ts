@@ -147,15 +147,25 @@ export function addToList(s: PhoneState, id: string, qty = 1): PhoneState {
 }
 
 /**
+ * "Already got it" when adding: ticks off the amount just added, so it's in stock and shows as got on the list,
+ * struck through, until a new list starts. Only that amount: a Staple's own shortfall stays to get.
+ */
+export function gotNow(s: PhoneState, id: string, qty: number): PhoneState {
+  let next = s
+  for (let k = 0; k < qty; k++) next = tickOne(next, id)
+  return next
+}
+
+/**
  * Something that isn't in the pantry. It becomes a pantry item now (minimum 0, none in stock, marked New), so
  * Collca on the web and Claude see it, and it's in stock once you tick it off. Its location is a guess from its aisle.
  */
-export function addNew(s: PhoneState, name: string, categoryId: string): { state: PhoneState; id: string } {
+export function addNew(s: PhoneState, name: string, categoryId: string, qty = 1): { state: PhoneState; id: string } {
   const id = slugId(name, (x) => !!s.items[x])
   const item = normalise({
     id, name: cap(name.trim()), type: "counted", target: 0, inStock: 0, categoryId, where: [],
     location: locationFor(categoryId, s.categories, s.items), review: true, editedAt: now(),
-    entries: [{ source: { kind: "hand" }, qty: 1, at: now() }],
+    entries: [{ source: { kind: "hand" }, qty: Math.max(1, qty), at: now() }],
   })
   return { state: withShopRow({ ...s, items: { ...s.items, [id]: item } }, id), id }
 }
@@ -289,7 +299,8 @@ export const approve = (s: PhoneState, id: string) => edit(s, id, (x) => ({ ...x
 export const chooseStore = (s: PhoneState, storeId: string): PhoneState => ({ ...s, storeId, aisle: 0 })
 
 export function renameStore(s: PhoneState, storeId: string, name: string): PhoneState {
-  if (!name.trim()) return s
+  // Same name: no change, so saving twice (on blur and on Done) makes one History entry.
+  if (!name.trim() || s.stores.find((x) => x.id === storeId)?.name === name.trim()) return s
   return { ...s, stores: s.stores.map((x) => (x.id === storeId ? { ...x, name: name.trim() } : x)) }
 }
 

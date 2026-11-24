@@ -201,7 +201,7 @@ Scopes were widened on existing tokens so they can be used where the code uses t
 
 **Radio group.** `radio-group-item` (`checked` × `state`) and `radio-group` (three items, first checked). No labels in the component; the label pairing in stories is composition.
 
-**Switch.** `size` (default 33×18, sm 25×14) × `checked` × `state`. The thumb is positioned by hand (`translate-x-[calc(100%+2px)]` becomes 2px from the edge in both positions).
+**Switch.** `size` (default 33×18, sm 25×14) × `checked` × `state`. The thumb is positioned by hand (`translate-x-[calc(100%+2px)]` becomes 2px from the edge in both positions). Since 24 November 2026 the track's corners are `--radius` (`rounded-(--radius)`) and the thumb's are `calc(var(--radius) - 2px)`, so both come out fully round at these sizes. **The Figma component still has square corners:** bind the track to `radius` and give the thumb 8px (Figma can't subtract from a variable).
 
 **Avatar.** `size` (default, sm, lg) with `children` (initials) and a `badge` toggle. `avatar-group` has three avatars and a count at size default only.
 - **Not expressible:** the avatar's 1px border uses `mix-blend-darken` in light and `mix-blend-lighten` in dark. Figma can't switch blend mode with a variable, so it is a normal border.

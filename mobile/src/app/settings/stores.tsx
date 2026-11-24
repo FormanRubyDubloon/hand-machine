@@ -7,6 +7,7 @@ import { useStore } from "../../data/store"
 import { addStore } from "../../logic/actions"
 import { plural } from "../../logic/phrases"
 import { Button, Caption, Field, Pill, Press } from "../../ui/kit"
+import { useLeaveSettings } from "../../ui/leave-settings"
 import { SheetHeader } from "../../ui/sheet"
 import { font, useColours } from "../../ui/theme"
 
@@ -14,9 +15,10 @@ export default function Stores() {
   const { state, change, say } = useStore()
   const c = useColours()
   const [name, setName] = React.useState("")
+  const leave = useLeaveSettings()
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <SheetHeader back={{ label: "Settings", onPress: () => router.back() }} full onDone={() => router.dismissAll()} />
+      <SheetHeader back={{ label: "Settings", onPress: () => router.back() }} full onDone={() => leave(name.trim())} />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} keyboardShouldPersistTaps="handled">
         <Caption style={{ fontSize: 15 }}>The store you shop in sets the aisle order on your list.</Caption>
         <View style={{ borderTopWidth: 1, borderTopColor: c.line }}>

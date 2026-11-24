@@ -1,6 +1,7 @@
 // The item sheet (full screen, always dark): what's in the pantry, the minimum, how many to get, a note, and
-// Got all / Remove from list. Things not in the pantry yet get an aisle picker instead of stock.
+// Got all / Remove from list, and Edit in pantry for the rest. Things not in the pantry yet get an aisle picker instead of stock.
 import { router, useLocalSearchParams } from "expo-router"
+import { ChevronRight } from "lucide-react-native"
 import * as React from "react"
 import { ScrollView, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -41,9 +42,18 @@ export default function ListItemSheet() {
   const recipeNote = (item.entries ?? []).find((e) => e.source.kind === "recipe")
   const options = aislesOf(store, state.categories).flatMap((a) => a.categories.filter((k) => k.id).map((k) => ({ id: k.id, num: a.number ? `Aisle ${a.number}` : "–", name: k.name })))
 
-  const close = () => {
+  const saveNote = () => {
     if (handAdded && note !== (item.notes ?? "")) change((s) => setListNote(s, id, note), { title: `Changed the note on ${item.name.toLowerCase()}` })
+  }
+  const close = () => {
+    saveNote()
     router.back()
+  }
+  // To the item in the Pantry tab, for anything this sheet doesn't change (location, use-by, notes, store).
+  const editInPantry = () => {
+    saveNote()
+    router.back()
+    router.navigate({ pathname: "/pantry/item/[id]", params: { id } })
   }
   const gotAll = () => {
     if (row.done) {
@@ -76,6 +86,12 @@ export default function ListItemSheet() {
               <Box label="Minimum to keep" value={minText(item)} />
             </View>
             {openNote && <Text style={{ fontFamily: font.regular, fontSize: 14, lineHeight: 19, color: focus.label }}>Only full {item.unit?.[1] ?? "packs"} count towards the minimum, so you have {counts} that {counts === 1 ? "counts" : "count"}.</Text>}
+            {!item.oneOff && (
+              <Press fade onPress={editInPantry} accessibilityRole="link" accessibilityLabel={`Edit ${item.name} in the pantry`} style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}>
+                <Text style={{ fontFamily: font.semibold, fontSize: 15, letterSpacing: 0.9, textTransform: "uppercase", color: focus.gold }}>Edit in pantry</Text>
+                <ChevronRight size={18} color={focus.gold} />
+              </Press>
+            )}
           </View>
         )}
 
