@@ -400,3 +400,32 @@ Home was compared with the app running on demo data in dark mode (iPhone 17, ano
 - **Instance-swap preferred values need component keys,** not node ids; ids are accepted without complaint and give an empty list.
 - **One `figma_execute` timed out after five seconds** while loading fonts for eleven text styles; half were made. Rerun with a longer timeout.
 - `setRangeTextStyleId` and `mainComponent` need their async forms in this file (`setRangeTextStyleIdAsync`, `getMainComponentAsync`).
+
+## Screens in the Collca file (24 November 2026)
+
+Key screens built in **Collca** (`6D5zhdkR0tu2WWHRD1Pmsq`) from instances of this library, bound to its colour variables and text styles. Phone page: Home (Light and Dark), List mid-shop, List item sheet (Focus), Pantry, Item page, Recipe page, Cooking view (Focus), at 390 wide; the Item and Recipe pages run to their full scroll length. Web page: Pantry (Light and Dark), Shopping list, Item panel (Edit), at 1440 × 900. Content is made up (from the phone's demo data), not anyone's pantry.
+
+### Pieces the screens needed that the library doesn't have
+
+Built from frames bound to the tokens, and named "(not in kit)" or with the reason in the layer name:
+
+- **iOS status bar.** An empty 47px frame at the top of each phone screen.
+- **Phone list sheet's two stock boxes** (In the pantry now, Minimum to keep) and the **cooking view's step progress bars**.
+- **Recipe ingredient row** (name, status, add button). Its button is the kit's icon button.
+- **Pantry's "new items to review" banner.** The olive banner isn't in the kit; the screen uses the Info box in its place, so the colour is wrong there.
+- **Web header** (wordmark, nav, search, buttons). The **search field** is frames because `input-group` isn't published (its import says no published component has that key).
+- **Web tables.** `table-row` has four text columns, so the pantry table (nine columns with steppers, pills and tags) and the shopping list table are rows of frames holding library pieces.
+- **Item panel body.** `side-panel` has no slot for its body, so the body (packs, folds) is a frame laid over the panel. The folds (Stock rules, Where it lives and so on) aren't components.
+- **Cooking view step text** is 32/42 medium in the code; no text style matches, so it's `phone/name` with the size overridden.
+
+### Where a component didn't fit
+
+- `filter-sidebar` has fixed groups (Where it lives, Show) with sample counts; the web pantry's Status, Type and Tag groups can't be shown, and the counts were edited in place.
+- `segmented` has three segments; the shopping list's Stock control has four (All, Low, Out, Ordered), so Ordered is missing.
+- `collca-emblem` is in the library's olive and gold, not the phone Home's one-colour olive with the jar cut out.
+- In the tab bar's Pantry variant the label sits a little higher than the others.
+- In Dark, the switch's off state has a white thumb; check against the app.
+
+### Figma limit found (again)
+
+Library imports through the Desktop Bridge stalled twice: once with 59 imports fired at the same time, once later on a few icons. Importing one at a time works after the plugin is restarted. When it stalls, icons already used elsewhere in the file can be reused without importing.
