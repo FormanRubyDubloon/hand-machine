@@ -75,7 +75,7 @@ export default function Search() {
           <SearchIcon size={18} color={c.muted} style={{ position: "absolute", left: 14, top: 15 }} pointerEvents="none" />
         </View>
         <Press fade onPress={() => router.back()} accessibilityLabel="Close search" style={{ minHeight: 44, justifyContent: "center" }}>
-          <Text style={{ fontFamily: font.semibold, fontSize: 17, color: c.olive }}>Cancel</Text>
+          <Text style={{ fontFamily: font.semibold, fontSize: 17, color: c.primary }}>Cancel</Text>
         </Press>
       </View>
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: insets.bottom + 40 }}>
@@ -85,7 +85,7 @@ export default function Search() {
             <View style={{ paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: c.stone, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <Label>Recent</Label>
               <Press fade hitSlop={10} onPress={() => local((s) => ({ ...s, recentSearches: undefined }))} accessibilityLabel="Clear recent searches">
-                <Text style={{ fontFamily: font.semibold, fontSize: 14, color: c.olive }}>Clear</Text>
+                <Text style={{ fontFamily: font.semibold, fontSize: 14, color: c.primary }}>Clear</Text>
               </Press>
             </View>
             {recent.map((r) => (

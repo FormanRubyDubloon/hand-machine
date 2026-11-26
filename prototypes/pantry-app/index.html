@@ -24,6 +24,24 @@
     <meta name="twitter:description" content="Know what's in the cupboard, cook from what you have, and shop for what's missing. On your computer, your phone and in Claude." />
     <meta name="twitter:image" content="https://shopping-list-app-db5118.netlify.app/og-image.png" />
     <link rel="stylesheet" href="https://use.typekit.net/tvk6fub.css" />
+    <!-- Light or dark and the colour theme, set before the page draws so it never flashes the wrong one.
+         The same keys as src/theme.ts, which takes over once the app loads. -->
+    <script>
+      (function () {
+        var root = document.documentElement, dark = false, thyme = false
+        try {
+          var t = localStorage.getItem("pantry.theme")
+          dark = t === "dark" || (t !== "light" && matchMedia("(prefers-color-scheme: dark)").matches)
+          var c = JSON.parse(localStorage.getItem("collca.colourTheme") || "null")
+          thyme = !!c && c.theme === "thyme"
+        } catch (e) {}
+        if (new URLSearchParams(location.search).get("theme") !== "ds") root.classList.add("theme-warm")
+        if (dark) root.classList.add("dark")
+        if (thyme) root.classList.add("theme-thyme")
+        root.style.colorScheme = dark ? "dark" : "light"
+        root.style.background = thyme ? (dark ? "#344A31" : "#F2EDE0") : dark ? "#2A1D15" : "#F2EFE3"
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

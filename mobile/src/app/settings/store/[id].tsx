@@ -14,6 +14,7 @@ import { SheetHeader } from "../../../ui/sheet"
 import { font, useColours } from "../../../ui/theme"
 
 export default function StorePage() {
+  const { focus } = useColours()
   const { id } = useLocalSearchParams<{ id: string }>()
   const { state, change, local, say } = useStore()
   const c = useColours()

@@ -7,6 +7,7 @@ import type { Category, HistoryEntry, Item, Items, ListEntry, Recipe, Store } fr
 import type { GroupBy, ListFilter } from "../logic/list"
 import type { PantryView } from "../logic/pantry"
 import type { Timer } from "../logic/timers"
+import type { ColourTheme } from "../../../prototypes/shared/src/colour-theme"
 
 export type { Category, HistoryEntry, Item, Items, ListEntry, Recipe, Store }
 
@@ -79,6 +80,11 @@ export type PhoneState = {
   /** All items' sort and filters (its Filters sheet). Kept on this phone, not synced. */
   pantryView?: PantryView
   theme: Theme
+  /**
+   * The colour theme (Walnut or Thyme) and when it was chosen. Saved on the account so the web matches;
+   * this copy lets the phone start in the right theme offline. `unsent` until the account has it.
+   */
+  colourTheme?: { theme: ColourTheme; at?: string; unsent?: boolean }
   syncedAt?: string
 }
 

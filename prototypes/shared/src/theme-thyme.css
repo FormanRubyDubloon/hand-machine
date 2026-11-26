@@ -1,0 +1,105 @@
+/*
+  Thyme colour theme (TOKENS-03, "Green and mustard" in the handoff: claude/handoff-themes.md).
+  Sits on top of theme-warm.css, which still sets the type, radius and focus ring for both
+  colour themes. Walnut, the original warm colours, is theme-warm.css on its own.
+
+  On: <html class="theme-warm theme-thyme">, plus .dark for dark. The class is set in each
+  app's index.html before the page draws (no flash), and by colour-theme.ts after that.
+
+  A third theme is one more file like this one: the same token names, other values.
+  Hex in the comments is the handoff's; "generated" means Claude filled a token TOKENS-03 doesn't cover.
+*/
+
+:root.theme-warm.theme-thyme,
+.theme-warm [data-colour-theme="thyme"] {
+  --background: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --foreground: oklch(0.301 0.041 139.5); /* #23331F */
+  --card: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --card-foreground: oklch(0.301 0.041 139.5); /* #23331F */
+  --popover: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --popover-foreground: oklch(0.301 0.041 139.5); /* #23331F */
+  --primary: oklch(0.497 0.094 119.8); /* #5C6A26 */
+  --primary-foreground: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --secondary: oklch(0.916 0.044 91.3); /* #EEE3C3 */
+  --secondary-foreground: oklch(0.301 0.041 139.5); /* #23331F */
+  --muted: oklch(0.916 0.044 91.3); /* #EEE3C3 */
+  --muted-foreground: oklch(0.456 0.037 137.9); /* #4D5C48 */
+  --accent: oklch(0.916 0.044 91.3); /* #EEE3C3 */
+  --accent-foreground: oklch(0.301 0.041 139.5); /* #23331F */
+  --destructive: oklch(0.489 0.148 33.6); /* #A3361F generated */
+  --destructive-foreground: oklch(0.946 0.018 89.4); /* #F2EDE0 generated */
+  --border: oklch(0.877 0.025 89.2); /* #DDD6C4 */
+  --input: oklch(0.596 0.033 94.5); /* #857F69 darkened from #B3AC98 for 3:1 (Isaac, 26 Nov 2026) */
+  --ring: oklch(0.456 0.037 137.9); /* #4D5C48 generated (= muted) */
+  --chart-1: oklch(0.937 0.054 92.2); /* #F7EAC2 generated */
+  --chart-2: oklch(0.784 0.144 86.2); /* #E1B136 generated */
+  --chart-3: oklch(0.715 0.159 64.4); /* #E68A0A generated */
+  --chart-4: oklch(0.497 0.094 119.8); /* #5C6A26 generated */
+  --chart-5: oklch(0.301 0.041 139.5); /* #23331F generated */
+  --line-strong: oklch(0.745 0.029 91.0); /* #B3AC98 TOKENS-03 line-input */
+  --placeholder: oklch(0.579 0.030 133.2); /* #737E6C generated */
+  --link: oklch(0.422 0.053 141.8); /* #3D553A */
+  --nav-active: oklch(0.633 0.141 63.6); /* #C4740A darkened from #E68A0A for 3:1 (Isaac, 26 Nov 2026) */
+  --status-out: oklch(0.784 0.144 86.2); /* #E1B136 */
+  --status-out-foreground: oklch(0.301 0.041 139.5); /* #23331F */
+  --status-low: oklch(0.937 0.054 92.2); /* #F7EAC2 */
+  --status-low-border: oklch(0.784 0.144 86.2); /* #E1B136 */
+  --status-low-foreground: oklch(0.301 0.041 139.5); /* #23331F */
+  --sidebar: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --sidebar-foreground: oklch(0.301 0.041 139.5); /* #23331F */
+  --sidebar-primary: oklch(0.497 0.094 119.8); /* #5C6A26 */
+  --sidebar-primary-foreground: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --sidebar-accent: oklch(0.916 0.044 91.3); /* #EEE3C3 */
+  --sidebar-accent-foreground: oklch(0.301 0.041 139.5); /* #23331F */
+  --sidebar-border: oklch(0.877 0.025 89.2); /* #DDD6C4 */
+  --sidebar-ring: oklch(0.456 0.037 137.9); /* #4D5C48 */
+  /* The New pill, mustard in light and dark (generated) */
+  --new: oklch(0.802 0.146 88.2); /* #E5B83A */
+  --new-border: oklch(0.497 0.094 119.8); /* #5C6A26 */
+  --new-foreground: oklch(0.301 0.041 139.5); /* #23331F, 7.2:1 */
+}
+
+:root.theme-warm.theme-thyme.dark,
+.theme-warm.dark [data-colour-theme="thyme"] {
+  --background: oklch(0.383 0.050 141.6); /* #344A31 */
+  --foreground: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --card: oklch(0.408 0.052 140.9); /* #3A5136 generated */
+  --card-foreground: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --popover: oklch(0.408 0.052 140.9); /* #3A5136 */
+  --popover-foreground: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --primary: oklch(0.802 0.146 88.2); /* #E5B83A */
+  --primary-foreground: oklch(0.301 0.041 139.5); /* #23331F */
+  --secondary: oklch(0.438 0.057 141.2); /* #405A3C */
+  --secondary-foreground: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --muted: oklch(0.438 0.057 141.2); /* #405A3C */
+  --muted-foreground: oklch(0.869 0.023 126.3); /* #D0D7C7 */
+  --accent: oklch(0.438 0.057 141.2); /* #405A3C */
+  --accent-foreground: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --destructive: oklch(0.838 0.077 37.7); /* #F7B9A6 generated */
+  --destructive-foreground: oklch(0.301 0.041 139.5); /* #23331F generated */
+  --border: oklch(0.471 0.055 139.4); /* #4B6345 */
+  --input: oklch(0.661 0.048 139.0); /* #849A7E darkened from #B3AC98 for 3:1 (Isaac, 26 Nov 2026) */
+  --ring: oklch(0.869 0.023 126.3); /* #D0D7C7 generated (= muted) */
+  --chart-1: oklch(0.937 0.054 92.2); /* #F7EAC2 generated */
+  --chart-2: oklch(0.802 0.146 88.2); /* #E5B83A generated */
+  --chart-3: oklch(0.715 0.159 64.4); /* #E68A0A generated */
+  --chart-4: oklch(0.869 0.023 126.3); /* #D0D7C7 generated */
+  --chart-5: oklch(0.694 0.049 136.3); /* #8FA486 generated */
+  --line-strong: oklch(0.566 0.053 138.4); /* #677E60 TOKENS-03 line-input */
+  --placeholder: oklch(0.720 0.031 130.8); /* #9EA995 generated */
+  --link: oklch(0.802 0.146 88.2); /* #E5B83A */
+  --nav-active: oklch(0.715 0.159 64.4); /* #E68A0A TOKENS-03 */
+  --status-out: oklch(0.802 0.146 88.2); /* #E5B83A */
+  --status-out-foreground: oklch(0.301 0.041 139.5); /* #23331F */
+  --status-low: oklch(0.446 0.072 120.0); /* #4F5A2A */
+  --status-low-border: oklch(0.802 0.146 88.2); /* #E5B83A */
+  --status-low-foreground: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --sidebar: oklch(0.408 0.052 140.9); /* #3A5136 */
+  --sidebar-foreground: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --sidebar-primary: oklch(0.802 0.146 88.2); /* #E5B83A */
+  --sidebar-primary-foreground: oklch(0.301 0.041 139.5); /* #23331F */
+  --sidebar-accent: oklch(0.438 0.057 141.2); /* #405A3C */
+  --sidebar-accent-foreground: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --sidebar-border: oklch(0.471 0.055 139.4); /* #4B6345 */
+  --sidebar-ring: oklch(0.869 0.023 126.3); /* #D0D7C7 */
+}

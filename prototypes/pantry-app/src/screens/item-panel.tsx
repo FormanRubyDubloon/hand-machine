@@ -71,10 +71,10 @@ function placeText(l?: Location) {
 
 const label = "text-sm font-semibold"
 const hint = "text-[13px] leading-[18px] text-muted-foreground"
-const lineInput = "h-10 w-full border-0 border-b border-[var(--line-strong)] bg-transparent px-0.5 text-base text-foreground outline-none placeholder:text-[#8A7868] focus-visible:border-primary"
+const lineInput = "h-10 w-full border-0 border-b border-input bg-transparent px-0.5 text-base text-foreground outline-none placeholder:text-(--placeholder) focus-visible:border-primary"
 const quietButton = "h-10 rounded-[4px] border border-border bg-background px-4 text-xs font-semibold tracking-[0.1em] text-foreground uppercase hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
 const primaryButton = "h-10 rounded-[4px] border border-primary bg-primary px-4 text-xs font-semibold tracking-[0.1em] text-primary-foreground uppercase hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-45"
-const textLink = "self-start text-sm text-foreground underline underline-offset-4 hover:text-primary"
+const textLink = "self-start text-sm text-foreground underline underline-offset-4 hover:text-(--link)"
 const focus = "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
 
 /**
@@ -579,8 +579,8 @@ function AddPanel({ prefill, seed, onSaved, onClose }: { prefill?: string; seed?
                 if (el.value === DEFAULT_NAME) setTimeout(() => el.select(), 0)
               }}
               className={cn(
-                "h-12 w-full border-0 border-b-2 bg-transparent px-0.5 font-serif text-[30px] font-bold outline-none placeholder:text-[#8A7868]",
-                nameOk ? "border-primary text-foreground" : "border-[var(--line-strong)] text-muted-foreground",
+                "h-12 w-full border-0 border-b-2 bg-transparent px-0.5 font-serif text-[30px] font-bold outline-none placeholder:text-(--placeholder)",
+                nameOk ? "border-primary text-foreground" : "border-input text-muted-foreground",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
               )}
             />
@@ -719,7 +719,7 @@ function AddPanel({ prefill, seed, onSaved, onClose }: { prefill?: string; seed?
           {f.extras.includes("price") && (
             <label className="flex flex-col gap-1.5">
               <span className={label}>Price each</span>
-              <span className="flex items-center gap-1 border-b border-[var(--line-strong)] focus-within:border-primary">
+              <span className="flex items-center gap-1 border-b border-input focus-within:border-primary">
                 <span aria-hidden className="text-base text-muted-foreground">£</span>
                 <input className={cn(lineInput, "border-0")} inputMode="decimal" placeholder="0.00" value={f.price} onChange={(e) => setF((s) => ({ ...s, price: e.target.value }))} autoFocus />
               </span>
@@ -742,7 +742,7 @@ function AddPanel({ prefill, seed, onSaved, onClose }: { prefill?: string; seed?
           {f.extras.includes("notes") && (
             <label className="flex flex-col gap-1.5">
               <span className={label}>Notes</span>
-              <textarea rows={3} className={cn("resize-y rounded-[4px] border border-[var(--line-strong)] bg-transparent p-2.5 text-[15px] leading-[21px] outline-none placeholder:text-[#8A7868] focus-visible:border-primary")} placeholder="Anything worth remembering" value={i.notes ?? ""} onChange={(e) => set({ notes: e.target.value || undefined })} autoFocus />
+              <textarea rows={3} className={cn("resize-y rounded-[4px] border border-[var(--line-strong)] bg-transparent p-2.5 text-[15px] leading-[21px] outline-none placeholder:text-(--placeholder) focus-visible:border-primary")} placeholder="Anything worth remembering" value={i.notes ?? ""} onChange={(e) => set({ notes: e.target.value || undefined })} autoFocus />
             </label>
           )}
           {f.extras.length < CHIPS.length && (
@@ -1136,7 +1136,7 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
               <div className="flex gap-5">
                 <label className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span className={label}>Price each</span>
-                  <span className="flex items-center gap-1 border-b border-[var(--line-strong)] focus-within:border-primary">
+                  <span className="flex items-center gap-1 border-b border-input focus-within:border-primary">
                     <span aria-hidden className="text-base text-muted-foreground">£</span>
                     <BlurInput
                       className={cn(lineInput, "border-0")}
@@ -1181,7 +1181,7 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
                 <span className={label}>Notes</span>
                 <BlurInput
                   multiline
-                  className="resize-y rounded-[4px] border border-[var(--line-strong)] bg-transparent p-2.5 text-[15px] leading-[21px] outline-none placeholder:text-[#8A7868] focus-visible:border-primary"
+                  className="resize-y rounded-[4px] border border-[var(--line-strong)] bg-transparent p-2.5 text-[15px] leading-[21px] outline-none placeholder:text-(--placeholder) focus-visible:border-primary"
                   placeholder="Anything worth remembering"
                   value={i.notes ?? ""}
                   onCommit={(v) => v !== (i.notes ?? "") && set({ notes: v || undefined })}
@@ -1194,7 +1194,7 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
                 <ul className="-my-3 flex flex-col gap-1">
                   {usedIn.map((r) => (
                     <li key={r.id} className="flex justify-between gap-4 py-2 text-sm">
-                      <a className={cn("underline underline-offset-4 hover:text-primary", focus)} href={`#/recipes/cook/${r.id}`}>{r.name}</a>
+                      <a className={cn("underline underline-offset-4 hover:text-(--link)", focus)} href={`#/recipes/cook/${r.id}`}>{r.name}</a>
                       <span className="text-right text-muted-foreground">{r.ingredients.find((g) => g.itemId === i.id)?.text}</span>
                     </li>
                   ))}
@@ -1212,7 +1212,7 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
                     <span className="shrink-0 text-muted-foreground">{whenText(last.at)}</span>
                   </div>
                 )}
-                <a className={cn("self-start text-sm font-semibold underline underline-offset-4 hover:text-primary", focus)} href="#/">See full history</a>
+                <a className={cn("self-start text-sm font-semibold underline underline-offset-4 hover:text-(--link)", focus)} href="#/">See full history</a>
               </div>
             </Fold>
           </section>

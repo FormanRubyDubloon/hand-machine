@@ -45,7 +45,7 @@ export default function Skipped() {
                   // Bringing back the last one leaves nothing here, so the sheet closes.
                   if (rows.length === 1) router.back()
                 }} accessibilityLabel={`Bring back ${r.item.name}`} style={{ minHeight: 44, justifyContent: "center" }}>
-                <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.olive }}>Bring back</Text>
+                <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.primary }}>Bring back</Text>
               </Press>
             </View>
           ))}

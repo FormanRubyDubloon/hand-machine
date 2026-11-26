@@ -120,7 +120,7 @@ export default function RecipePage() {
                         say(row.item ? `Added ${label} to the list.` : `Added ${label} to the list. It joins your pantry once you buy it.`)
                       }}
                     >
-                      <Plus size={22} color={st.short ? c.onOlive : c.ink} strokeWidth={2} />
+                      <Plus size={22} color={st.short ? c.onPrimary : c.ink} strokeWidth={2} />
                     </IconButton>
                   )}
                 </View>

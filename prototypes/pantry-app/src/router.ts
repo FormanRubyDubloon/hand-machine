@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react"
 
 export type RecipesTab = "cook" | "all"
-export type SettingsTab = "general" | "stores" | "tags" | "claude" | "account"
+export type SettingsTab = "stores" | "tags" | "claude" | "appearance" | "account"
 
 export type Route =
   | { name: "home"; item?: string; recipe?: string }
@@ -45,7 +45,12 @@ export function parse(hash: string): Route {
       return { name: "list", add: parts[1] === "add" || undefined }
     case "settings": {
       // Tags were called categories until 24 Nov 2026; old #/settings/categories links still open them.
-      const tab: SettingsTab = parts[1] === "categories" ? "tags" : parts[1] === "claude" || parts[1] === "account" || parts[1] === "tags" || parts[1] === "stores" ? parts[1] : "general"
+      // General (only the theme) became Appearance on 26 Nov 2026, so #/settings/general opens that.
+      const tab: SettingsTab =
+        parts[1] === "categories" ? "tags"
+        : parts[1] === "general" ? "appearance"
+        : parts[1] === "claude" || parts[1] === "account" || parts[1] === "tags" || parts[1] === "appearance" ? parts[1]
+        : "stores"
       return tab === "stores" && parts[2] ? { name: "settings", tab, store: parts[2] } : { name: "settings", tab }
     }
     default:

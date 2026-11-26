@@ -41,7 +41,7 @@ export default function Recipes() {
             <Segmented<Show> label="Show" value={show} onChange={setShow} options={[{ value: "all", label: "All" }, { value: "shop", label: "This shop" }]} />
           </View>
           <IconButton label={`Sort, ${current.label}`} size={46} filled={sort !== "name"} onPress={() => setSorting(true)}>
-            <ArrowUpDown size={22} color={sort !== "name" ? c.onOlive : c.ink} strokeWidth={2} />
+            <ArrowUpDown size={22} color={sort !== "name" ? c.onPrimary : c.ink} strokeWidth={2} />
           </IconButton>
         </View>
       </View>
@@ -63,7 +63,7 @@ export default function Recipes() {
               {short ? (
                 <Text style={{ fontFamily: font.semibold, fontSize: 17, color: c.muted }}>−{short}</Text>
               ) : (
-                <Check size={22} color={c.olive} strokeWidth={2.5} />
+                <Check size={22} color={c.primary} strokeWidth={2.5} />
               )}
             </Press>
           )
@@ -88,7 +88,7 @@ function SortMenu({ open, value, onPick, onClose }: { open: boolean; value: Sort
             return (
               <Press key={o.value} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => onPick(o.value)} style={{ minHeight: 52, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <Text style={{ fontFamily: on ? font.bold : font.medium, fontSize: 17, color: c.ink }}>{o.label}</Text>
-                {on && <Check size={22} color={c.olive} strokeWidth={2.5} />}
+                {on && <Check size={22} color={c.primary} strokeWidth={2.5} />}
               </Press>
             )
           })}

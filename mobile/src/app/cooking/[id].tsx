@@ -11,9 +11,10 @@ import { useStore } from "../../data/store"
 import { ingredientsForStep } from "../../logic/steps"
 import { Button, Press } from "../../ui/kit"
 import { StepTimers, TimerStrip } from "../../ui/timers"
-import { focus, font } from "../../ui/theme"
+import { font, useColours } from "../../ui/theme"
 
 export default function Cooking() {
+  const { focus } = useColours()
   // Keeps the screen on while this view is open (the phone only; browsers may refuse a wake lock).
   React.useEffect(() => {
     if (Platform.OS === "web") return
@@ -57,7 +58,7 @@ export default function Cooking() {
           {/* A bullet for each, in a muted colour (Isaac's change, 24 Nov 2026). */}
           {uses.map((u, k) => (
             <View key={k} style={{ flexDirection: "row", gap: 10 }}>
-              <Text style={{ fontFamily: font.regular, fontSize: 17, lineHeight: 23, color: "rgba(242,239,227,0.35)" }}>•</Text>
+              <Text style={{ fontFamily: font.regular, fontSize: 17, lineHeight: 23, color: focus.ink, opacity: 0.35 }}>•</Text>
               <Text style={{ flex: 1, fontFamily: font.regular, fontSize: 17, lineHeight: 23, color: focus.label }}>{u.text}</Text>
             </View>
           ))}

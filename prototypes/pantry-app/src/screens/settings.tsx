@@ -19,7 +19,7 @@ import {
 import { href, navigate, type SettingsTab } from "../router"
 import { usePantry } from "../state"
 import { signOutOfSupabase } from "../../../shared/src/auth"
-import { getTheme, setTheme, type ThemeChoice } from "../theme"
+import { Appearance } from "./appearance"
 import { Eyebrow, Field, NavRow, PageTitle, Segmented } from "../components"
 import { CategoryLookPicker } from "../category-look"
 
@@ -553,43 +553,6 @@ function ClaudeConnection() {
 
 // ---------- SET-03 ----------
 
-// ---------- General ----------
-
-function General() {
-  const [theme, setThemeState] = React.useState<ThemeChoice>(getTheme)
-  const chooseTheme = (t: ThemeChoice) => {
-    setTheme(t)
-    setThemeState(t)
-  }
-  const row = (title: string, sub: string, action: React.ReactNode) => (
-    <div className="flex items-center justify-between gap-6 border-b border-border py-4">
-      <span className="flex flex-col">
-        <span className="text-sm font-semibold">{title}</span>
-        <span className="max-w-md text-xs text-muted-foreground">{sub}</span>
-      </span>
-      {action}
-    </div>
-  )
-  return (
-    <div className="flex max-w-2xl flex-col gap-8">
-      <section className="flex flex-col">
-        <Eyebrow className="pb-1 text-foreground">Appearance</Eyebrow>
-        {row(
-          "Theme",
-          "Auto follows this computer's light or dark setting. Only Collca on this computer changes; the shopping app follows its own device.",
-          <Segmented
-            label="Theme"
-            className="w-60"
-            value={theme}
-            onChange={chooseTheme}
-            options={[{ value: "auto", label: "Auto" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]}
-          />,
-        )}
-      </section>
-    </div>
-  )
-}
-
 function Account() {
   const { db, items, actions, phoneSyncedAt } = usePantry()
   const [confirm, setConfirm] = React.useState(false)
@@ -655,10 +618,10 @@ function Account() {
 // ---------- shell ----------
 
 const tabs: { tab: SettingsTab; title: string; sub: string; intro: string }[] = [
-  { tab: "general", title: "General", sub: "Theme", intro: "Settings for this computer." },
   { tab: "stores", title: "Stores and aisles", sub: "Your shops, their aisles and places", intro: "Your shops and where they are. Each item has its own aisle in each shop, learned when you tick it off on your phone, so the shopping list follows your walk round the shop." },
   { tab: "tags", title: "Tags", sub: "Labels for finding and filtering", intro: "Labels such as Dairy or Breakfast. An item can have several, or none. Give items their tags from their panel." },
   { tab: "claude", title: "Claude connection", sub: "What Claude can read and change", intro: "Lets Claude use your pantry from the Claude phone app, desktop or web." },
+  { tab: "appearance", title: "Appearance", sub: "Colour theme, light or dark", intro: "" },
   { tab: "account", title: "Account", sub: "Sign-in, devices and your data", intro: "One account for the pantry, your phone and Claude." },
 ]
 
@@ -675,10 +638,12 @@ export function Settings({ tab, store }: { tab: SettingsTab; store?: string }) {
       <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-10 py-7">
         {tab === "tags" ? (
           <Categories intro={current.intro} />
+        ) : tab === "appearance" ? (
+          <Appearance />
         ) : (
           <>
             <PageTitle title={current.title} subtitle={current.intro} />
-            {tab === "general" ? <General /> : tab === "stores" ? <StoresAndAisles key={store} initialStore={store} /> : tab === "claude" ? <ClaudeConnection /> : <Account />}
+            {tab === "stores" ? <StoresAndAisles key={store} initialStore={store} /> : tab === "claude" ? <ClaudeConnection /> : <Account />}
           </>
         )}
       </div>

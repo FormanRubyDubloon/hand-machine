@@ -15,12 +15,13 @@ import { restoreTicks, tickAll, tickOne, untick, clearShop } from "../../../logi
 import { asksForAisle, filtersOn, leftOf, refreshShop, rowsOf, shopGroups, shownRows, sortRows, tickedText, type Row } from "../../../logic/list"
 import { Body, Button, Caption, Display, IconButton, Press } from "../../../ui/kit"
 import { TagMark } from "../../../ui/tags"
-import { focus, font, radius, space, useColours, useReduceMotion } from "../../../ui/theme"
+import { font, radius, space, useColours, useReduceMotion } from "../../../ui/theme"
 
 /** Bought more than one: how long after the last tap the aisle question waits. */
 const ASK_AFTER_MS = 1500
 
 export default function ListScreen() {
+  const { focus } = useColours()
   const { state, change, local, say, status, online, pulling, pullToSync } = useStore()
   const c = useColours()
   const insets = useSafeAreaInsets()
@@ -167,7 +168,7 @@ export default function ListScreen() {
               {/* Shopping by tag, the heading leads with the tag's icon in its colour (Isaac's change, 24 Nov 2026). */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 {!all && headingTag && <TagMark tag={headingTag} size="md" />}
-                <View style={{ flexShrink: 1, alignSelf: "flex-start", borderBottomWidth: empty || noMatch ? 0 : 2, borderBottomColor: c.olive, paddingBottom: 2, marginBottom: 4 }}>
+                <View style={{ flexShrink: 1, alignSelf: "flex-start", borderBottomWidth: empty || noMatch ? 0 : 2, borderBottomColor: c.primary, paddingBottom: 2, marginBottom: 4 }}>
                   <Display size={32}>{title}</Display>
                 </View>
               </View>
@@ -177,7 +178,7 @@ export default function ListScreen() {
               {/* What's skipped this shop, beside what's left; it opens the Skipped sheet (Isaac's change, 24 Nov 2026). */}
               {skipped.length > 0 && (
                 <Press fade onPress={() => router.push("/skipped")} hitSlop={12} accessibilityRole="button" accessibilityLabel={`${skipped.length} skipped this shop. Show them`}>
-                  <Caption style={{ fontSize: 15 }}> · <Text style={{ fontFamily: font.semibold, color: c.olive }}>{skipped.length} skipped</Text></Caption>
+                  <Caption style={{ fontSize: 15 }}> · <Text style={{ fontFamily: font.semibold, color: c.primary }}>{skipped.length} skipped</Text></Caption>
                 </Press>
               )}
             </View>
@@ -189,7 +190,7 @@ export default function ListScreen() {
             onPress={() => router.push("/filters")}
             style={empty ? { opacity: 0.4 } : undefined}
           >
-            <SlidersHorizontal size={22} color={filtered ? c.onOlive : c.ink} strokeWidth={2} />
+            <SlidersHorizontal size={22} color={filtered ? c.onPrimary : c.ink} strokeWidth={2} />
           </IconButton>
         </View>
       </View>
@@ -241,12 +242,12 @@ export default function ListScreen() {
 
         {!empty && !noMatch && nextWithItems >= 0 && (
           <View style={{ marginTop: 20 }}>
-            <Press onPress={() => go(nextWithItems)} accessibilityLabel={`Done here. Next: ${aisles[nextWithItems].title}, ${aisles[nextWithItems].left} left`} style={{ minHeight: 64, borderRadius: radius.base, backgroundColor: c.olive, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Press onPress={() => go(nextWithItems)} accessibilityLabel={`Done here. Next: ${aisles[nextWithItems].title}, ${aisles[nextWithItems].left} left`} style={{ minHeight: 64, borderRadius: radius.base, backgroundColor: c.primary, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: font.semibold, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", color: c.onOlive }}>Done here · next</Text>
-                <Text style={{ fontFamily: font.medium, fontSize: 18, color: c.onOlive }}>{[aisles[nextWithItems].title, aisles[nextWithItems].label, `${aisles[nextWithItems].left} left`].filter(Boolean).join(" · ")}</Text>
+                <Text style={{ fontFamily: font.semibold, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", color: c.onPrimary }}>Done here · next</Text>
+                <Text style={{ fontFamily: font.medium, fontSize: 18, color: c.onPrimary }}>{[aisles[nextWithItems].title, aisles[nextWithItems].label, `${aisles[nextWithItems].left} left`].filter(Boolean).join(" · ")}</Text>
               </View>
-              <ChevronRight size={24} color={c.onOlive} />
+              <ChevronRight size={24} color={c.onPrimary} />
             </Press>
           </View>
         )}
@@ -294,9 +295,9 @@ function ListRow({ r, onTick, onHold }: { r: Row; onTick: (r: Row) => void; onHo
         onPress={() => onTick(r)}
         onLongPress={() => onHold(r)}
         delayLongPress={500}
-        style={{ width: 48, height: 48, borderRadius: radius.base, borderWidth: 1, borderColor: c.olive, backgroundColor: r.done ? c.olive : "transparent", alignItems: "center", justifyContent: "center" }}
+        style={{ width: 48, height: 48, borderRadius: radius.base, borderWidth: 1, borderColor: c.primary, backgroundColor: r.done ? c.primary : "transparent", alignItems: "center", justifyContent: "center" }}
       >
-        {r.done ? <Check size={24} color={c.onOlive} strokeWidth={2.5} /> : <Text style={{ fontFamily: font.semibold, fontSize: 20, color: c.ink }}>{r.left}</Text>}
+        {r.done ? <Check size={24} color={c.onPrimary} strokeWidth={2.5} /> : <Text style={{ fontFamily: font.semibold, fontSize: 20, color: c.ink }}>{r.left}</Text>}
       </Press>
     </View>
   )

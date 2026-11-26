@@ -41,8 +41,8 @@ export default function Home() {
       refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void pullToSync()} tintColor={c.muted} />}
     >
       <View style={{ alignItems: "center" }}>
-        {/* One colour, in the theme's olive (#7A6840 in light mode), with the jar cut out in the page colour (Isaac's change). */}
-        <SignInEmblem width={170} mono={{ ink: c.olive, cutout: c.bg }} />
+        {/* One colour, in the theme's primary colour (#7A6840 in Walnut light), with the jar cut out in the page colour (Isaac's change). */}
+        <SignInEmblem width={170} mono={{ ink: c.primary, cutout: c.bg }} />
       </View>
 
       <View style={{ flexDirection: "row", gap: 10 }}>
@@ -75,7 +75,7 @@ export default function Home() {
         )}
         {home.useSoon.length > 6 && (
           <Press fade onPress={tiles[1].go} style={{ minHeight: 44, justifyContent: "center" }}>
-            <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.olive }}>See all {home.useSoon.length}</Text>
+            <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.primary }}>See all {home.useSoon.length}</Text>
           </Press>
         )}
       </View>

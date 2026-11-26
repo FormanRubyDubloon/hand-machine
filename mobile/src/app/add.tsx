@@ -79,7 +79,7 @@ export default function Add() {
         <Stepper label="How many to add" value={qty} min={1} onChange={setQty} />
       </View>
       <View style={{ flexDirection: "row" }}>
-        <Chip label="Already got it" on={got} onPress={() => setGot(!got)} icon={got ? <Check size={16} color={c.onOlive} /> : undefined} accessibilityLabel="Already got it. Ticks it off as soon as it's added" />
+        <Chip label="Already got it" on={got} onPress={() => setGot(!got)} icon={got ? <Check size={16} color={c.onPrimary} /> : undefined} accessibilityLabel="Already got it. Ticks it off as soon as it's added" />
       </View>
     </View>
   )
@@ -106,7 +106,7 @@ export default function Add() {
                   <Text style={{ fontFamily: font.medium, fontSize: 18, color: c.ink }}>{i.name}</Text>
                   <Caption>{sub}</Caption>
                 </View>
-                {on2 ? <Check size={22} color={c.olive} /> : <Plus size={22} color={c.ink} />}
+                {on2 ? <Check size={22} color={c.primary} /> : <Plus size={22} color={c.ink} />}
               </Press>
               {on2 && (
                 <>

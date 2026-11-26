@@ -7,7 +7,7 @@ import {
   Pressable, StyleSheet, Switch, Text, TextInput, View,
   type PressableProps, type StyleProp, type TextInputProps, type TextProps, type TextStyle, type ViewStyle,
 } from "react-native"
-import { focus, font, radius, space, useColours, useReduceMotion, type Colours } from "./theme"
+import { font, radius, space, useColours, useReduceMotion, type Colours } from "./theme"
 
 // ---------- text ----------
 
@@ -80,13 +80,13 @@ export type Kind = "primary" | "secondary" | "quiet" | "danger" | "dangerFill" |
 
 function kindStyle(kind: Kind, c: Colours): { box: ViewStyle; text: string } {
   switch (kind) {
-    case "primary": return { box: { backgroundColor: c.olive, borderColor: c.olive }, text: c.onOlive }
-    case "secondary": return { box: { backgroundColor: "transparent", borderColor: c.olive }, text: c.ink }
+    case "primary": return { box: { backgroundColor: c.primary, borderColor: c.primary }, text: c.onPrimary }
+    case "secondary": return { box: { backgroundColor: "transparent", borderColor: c.primary }, text: c.ink }
     case "quiet": return { box: { backgroundColor: "transparent", borderColor: "transparent" }, text: c.ink }
     case "danger": return { box: { backgroundColor: "transparent", borderColor: c.danger }, text: c.danger }
     case "dangerFill": return { box: { backgroundColor: c.danger, borderColor: c.danger }, text: c.onDanger }
-    case "gold": return { box: { backgroundColor: focus.gold, borderColor: focus.gold }, text: focus.onGold }
-    case "goldOutline": return { box: { backgroundColor: "transparent", borderColor: focus.gold }, text: focus.ink }
+    case "gold": return { box: { backgroundColor: c.focus.gold, borderColor: c.focus.gold }, text: c.focus.onGold }
+    case "goldOutline": return { box: { backgroundColor: "transparent", borderColor: c.focus.gold }, text: c.focus.ink }
   }
 }
 
@@ -94,6 +94,7 @@ export function Button({ kind = "primary", label, height = 56, onPress, disabled
   kind?: Kind; label: string; height?: number; onPress?: () => void; disabled?: boolean; style?: StyleProp<ViewStyle>; textColour?: string; icon?: React.ReactNode; accessibilityLabel?: string
 } & Omit<PressableProps, "style" | "children">) {
   const c = useColours()
+  const { focus } = c
   const k = kindStyle(kind, c)
   return (
     <Press
@@ -121,7 +122,7 @@ export function IconButton({ label, onPress, children, size = 48, outline = true
       onPress={onPress}
       disabled={disabled}
       hitSlop={size < 44 ? (44 - size) / 2 : 0}
-      style={[{ width: size, height: size, borderRadius: radius.base, borderWidth: outline ? 1 : 0, borderColor: colour ?? c.olive, backgroundColor: filled ? (colour ?? c.olive) : "transparent", alignItems: "center", justifyContent: "center" }, style]}
+      style={[{ width: size, height: size, borderRadius: radius.base, borderWidth: outline ? 1 : 0, borderColor: colour ?? c.primary, backgroundColor: filled ? (colour ?? c.primary) : "transparent", alignItems: "center", justifyContent: "center" }, style]}
     >
       {children}
     </Press>
@@ -145,8 +146,9 @@ export function Stepper({ value, onChange, min = 0, max, label, display, dark, l
   value: number; onChange: (n: number) => void; min?: number; max?: number; label: string; display?: string; dark?: boolean; live?: boolean
 }) {
   const c = useColours()
+  const { focus } = c
   const ink = dark ? focus.ink : c.ink
-  const border = dark ? focus.gold : c.olive
+  const border = dark ? focus.gold : c.primary
   const box: ViewStyle = { width: 44, height: 44, borderRadius: radius.base, borderWidth: 1, borderColor: border, alignItems: "center", justifyContent: "center" }
   return (
     <View accessibilityLabel={label} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -172,7 +174,7 @@ export function Toggle({ label, caption, value, onChange }: { label: string; cap
         <Text style={{ fontFamily: font.medium, fontSize: 16, color: c.ink }}>{label}</Text>
         {!!caption && <Caption>{caption}</Caption>}
       </View>
-      <Switch accessibilityLabel={label} value={value} onValueChange={onChange} trackColor={{ true: c.olive, false: c.stone }} thumbColor={c.bg} ios_backgroundColor={c.stone} />
+      <Switch accessibilityLabel={label} value={value} onValueChange={onChange} trackColor={{ true: c.primary, false: c.stone }} thumbColor={c.bg} ios_backgroundColor={c.stone} />
     </View>
   )
 }
@@ -181,12 +183,12 @@ export function Toggle({ label, caption, value, onChange }: { label: string; cap
 export function Segmented<T extends string>({ options, value, onChange, label }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string }) {
   const c = useColours()
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={label} style={{ flexDirection: "row", borderWidth: 1, borderColor: c.olive, borderRadius: radius.base, overflow: "hidden" }}>
+    <View accessibilityRole="radiogroup" accessibilityLabel={label} style={{ flexDirection: "row", borderWidth: 1, borderColor: c.primary, borderRadius: radius.base, overflow: "hidden" }}>
       {options.map((o) => {
         const on = o.value === value
         return (
-          <Press key={o.value} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => onChange(o.value)} style={{ flex: 1, minHeight: 44, paddingHorizontal: 6, alignItems: "center", justifyContent: "center", backgroundColor: on ? c.olive : "transparent" }}>
-            <Text numberOfLines={1} style={{ fontFamily: on ? font.bold : font.medium, fontSize: 13, letterSpacing: 0.6, textTransform: "uppercase", color: on ? c.onOlive : c.ink }}>{o.label}</Text>
+          <Press key={o.value} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => onChange(o.value)} style={{ flex: 1, minHeight: 44, paddingHorizontal: 6, alignItems: "center", justifyContent: "center", backgroundColor: on ? c.primary : "transparent" }}>
+            <Text numberOfLines={1} style={{ fontFamily: on ? font.bold : font.medium, fontSize: 13, letterSpacing: 0.6, textTransform: "uppercase", color: on ? c.onPrimary : c.ink }}>{o.label}</Text>
           </Press>
         )
       })}
@@ -201,19 +203,19 @@ export function Chip({ label, on, onPress, dashed, icon, accessibilityLabel }: {
       accessibilityState={{ selected: !!on }}
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      style={{ minHeight: 40, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, borderStyle: dashed ? "dashed" : "solid", borderColor: on ? c.olive : c.stone, backgroundColor: on ? c.olive : "transparent", flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center" }}
+      style={{ minHeight: 40, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, borderStyle: dashed ? "dashed" : "solid", borderColor: on ? c.primary : c.stone, backgroundColor: on ? c.primary : "transparent", flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center" }}
     >
-      <Text style={{ fontFamily: on ? font.bold : font.medium, fontSize: 15, color: on ? c.onOlive : c.ink }}>{label}</Text>
+      <Text style={{ fontFamily: on ? font.bold : font.medium, fontSize: 15, color: on ? c.onPrimary : c.ink }}>{label}</Text>
       {icon}
     </Press>
   )
 }
 
-export function Pill({ label, tone = "panel" }: { label: string; tone?: "panel" | "olive" }) {
+export function Pill({ label, tone = "panel" }: { label: string; tone?: "panel" | "primary" }) {
   const c = useColours()
   return (
-    <View style={{ height: 22, paddingHorizontal: 8, borderRadius: radius.pill, backgroundColor: tone === "olive" ? c.olive : c.panel, justifyContent: "center", alignSelf: "flex-start" }}>
-      <Text style={{ fontFamily: font.bold, fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase", color: tone === "olive" ? c.onOlive : c.ink }}>{label}</Text>
+    <View style={{ height: 22, paddingHorizontal: 8, borderRadius: radius.pill, backgroundColor: tone === "primary" ? c.primary : c.panel, justifyContent: "center", alignSelf: "flex-start" }}>
+      <Text style={{ fontFamily: font.bold, fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase", color: tone === "primary" ? c.onPrimary : c.ink }}>{label}</Text>
     </View>
   )
 }
@@ -229,6 +231,7 @@ export type FieldRef = React.ComponentRef<typeof TextInput>
 
 export function Field({ label, labelColour, dark, style, ref, ...p }: TextInputProps & { label?: string; labelColour?: string; dark?: boolean; ref?: React.Ref<FieldRef> }) {
   const c = useColours()
+  const { focus } = c
   const [focused, setFocused] = React.useState(false)
   const input = (
     <TextInput
@@ -240,7 +243,7 @@ export function Field({ label, labelColour, dark, style, ref, ...p }: TextInputP
       onBlur={(e) => { setFocused(false); p.onBlur?.(e) }}
       style={[{
         minHeight: 48, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.base, borderWidth: 1,
-        borderColor: focused ? (dark ? focus.gold : c.olive) : dark ? focus.line : c.stone,
+        borderColor: focused ? (dark ? focus.gold : c.primary) : dark ? focus.line : c.input,
         backgroundColor: dark ? focus.field : c.bg, color: dark ? focus.ink : c.ink, fontFamily: font.regular, fontSize: 17,
       }, style]}
     />
@@ -266,9 +269,10 @@ export function Picker({ label, value, options, onPick, dark, placeholder = "Cho
   label: string; value: string; options: { id: string; num?: string; name: string }[]; onPick: (id: string) => void; dark?: boolean; placeholder?: string
 }) {
   const c = useColours()
+  const { focus } = c
   const [open, setOpen] = React.useState(false)
   const ink = dark ? focus.ink : c.ink
-  const border = dark ? focus.line : c.stone
+  const border = dark ? focus.line : c.input
   const current = options.find((o) => o.id === value)
   return (
     <View style={{ gap: 6 }}>
@@ -313,6 +317,7 @@ export function Picker({ label, value, options, onPick, dark, placeholder = "Cho
  */
 export function AisleField({ label, value, onPress, dark }: { label: string; value: string | null; onPress: () => void; dark?: boolean }) {
   const c = useColours()
+  const { focus } = c
   const ink = dark ? focus.ink : c.ink
   return (
     <View style={{ gap: 6 }}>
@@ -321,7 +326,7 @@ export function AisleField({ label, value, onPress, dark }: { label: string; val
         accessibilityLabel={`${label}: ${value ?? "none yet"}. Change`}
         onPress={onPress}
         tint={dark ? focus.press : undefined}
-        style={{ minHeight: 52, borderWidth: 1, borderColor: dark ? focus.line : c.stone, borderRadius: radius.base, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: dark ? focus.field : "transparent" }}
+        style={{ minHeight: 52, borderWidth: 1, borderColor: dark ? focus.line : c.input, borderRadius: radius.base, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: dark ? focus.field : "transparent" }}
       >
         <Text style={{ fontFamily: font.medium, fontSize: 17, color: value ? ink : dark ? focus.label : c.muted, flex: 1 }}>{value ?? "None yet"}</Text>
         <ChevronRight size={20} color={ink} />

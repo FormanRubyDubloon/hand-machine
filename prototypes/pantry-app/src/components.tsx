@@ -122,7 +122,7 @@ export function StockPill({ item }: { item: Item }) {
       <Tooltip>
         <TooltipTrigger asChild>
           <span tabIndex={0} className="inline-flex outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
-            <Badge variant={s === "out" ? "solid" : "outlined"}>{s === "out" ? "Out" : "Low"}</Badge>
+            <Badge variant={s === "out" ? "solid" : "outlined"} className={s === "out" ? "border-(--status-out) bg-(--status-out) text-(--status-out-foreground)" : "border-(--status-low-border) bg-(--status-low) text-(--status-low-foreground)"}>{s === "out" ? "Out" : "Low"}</Badge>
           </span>
         </TooltipTrigger>
         <TooltipContent>{tip}</TooltipContent>
@@ -174,9 +174,9 @@ export function NewPill({ tip }: { tip: string }) {
         <TooltipTrigger asChild>
           <span
             tabIndex={0}
-            className="inline-flex h-6 items-center gap-1.5 rounded-full border border-[#7A6840] bg-[#C2A86A] px-2.5 text-[10px] font-semibold tracking-[0.1em] text-[#2A1D15] uppercase shadow-[0_0_8px_rgb(194_168_106/0.6)]"
+            className="inline-flex h-6 items-center gap-1.5 rounded-full border border-(--new-border) bg-(--new) px-2.5 text-[10px] font-semibold tracking-[0.1em] text-(--new-foreground) uppercase shadow-[0_0_8px_color-mix(in_oklab,var(--new)_60%,transparent)]"
           >
-            <span className="size-1.5 rounded-full bg-[#2A1D15]" aria-hidden="true" />
+            <span className="size-1.5 rounded-full bg-(--new-foreground)" aria-hidden="true" />
             New
           </span>
         </TooltipTrigger>
@@ -559,7 +559,7 @@ export function NavRow({ title, sub, current, onClick }: { title: string; sub: s
       aria-current={current ? "page" : undefined}
       onClick={onClick}
       className={cn(
-        "flex flex-col gap-0.5 border-l-2 px-4 py-3 text-left transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50",
+        "flex flex-col gap-0.5 border-l-3 px-4 py-3 text-left transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50",
         current ? "border-primary bg-muted" : "border-transparent",
       )}
     >

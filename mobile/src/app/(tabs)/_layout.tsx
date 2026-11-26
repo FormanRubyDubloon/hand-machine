@@ -65,8 +65,8 @@ function AccountButton() {
       onPress={() => router.push("/settings")}
       style={{ width: 40, height: 48, alignItems: "flex-end", justifyContent: "center" }}
     >
-      <View style={{ width: 32, height: 32, borderRadius: radius.pill, backgroundColor: c.olive, alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.onOlive }}>{letter}</Text>
+      <View style={{ width: 32, height: 32, borderRadius: radius.pill, backgroundColor: c.primary, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.onPrimary }}>{letter}</Text>
       </View>
     </Press>
   )
@@ -86,8 +86,8 @@ function SearchButton() {
 function Emblem({ on }: { on: boolean }) {
   const c = useColours()
   return (
-    <View style={{ width: 28, height: 28, borderRadius: radius.pill, borderWidth: 1.5, borderColor: c.olive, alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ fontFamily: font.serif, fontWeight: "700", fontSize: 15, lineHeight: 18, color: on ? c.ink : c.olive }}>C</Text>
+    <View style={{ width: 28, height: 28, borderRadius: radius.pill, borderWidth: 1.5, borderColor: c.primary, alignItems: "center", justifyContent: "center" }}>
+      <Text style={{ fontFamily: font.serif, fontWeight: "700", fontSize: 15, lineHeight: 18, color: on ? c.ink : c.primary }}>C</Text>
     </View>
   )
 }
@@ -108,7 +108,7 @@ function TabButton({ label, emblem, isFocused, root, onPress, ref, ...p }: Omit<
         if (isFocused && path !== root) router.dismissTo(root as never)
         else onPress?.(e)
       }}
-      style={{ height: 48, flexDirection: "row", alignItems: "center", gap: 5, borderBottomWidth: 3, borderBottomColor: isFocused ? c.olive : "transparent" }}
+      style={{ height: 48, flexDirection: "row", alignItems: "center", gap: 5, borderBottomWidth: 3, borderBottomColor: isFocused ? c.navActive : "transparent" }}
     >
       {emblem ? <Emblem on={!!isFocused} /> : <Text style={{ fontFamily: font.semibold, fontSize: 14, letterSpacing: 1.1, textTransform: "uppercase", color: isFocused ? c.ink : c.muted }}>{label}</Text>}
     </Press>
