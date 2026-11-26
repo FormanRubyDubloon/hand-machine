@@ -5,7 +5,7 @@
 // Under the tabs, a one-line note shows only when something is waiting: no signal, or a sync that failed.
 import { router, usePathname } from "expo-router"
 import { TabList, TabSlot, TabTrigger, Tabs, type TabTriggerSlotProps } from "expo-router/ui"
-import { CloudOff, Search } from "lucide-react-native"
+import { CloudOff, Menu, Search } from "lucide-react-native"
 import * as React from "react"
 import { ActivityIndicator, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -48,15 +48,11 @@ export default function TabsLayout() {
   )
 }
 
-/**
- * Settings, shown as the account: the first letter of the signed-in email in a circle. The app has no name or
- * photo for the account, only the email.
- */
+/** Settings: a menu icon (Isaac's change, 26 Nov 2026; it was the account's first letter in a circle). */
 function AccountButton() {
   const c = useColours()
   const { state } = useStore()
   const email = state.owner?.email ?? ""
-  const letter = email.trim().charAt(0).toUpperCase() || "?"
   return (
     <Press
       fade
@@ -65,9 +61,7 @@ function AccountButton() {
       onPress={() => router.push("/settings")}
       style={{ width: 40, height: 48, alignItems: "flex-end", justifyContent: "center" }}
     >
-      <View style={{ width: 32, height: 32, borderRadius: radius.pill, backgroundColor: c.primary, alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.onPrimary }}>{letter}</Text>
-      </View>
+      <Menu size={24} color={c.ink} strokeWidth={2} />
     </Press>
   )
 }

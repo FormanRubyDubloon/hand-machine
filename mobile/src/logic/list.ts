@@ -135,27 +135,36 @@ export type Row = {
 }
 
 /**
- * The list filters: the same two as the pantry app's shopping list (why it's there, and how much is left), and
- * Only items for this store (Batch 3, 24 Nov 2026), which hides things you buy at another store. Items with no
- * store chosen are for every store, so they stay.
+ * The list filters: why it's there and how much is left (as on the pantry app's shopping list), Show ordered items
+ * (a switch, on unless `hideOrdered`; 26 Nov 2026, it replaced the Ordered stock filter), and Only items for this
+ * store (Batch 3), which since 26 Nov 2026 shows only items set to this store: items for any store are hidden too.
  */
-export type ListFilter = { show: "all" | "staples" | "recipes" | "added"; stock: "all" | "low" | "out" | "ordered"; thisStore?: boolean }
+export type ListFilter = { show: "all" | "staples" | "recipes" | "added"; stock: "all" | "low" | "out"; hideOrdered?: boolean; thisStore?: boolean }
 export const NO_FILTER: ListFilter = { show: "all", stock: "all" }
 
-const FILTER_NAMES: Record<string, string> = { staples: "Staples", recipes: "For recipes", added: "Added", low: "Low", out: "Out", ordered: "Ordered" }
+const FILTER_NAMES: Record<string, string> = { staples: "Staples", recipes: "For recipes", added: "Added", low: "Low", out: "Out" }
+
+/** Low or Out. Anything else (an Ordered left from before 26 Nov 2026) is no stock filter. */
+const stockOn = (f: ListFilter) => (f.stock === "low" || f.stock === "out" ? f.stock : null)
 
 /** The filters that are on, by name: ["Staples", "Out"]. */
 export const filterNames = (f: ListFilter | undefined) =>
-  f ? [...[f.show, f.stock].filter((v) => v !== "all").map((v) => FILTER_NAMES[v]), ...(f.thisStore ? ["This store"] : [])] : []
+  f ? [...[f.show, stockOn(f) ?? "all"].filter((v) => v !== "all").map((v) => FILTER_NAMES[v]), ...(f.hideOrdered ? ["No ordered"] : []), ...(f.thisStore ? ["This store"] : [])] : []
 
-/** How many filters are on (0 to 3). */
-export const filtersOn = (f: ListFilter | undefined) => (f ? Number(f.show !== "all") + Number(f.stock !== "all") + Number(!!f.thisStore) : 0)
+/** How many filters are on (0 to 4). */
+export const filtersOn = (f: ListFilter | undefined) => (f ? Number(f.show !== "all") + Number(!!stockOn(f)) + Number(!!f.hideOrdered) + Number(!!f.thisStore) : 0)
 
-/** Whether an item is for this store: no store chosen (every store), or this one. */
+/** Whether an item is for this store: no store chosen (every store), or this one. Where next uses this. */
 export const forStore = (i: Item, storeId: string | undefined) => !storeId || i.where.length === 0 || i.where.includes(storeId)
 
-export const matchesFilter = (r: Row, f: ListFilter | undefined, storeId?: string) =>
-  !f || ((f.show === "all" || r.group === f.show) && (f.stock === "all" || r.status === f.stock) && (!f.thisStore || forStore(r.item, storeId)))
+/** Whether an item is set to this store (the This store filter): items for any store don't count. */
+export const onlyAt = (i: Item, storeId: string | undefined) => !storeId || i.where.includes(storeId)
+
+export const matchesFilter = (r: Row, f: ListFilter | undefined, storeId?: string) => {
+  if (!f) return true
+  const stock = stockOn(f)
+  return (f.show === "all" || r.group === f.show) && (!stock || r.status === stock) && !(f.hideOrdered && r.ordered) && (!f.thisStore || onlyAt(r.item, storeId))
+}
 
 /** Why it's on the list, said plainly. */
 export function reasonOf(i: Item, startEntries = i.entries) {
