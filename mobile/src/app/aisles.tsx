@@ -22,14 +22,16 @@ export default function Aisles() {
   // With filters on, only aisles with a match are listed. Each filter shows as a chip, as in the Filters sheet;
   // tapping its X turns that one off.
   const f = state.filter
-  const filters: { key: "show" | "stock" | "thisStore"; name: string }[] = f
+  type Key = "show" | "stock" | "hideOrdered" | "thisStore"
+  const filters: { key: Key; name: string }[] = f
     ? [
-        ...(["show", "stock"] as const).filter((k) => f[k] !== "all").map((k) => ({ key: k, name: filterNames({ ...NO_FILTER, [k]: f[k] })[0] })),
+        ...(["show", "stock"] as const).map((k) => ({ key: k, name: filterNames({ ...NO_FILTER, [k]: f[k] })[0] })).filter((x) => !!x.name),
+        ...(f.hideOrdered ? [{ key: "hideOrdered" as const, name: "No ordered" }] : []),
         ...(f.thisStore ? [{ key: "thisStore" as const, name: "This store" }] : []),
       ]
     : []
-  const remove = (k: "show" | "stock" | "thisStore") => local((s) => {
-    const next: ListFilter = k === "thisStore" ? { ...(s.filter ?? NO_FILTER), thisStore: undefined } : { ...(s.filter ?? NO_FILTER), [k]: "all" }
+  const remove = (k: Key) => local((s) => {
+    const next: ListFilter = k === "thisStore" || k === "hideOrdered" ? { ...(s.filter ?? NO_FILTER), [k]: undefined } : { ...(s.filter ?? NO_FILTER), [k]: "all" }
     return { ...s, filter: filtersOn(next) ? next : undefined, aisle: s.aisle === "all" ? "all" : 0 }
   })
   const shown = shownRows(state)

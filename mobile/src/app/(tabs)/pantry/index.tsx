@@ -6,13 +6,14 @@
 // and this page follows it. Its search
 // field went in Batch 5: search is the header's, across the list, the pantry and recipes.
 import { router } from "expo-router"
-import { ChevronRight, LayoutList, type LucideIcon } from "lucide-react-native"
+import { ChevronRight, LayoutList } from "lucide-react-native"
 import * as React from "react"
 import { RefreshControl, ScrollView, Text, View } from "react-native"
 import { useStore } from "../../../data/store"
 import { inStockOnly, locationCounts, pantryItems } from "../../../logic/pantry"
 import { plural, goingOffSoon } from "../../../logic/phrases"
-import { Caption, Label, Press } from "../../../ui/kit"
+import { Caption, Press } from "../../../ui/kit"
+import { LandingCard } from "../../../ui/landing"
 import { LOCATIONS } from "../../../ui/locations"
 import { font, radius, space, useColours } from "../../../ui/theme"
 
@@ -47,11 +48,8 @@ export default function Pantry() {
       )}
       {everything.length > 0 && (
         <>
-          <View style={{ marginTop: 4, minHeight: 32, justifyContent: "center" }}>
-            <Label>Where it lives</Label>
-          </View>
           {everything.length > 0 && (
-            <Card
+            <LandingCard
               icon={LayoutList}
               label="All items"
               count={items.length}
@@ -64,7 +62,7 @@ export default function Pantry() {
       )}
       {tiles.map((t) => {
         return (
-          <Card
+          <LandingCard
             key={t.value}
             icon={t.icon}
             label={t.label}
@@ -78,22 +76,5 @@ export default function Pantry() {
       {everything.length === 0 && <Caption>Your pantry is empty. Add things in Collca on the web, or tell Claude what you have.</Caption>}
       {everything.length > 0 && items.length === 0 && <Caption>Nothing's in stock. To see everything, open All items' Filters and choose Everything.</Caption>}
     </ScrollView>
-  )
-}
-
-/** A card on the pantry's landing page: All items, or a location. */
-function Card({ icon: Icon, label, count, sub, a11y, onPress }: { icon: LucideIcon; label: string; count: number; sub?: string; a11y: string; onPress: () => void }) {
-  const c = useColours()
-  return (
-    <Press onPress={onPress} accessibilityLabel={a11y} style={{ minHeight: 92, borderWidth: 1, borderColor: c.primary, borderRadius: radius.base, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 14 }}>
-      <View style={{ width: 48, height: 48, borderRadius: radius.base, backgroundColor: c.panel, alignItems: "center", justifyContent: "center" }}>
-        <Icon size={26} color={c.ink} strokeWidth={1.75} />
-      </View>
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={{ fontFamily: font.serif, fontWeight: "700", fontSize: 26, letterSpacing: 1, textTransform: "uppercase", color: c.ink }}>{label}</Text>
-        {!!sub && <Caption>{sub}</Caption>}
-      </View>
-      <Text style={{ fontFamily: font.regular, fontSize: 20, color: c.muted }}>{count}</Text>
-    </Press>
   )
 }

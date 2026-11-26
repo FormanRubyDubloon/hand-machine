@@ -5,25 +5,28 @@
 // Ticking something with no aisle in this store asks which aisle it was in (the aisle sheet, /aisle).
 import * as Haptics from "expo-haptics"
 import { router, useFocusEffect } from "expo-router"
-import { Check, ChevronDown, ChevronRight, Plus, SlidersHorizontal } from "lucide-react-native"
+import { Check, ChevronDown, ChevronRight, Plus, SkipForward, SlidersHorizontal } from "lucide-react-native"
 import * as React from "react"
 import { Animated, PanResponder, Platform, RefreshControl, ScrollView, Text, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import type { PhoneState } from "../../../data/state"
 import { TOAST_UNDO_MS, useStore } from "../../../data/store"
-import { restoreTicks, tickAll, tickOne, untick, clearShop } from "../../../logic/actions"
-import { asksForAisle, filtersOn, leftOf, refreshShop, rowsOf, shopGroups, shownRows, sortRows, tickedText, type Row } from "../../../logic/list"
+import { chooseStore, restoreAll, restoreTicks, skipRows, tickAll, tickOne, tickRows, untick, clearShop } from "../../../logic/actions"
+import { homeSummary } from "../../../logic/home"
+import { asksForAisle, filtersOn, leftOf, refreshShop, rowsOf, shopGroups, shownRows, sortRows, tickedText, whereNext, type Row } from "../../../logic/list"
 import { Body, Button, Caption, Display, IconButton, Press } from "../../../ui/kit"
+import { ShopDone } from "../../../ui/shop-done"
 import { TagMark } from "../../../ui/tags"
+import { plural } from "../../../logic/phrases"
 import { font, radius, space, useColours, useReduceMotion } from "../../../ui/theme"
 
 /** Bought more than one: how long after the last tap the aisle question waits. */
 const ASK_AFTER_MS = 1500
 
 export default function ListScreen() {
-  const { focus } = useColours()
   const { state, change, local, say, status, online, pulling, pullToSync } = useStore()
   const c = useColours()
+  const { focus } = c
   const insets = useSafeAreaInsets()
 
   // Keep the shop in step with the items (things added elsewhere join it; untouched rows follow their item).
@@ -67,13 +70,18 @@ export default function ListScreen() {
   // Every tick shows a toast with Undo. Taps in a row on one item while its toast is up share the toast, and
   // Undo puts back all of them (the same run is one History entry too).
   const run = React.useRef<{ id: string; before: number; at: number } | null>(null)
+  // The last run of ticks, for Shop done's Undo last tick (kept while the list is open, not saved).
+  // `restore` puts it back: one item's ticks, or everything a Got all ticked.
+  const lastTick = React.useRef<{ ids: string[]; name: string; restore: (s: PhoneState) => PhoneState } | null>(null)
   const ticked = (r: Row, got: number) => {
     const last = run.current
     const before = last && last.id === r.id && Date.now() - last.at < TOAST_UNDO_MS ? last.before : r.got
     run.current = { id: r.id, before, at: Date.now() }
+    lastTick.current = { ids: [r.id], name: r.item.name, restore: (s) => restoreTicks(s, r.id, before) }
     const title = `Took ${r.item.name.toLowerCase()} off what you got`
     say(tickedText({ ...r, got: before }, got), () => {
       run.current = null
+      lastTick.current = null
       change((s) => restoreTicks(s, r.id, before), { title, key: `shop:${r.id}` })
     })
   }
@@ -101,6 +109,7 @@ export default function ListScreen() {
     if (r.done) {
       cancelAsk()
       run.current = null
+      lastTick.current = null
       change((s) => untick(s, r.id), { title: `Took ${r.item.name.toLowerCase()} off what you got`, key: `shop:${r.id}` })
       return
     }
@@ -115,6 +124,43 @@ export default function ListScreen() {
     change((s) => tickAll(s, r.id), { title: `Got ${r.item.name.toLowerCase()} on the phone`, key: `shop:${r.id}` })
     ticked(r, r.need)
     askAisle(r, false)
+  }
+
+  // Got all (26 Nov 2026): ticks off everything still to get on screen (this heading, or All items), as holding
+  // each one would. Ordered items are left alone. One toast and one History entry; Undo puts each row back. It
+  // doesn't ask for aisles.
+  const onScreen = all ? rows : (aisle?.rows ?? [])
+  const toGet = onScreen.filter((r) => !r.done && !r.ordered && !r.skipped)
+  const gotAll = () => {
+    if (!toGet.length) return
+    cancelAsk()
+    run.current = null
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+    const ids = toGet.map((r) => r.id)
+    const where = all || !aisle ? "the list" : aisle.title
+    const name = toGet.length === 1 ? toGet[0].item.name : plural(toGet.length, "thing")
+    let before: Record<string, number> = {}
+    change((s) => {
+      const r = tickRows(s, ids)
+      before = r.before
+      return r.state
+    }, { title: `Got everything left in ${where} on the phone`, detail: toGet.map((r) => r.item.name).join(", ") })
+    const restore = (s: PhoneState) => restoreAll(s, before)
+    lastTick.current = { ids, name, restore }
+    say(`Got ${name.toLowerCase()}.`, () => {
+      lastTick.current = null
+      change(restore, { title: `Took ${name.toLowerCase()} off what you got` })
+    })
+  }
+
+  // Skip all (26 Nov 2026): skips everything still to get on screen this shop, as Skip this shop does for one.
+  const skipAll = () => {
+    if (!toGet.length) return
+    cancelAsk()
+    const ids = toGet.map((r) => r.id)
+    const name = toGet.length === 1 ? toGet[0].item.name : plural(toGet.length, "thing")
+    local((s) => skipRows(s, ids))
+    say(`Skipped ${name.toLowerCase()} this shop.`, () => local((s) => skipRows(s, ids, false)))
   }
 
   // ----- the heading -----
@@ -153,6 +199,31 @@ export default function ListScreen() {
     : undefined
   const byTag = state.groupBy === "tag"
   const headingTag = byTag && aisle?.tag ? state.categories.find((t) => t.id === aisle.tag) : undefined
+
+  if (shopDone) {
+    const undo = lastTick.current && lastTick.current.ids.every((id) => state.shop?.rows[id]) ? lastTick.current : null
+    return (
+      <ShopDone
+        storeName={store?.name}
+        got={allRows.filter((r) => r.done).length}
+        left={skipped.length}
+        next={whereNext(state)}
+        undo={undo ? {
+          name: undo.name,
+          onPress: () => {
+            lastTick.current = null
+            run.current = null
+            change(undo.restore, { title: `Took ${undo.name.toLowerCase()} off what you got`, key: undo.ids.length === 1 ? `shop:${undo.ids[0]}` : undefined })
+          },
+        } : undefined}
+        offline={offline}
+        toReview={homeSummary(state).toReview}
+        onStore={(id) => local((s) => chooseStore(s, id))}
+        onFinish={() => change((s) => clearShop(s))}
+        onReview={() => router.navigate({ pathname: "/pantry/browse", params: { review: "1" } })}
+      />
+    )
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -200,15 +271,6 @@ export default function ListScreen() {
         contentContainerStyle={{ paddingHorizontal: space.screen, paddingBottom: insets.bottom + 40, flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void pullToSync()} tintColor={c.muted} />}
       >
-        {shopDone && (
-          <View accessibilityRole="summary" style={{ backgroundColor: focus.bg, borderRadius: radius.base, padding: 16, gap: 12, marginBottom: 12 }}>
-            <Text style={{ fontFamily: font.regular, fontSize: 16, lineHeight: 22, color: focus.ink }}>
-              <Text style={{ fontFamily: font.bold }}>Shop done. </Text>
-              {offline ? "It goes to your pantry when you're back online." : "Your pantry is up to date."}
-            </Text>
-            <Button kind="gold" label="Start a new list" height={48} onPress={() => change((s) => clearShop(s))} />
-          </View>
-        )}
         {empty && (
           <Body style={{ paddingVertical: 24 }}>
             <Text style={{ fontFamily: font.bold }}>Nothing to buy.</Text> Every Staple is at or above its minimum.
@@ -238,6 +300,29 @@ export default function ListScreen() {
             onPress={() => router.push(addParams ? { pathname: "/add", params: addParams } : "/add")}
             style={{ marginTop: 16 }}
           />
+          {/* Got all and Skip all: small, side by side, in the focus gold (Isaac's change, 26 Nov 2026). */}
+          {toGet.length > 0 && (
+            <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
+              <Button
+                kind="gold"
+                label="Got all"
+                height={44}
+                icon={<Check size={18} color={focus.onGold} strokeWidth={2} />}
+                accessibilityLabel={`Got all: tick off ${plural(toGet.length, "thing")} in ${all || !aisle ? "the list" : aisle.title}`}
+                onPress={gotAll}
+                style={{ flex: 1 }}
+              />
+              <Button
+                kind="gold"
+                label="Skip all"
+                height={44}
+                icon={<SkipForward size={18} color={focus.onGold} strokeWidth={2} />}
+                accessibilityLabel={`Skip all: skip ${plural(toGet.length, "thing")} in ${all || !aisle ? "the list" : aisle.title} this shop`}
+                onPress={skipAll}
+                style={{ flex: 1 }}
+              />
+            </View>
+          )}
         </Animated.View>
 
         {!empty && !noMatch && nextWithItems >= 0 && (

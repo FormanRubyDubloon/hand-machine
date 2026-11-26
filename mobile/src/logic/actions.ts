@@ -69,6 +69,26 @@ export function untick(s: PhoneState, id: string): PhoneState {
   return { ...s, shop: { ...s.shop, rows: { ...s.shop.rows, [id]: { ...row, got: 0 } } }, items: { ...s.items, [id]: unbought(item, row.got, row.entries, row.review, row.boughtAt) } }
 }
 
+/**
+ * Got all (26 Nov 2026): ticks off everything left on these rows at once, as holding each one would. Returns what
+ * each row had before, for Undo (`restoreAll`).
+ */
+export function tickRows(s: PhoneState, ids: string[]): { state: PhoneState; before: Record<string, number> } {
+  const before: Record<string, number> = {}
+  let next = s
+  for (const id of ids) {
+    const row = refreshShop(next.shop, next.items).rows[id]
+    if (!row || row.got >= row.need) continue
+    before[id] = row.got
+    next = tickAll(next, id)
+  }
+  return { state: next, before }
+}
+
+/** Undoes a Got all: each row goes back to what it had. */
+export const restoreAll = (s: PhoneState, before: Record<string, number>) =>
+  Object.entries(before).reduce((x, [id, got]) => restoreTicks(x, id, got), s)
+
 /** Puts the ticks back as they were before a "got all" (the toast's Undo). */
 export function restoreTicks(s: PhoneState, id: string, got: number): PhoneState {
   const row = s.shop?.rows[id]
@@ -323,6 +343,11 @@ export function skip(s: PhoneState, id: string, on = true): PhoneState {
   const row = shop.rows[id]
   if (!row || !!row.skipped === on) return { ...s, shop }
   return { ...s, shop: { ...shop, rows: { ...shop.rows, [id]: { ...row, skipped: on || undefined } } } }
+}
+
+/** Skip all (26 Nov 2026): skips these rows this shop. Undo with `skipRows(s, ids, false)`. */
+export function skipRows(s: PhoneState, ids: string[], on = true): PhoneState {
+  return ids.reduce((x, id) => skip(x, id, on), s)
 }
 
 /** Brings back everything skipped this shop. */

@@ -1,13 +1,14 @@
-// List filters (sheet): the same two as the pantry app's shopping list. Show: why it's on the list (Staples,
-// For recipes, Added). Stock: Low, Out or Ordered. Store: only items for the store you're in (Batch 3). Each choice applies at once; the counts are of everything
-// on the list. The filters stay on through a shop and clear when a new list starts.
+// List filters (sheet). Show: why it's on the list (Staples, For recipes, Added). Stock: Low or Out. Show ordered
+// items: a switch, on by default (26 Nov 2026; Ordered used to be a Stock choice). Store: only items set to the
+// store you're in (Batch 3; items for any store are hidden too since 26 Nov 2026). Each choice applies at once; the
+// counts are of everything on the list. The filters stay on through a shop and clear when a new list starts.
 import { router } from "expo-router"
 import * as React from "react"
 import { ScrollView, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useStore } from "../data/store"
 import { filtersOn, matchesFilter, NO_FILTER, rowsOf, type ListFilter } from "../logic/list"
-import { Button, Caption, Chip, Label } from "../ui/kit"
+import { Button, Caption, Chip, Label, Toggle } from "../ui/kit"
 import { SheetHeader } from "../ui/sheet"
 import { useColours } from "../ui/theme"
 
@@ -21,7 +22,6 @@ const STOCK: { value: ListFilter["stock"]; label: string }[] = [
   { value: "all", label: "All" },
   { value: "low", label: "Low" },
   { value: "out", label: "Out" },
-  { value: "ordered", label: "Ordered" },
 ]
 
 export default function Filters() {
@@ -35,6 +35,7 @@ export default function Filters() {
   // Changing a filter goes back to the first aisle, since the aisles shown change with it.
   const set = (next: ListFilter) => local((s) => ({ ...s, filter: filtersOn(next) ? next : undefined, aisle: s.aisle === "all" ? "all" : 0 }))
   const n = (p: Partial<ListFilter>) => rows.filter((r) => matchesFilter(r, { ...NO_FILTER, ...p }, state.storeId)).length
+  const ordered = rows.filter((r) => r.ordered).length
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -55,17 +56,24 @@ export default function Filters() {
           <Label>Stock</Label>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {STOCK.map((o) => (
-              <Chip key={o.value} label={o.value === "all" ? o.label : `${o.label} · ${n({ stock: o.value })}`} on={f.stock === o.value} onPress={() => set({ ...f, stock: o.value })} />
+              <Chip key={o.value} label={o.value === "all" ? o.label : `${o.label} · ${n({ stock: o.value })}`} on={f.stock === o.value || (o.value === "all" && f.stock !== "low" && f.stock !== "out")} onPress={() => set({ ...f, stock: o.value })} />
             ))}
           </View>
         </View>
+        <Toggle
+          leading
+          label="Show ordered items"
+          caption={ordered ? `${ordered} ordered online` : "Nothing on the list is ordered."}
+          value={!f.hideOrdered}
+          onChange={(on) => set({ ...f, hideOrdered: on ? undefined : true })}
+        />
         {state.stores.length > 1 && (
           <View style={{ gap: 10 }}>
             <Label>Store</Label>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               <Chip label={`Only items for ${store?.name ?? "this store"} · ${n({ thisStore: true })}`} on={!!f.thisStore} onPress={() => set({ ...f, thisStore: !f.thisStore || undefined })} />
             </View>
-            <Caption>Hides things you buy at another store. Items with no store chosen stay.</Caption>
+            <Caption>Shows only things set to {store?.name ?? "this store"}. Items for any store are hidden.</Caption>
           </View>
         )}
         <Caption>{filtersOn(f) ? `Showing ${shown} of ${rows.length} on the list.` : `Showing everything on the list (${rows.length}).`}</Caption>

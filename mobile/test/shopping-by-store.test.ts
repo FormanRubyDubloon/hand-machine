@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { demoState } from "../src/data/demo"
 import type { PhoneState } from "../src/data/state"
-import { chooseStore, clearShop, skip, unskipAll } from "../src/logic/actions"
+import { chooseStore, clearShop, skip, skipRows, unskipAll } from "../src/logic/actions"
 import { filtersOn, NO_FILTER, refreshShop, rowsOf, shownRows } from "../src/logic/list"
 
 const start = (): PhoneState => {
@@ -11,7 +11,7 @@ const start = (): PhoneState => {
 const other = (s: PhoneState) => s.stores.find((x) => x.id !== s.storeId)!.id
 
 describe("Only items for this store", () => {
-  it("hides what's bought at another store and keeps what's for every store", () => {
+  it("shows only what's set to this store: another store's and any store's items are hidden", () => {
     const s = start()
     const eggs = { ...s.items.eggs, where: [other(s)] }
     const rice = { ...s.items.rice, where: [s.storeId] }
@@ -19,11 +19,22 @@ describe("Only items for this store", () => {
     const ids = shownRows(t).map((r) => r.id)
     expect(ids).not.toContain("eggs")
     expect(ids).toContain("rice")
-    // An item with no store chosen is for every store.
-    expect(ids).toContain(rowsOf(t).find((r) => r.item.where.length === 0)!.id)
+    // An item for any store (no store chosen) is hidden too (Isaac's change, 26 Nov 2026).
+    expect(ids).not.toContain(rowsOf(t).find((r) => r.item.where.length === 0)!.id)
+    expect(ids).toEqual(["rice"])
     expect(filtersOn(t.filter)).toBe(1)
     // Off, everything shows.
     expect(shownRows({ ...t, filter: undefined }).map((r) => r.id)).toContain("eggs")
+  })
+})
+
+describe("Skip all", () => {
+  it("skips every row given, and undoing brings them all back", () => {
+    const s = start()
+    const t = skipRows(s, ["eggs", "rice"])
+    expect(shownRows(t).map((r) => r.id)).not.toEqual(expect.arrayContaining(["eggs"]))
+    expect(rowsOf(t).filter((r) => r.skipped).map((r) => r.id).sort()).toEqual(["eggs", "rice"])
+    expect(rowsOf(skipRows(t, ["eggs", "rice"], false)).some((r) => r.skipped)).toBe(false)
   })
 })
 

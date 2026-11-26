@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { demoState } from "../src/data/demo"
-import { clearShop, removeFromList, removeQuestion, restoreTicks, tickAll, tickOne, untick, addNew, setToGet } from "../src/logic/actions"
-import { filtersOn, leftOf, matchesFilter, NO_FILTER, refreshShop, rowsOf, shopGroups, shownRows, tickedText, type Row } from "../src/logic/list"
+import { clearShop, removeFromList, removeQuestion, restoreAll, restoreTicks, skip, tickAll, tickRows, tickOne, untick, addNew, setToGet } from "../src/logic/actions"
+import { filtersOn, leftOf, matchesFilter, NO_FILTER, refreshShop, rowsOf, shopGroups, shownRows, tickedText, whereNext, type Row } from "../src/logic/list"
 import type { PhoneState } from "../src/data/state"
 
 const start = (): PhoneState => {
@@ -154,5 +154,64 @@ describe("the list filters", () => {
     expect(matchesFilter(rowsOf(s)[0], NO_FILTER)).toBe(true)
     expect(filtersOn(s.filter)).toBe(1)
     expect(clearShop(s).filter).toBeUndefined()
+  })
+})
+
+describe("Got all", () => {
+  it("ticks off everything left on the rows given, and Undo puts each back as it was", () => {
+    let s = tickOne(start(), "eggs")
+    const before = s
+    const ids = ["eggs", "rice"]
+    const { state, before: was } = tickRows(s, ids)
+    s = state
+    for (const r of rowsOf(s).filter((r) => ids.includes(r.id))) expect(r.done).toBe(true)
+    expect(was).toEqual({ eggs: 1, rice: 0 })
+    expect(s.items.rice.inStock).toBeGreaterThan(before.items.rice.inStock)
+    const undone = restoreAll(s, was)
+    expect(rowsOf(undone).find((r) => r.id === "eggs")!.got).toBe(1)
+    expect(rowsOf(undone).find((r) => r.id === "rice")!.got).toBe(0)
+    expect(undone.items.eggs.inStock).toBe(before.items.eggs.inStock)
+    expect(undone.items.rice.inStock).toBe(before.items.rice.inStock)
+  })
+})
+
+describe("Show ordered items", () => {
+  it("is on by default, and off hides ordered items", () => {
+    const s = start()
+    const t = { ...s, items: { ...s.items, eggs: { ...s.items.eggs, ordered: true } } }
+    expect(shownRows(t).map((r) => r.id)).toContain("eggs")
+    const off: PhoneState = { ...t, filter: { ...NO_FILTER, hideOrdered: true } }
+    expect(shownRows(off).map((r) => r.id)).not.toContain("eggs")
+    expect(shownRows(off).length).toBe(shownRows(t).length - 1)
+    expect(filtersOn(off.filter)).toBe(1)
+  })
+
+  it("treats an Ordered stock choice saved before the switch as no stock filter", () => {
+    const old = { show: "all", stock: "ordered" } as unknown as PhoneState["filter"]
+    expect(filtersOn(old)).toBe(0)
+    expect(shownRows({ ...start(), filter: old }).length).toBe(shownRows(start()).length)
+  })
+})
+
+describe("shop done: where next", () => {
+  it("lists the other stores by how many of the skipped things each sells, most first", () => {
+    let s = start()
+    s = { ...s, storeId: "sainsburys", stores: [...s.stores, { id: "corner", name: "Corner shop", aisles: {} }] }
+    s = { ...s, items: { ...s.items, eggs: { ...s.items.eggs, where: ["tesco"] }, rice: { ...s.items.rice, where: ["corner"] } } }
+    for (const id of ["eggs", "rice", "sardines"]) s = skip(s, id)
+    const next = whereNext(s)
+    // Sardines has no store, so every store sells it.
+    expect(next.map((n) => [n.store.id, n.rows.map((r) => r.id).sort()])).toEqual([
+      ["corner", ["rice", "sardines"]],
+      ["tesco", ["eggs", "sardines"]],
+    ])
+    expect(next.find((n) => n.store.id === "tesco")!.names).toMatch(/^Eggs × 2, /)
+  })
+
+  it("leaves out the store you're in and stores that sell none of it", () => {
+    let s = { ...start(), storeId: "sainsburys" }
+    expect(whereNext(s)).toEqual([])
+    s = skip(s, "eggs")
+    expect(whereNext(s).map((n) => n.store.id)).toEqual(["tesco"])
   })
 })

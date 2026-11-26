@@ -166,15 +166,18 @@ export function Stepper({ value, onChange, min = 0, max, label, display, dark, l
 // ---------- choosing ----------
 
 /** An on/off setting: its label (and a line under it) on the left, the system switch on the right. */
-export function Toggle({ label, caption, value, onChange }: { label: string; caption?: string; value: boolean; onChange: (v: boolean) => void }) {
+/** A switch with its label. `leading` puts the switch on the left, before the label (the list's Show ordered items). */
+export function Toggle({ label, caption, value, onChange, leading }: { label: string; caption?: string; value: boolean; onChange: (v: boolean) => void; leading?: boolean }) {
   const c = useColours()
+  const sw = <Switch accessibilityLabel={label} value={value} onValueChange={onChange} trackColor={{ true: c.primary, false: c.stone }} thumbColor={c.bg} ios_backgroundColor={c.stone} />
   return (
     <View style={{ minHeight: 48, flexDirection: "row", alignItems: "center", gap: 12 }}>
+      {leading && sw}
       <View style={{ flex: 1 }}>
         <Text style={{ fontFamily: font.medium, fontSize: 16, color: c.ink }}>{label}</Text>
         {!!caption && <Caption>{caption}</Caption>}
       </View>
-      <Switch accessibilityLabel={label} value={value} onValueChange={onChange} trackColor={{ true: c.primary, false: c.stone }} thumbColor={c.bg} ios_backgroundColor={c.stone} />
+      {!leading && sw}
     </View>
   )
 }
