@@ -63,11 +63,11 @@ export default function AislePrompt() {
       accessibilityState={{ selected: on }}
       style={{
         width: wide ? undefined : "18%", flexGrow: wide ? 1 : 0, minWidth: wide ? "30%" : undefined, height: 56, paddingHorizontal: wide ? 12 : 0,
-        borderRadius: radius.base, borderWidth: 1, borderColor: on ? c.olive : c.stone, backgroundColor: on ? c.olive : c.panel,
+        borderRadius: radius.base, borderWidth: 1, borderColor: on ? c.primary : c.stone, backgroundColor: on ? c.primary : c.panel,
         alignItems: "center", justifyContent: "center",
       }}
     >
-      <Text numberOfLines={1} style={{ fontFamily: font.bold, fontSize: wide ? 16 : 20, color: on ? c.onOlive : c.ink }}>{label}</Text>
+      <Text numberOfLines={1} style={{ fontFamily: font.bold, fontSize: wide ? 16 : 20, color: on ? c.onPrimary : c.ink }}>{label}</Text>
     </Press>
   )
 
@@ -83,7 +83,7 @@ export default function AislePrompt() {
           </Caption>
           {/* Settings opens over this sheet, so after changing the number of aisles or places you're back here to choose. */}
           <Press fade hitSlop={8} accessibilityRole="link" accessibilityLabel={`Edit ${store.name}: number of aisles, places and labels`} onPress={() => router.push({ pathname: "/settings/store/[id]", params: { id: store.id } })} style={{ alignSelf: "flex-start", minHeight: 32, justifyContent: "center" }}>
-            <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.olive }}>Edit store</Text>
+            <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.primary }}>Edit store</Text>
           </Press>
         </View>
 

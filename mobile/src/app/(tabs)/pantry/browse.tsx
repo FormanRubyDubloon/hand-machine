@@ -75,7 +75,7 @@ export default function Browse() {
         </View>
         {seeAll && (
           <IconButton label={filtersOnNow ? `Filters, ${filtersOnNow} on` : "Filters"} filled={!!filtersOnNow} onPress={() => router.push("/pantry-filters")}>
-            <SlidersHorizontal size={22} color={filtersOnNow ? c.onOlive : c.ink} strokeWidth={2} />
+            <SlidersHorizontal size={22} color={filtersOnNow ? c.onPrimary : c.ink} strokeWidth={2} />
           </IconButton>
         )}
       </View>
@@ -92,7 +92,7 @@ export default function Browse() {
               <View style={{ flex: 1, gap: 3 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <Text style={{ fontFamily: font.medium, fontSize: 18, lineHeight: 23, color: c.ink }}>{i.name}</Text>
-                  {i.review && <Pill label="New" tone="olive" />}
+                  {i.review && <Pill label="New" tone="primary" />}
                 </View>
                 {!!sub && <Caption>{sub}</Caption>}
               </View>

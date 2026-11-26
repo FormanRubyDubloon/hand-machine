@@ -39,7 +39,7 @@ export default function Aisles() {
   }
   const box = (on: boolean, dashed = false) => ({
     width: 44, height: 44, borderRadius: radius.base, borderWidth: 1, borderStyle: dashed ? ("dashed" as const) : ("solid" as const),
-    borderColor: on ? c.olive : c.stone, backgroundColor: on ? c.olive : c.panel, alignItems: "center" as const, justifyContent: "center" as const,
+    borderColor: on ? c.primary : c.stone, backgroundColor: on ? c.primary : c.panel, alignItems: "center" as const, justifyContent: "center" as const,
   })
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -58,12 +58,12 @@ export default function Aisles() {
         {filters.length > 0 && (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: c.line }}>
             {filters.map((x) => (
-              <Chip key={x.key} on label={x.name} accessibilityLabel={`Remove filter: ${x.name}`} icon={<X size={16} color={c.onOlive} strokeWidth={2.5} />} onPress={() => remove(x.key)} />
+              <Chip key={x.key} on label={x.name} accessibilityLabel={`Remove filter: ${x.name}`} icon={<X size={16} color={c.onPrimary} strokeWidth={2.5} />} onPress={() => remove(x.key)} />
             ))}
           </View>
         )}
         <Press onPress={() => go("all")} accessibilityState={{ selected: all }} accessibilityLabel={`All items, ${leftOf(shown)} left`} style={{ minHeight: 68, flexDirection: "row", alignItems: "center", gap: 14, borderBottomWidth: 1, borderBottomColor: c.line }}>
-          <View style={box(all)}><List size={20} color={all ? c.onOlive : c.ink} /></View>
+          <View style={box(all)}><List size={20} color={all ? c.onPrimary : c.ink} /></View>
           <Text style={{ flex: 1, fontFamily: font.medium, fontSize: 19, color: c.ink }}>All items</Text>
           <Text style={{ fontFamily: font.regular, fontSize: 15, color: c.muted }}>{leftOf(shown)} left</Text>
         </Press>
@@ -76,12 +76,12 @@ export default function Aisles() {
           const TagIcon = tag?.icon ? TAG_ICONS[tag.icon] : null
           return (
             <Press key={a.key} onPress={() => go(k)} accessibilityState={{ selected: on }} accessibilityLabel={`${a.title}${a.label ? `, ${a.label}` : ""}. ${done ? "Done" : `${a.left} left`}`} style={{ minHeight: 68, flexDirection: "row", alignItems: "center", gap: 14, borderBottomWidth: 1, borderBottomColor: c.line, paddingVertical: 8 }}>
-              {/* A tag shows its icon in its colour (Isaac's change, 24 Nov 2026); the current one is filled olive as before. */}
+              {/* A tag shows its icon in its colour (Isaac's change, 24 Nov 2026); the current one is filled in the primary colour as before. */}
               {tag && (tag.icon || tag.colour) && !on ? (
                 <TagMark tag={tag} size="lg" fallback={mark} style={done ? { borderWidth: 1, borderStyle: "dashed", borderColor: c.stone } : undefined} />
               ) : (
                 <View style={box(on, done && !on)}>
-                  {TagIcon ? <TagIcon size={22} color={on ? c.onOlive : c.ink} strokeWidth={1.75} /> : <Text style={{ fontFamily: font.bold, fontSize: 17, color: on ? c.onOlive : c.ink }}>{mark}</Text>}
+                  {TagIcon ? <TagIcon size={22} color={on ? c.onPrimary : c.ink} strokeWidth={1.75} /> : <Text style={{ fontFamily: font.bold, fontSize: 17, color: on ? c.onPrimary : c.ink }}>{mark}</Text>}
                 </View>
               )}
               <View style={{ flex: 1 }}>

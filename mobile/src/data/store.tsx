@@ -17,6 +17,7 @@ import { demoState } from "./demo"
 import { DEMO, configured, supabase } from "./supabase"
 import { emptyState, type HistoryEntry, type Item, type PhoneState } from "./state"
 import { applySync, isNetworkError, pendingCount, runSync } from "./sync"
+import { accountColourTheme, colourThemeMetadata, newerColourTheme, type ColourTheme } from "../../../prototypes/shared/src/colour-theme"
 
 // The demo key moves on when the demo seed changes: v2 with Batch 4 (aisles on items), v3 with Batch 6 (a 20-second
 // step on Berry porridge, to try a timer's alert quickly).
@@ -55,6 +56,8 @@ type Ctx = {
   signIn: (email: string, password: string) => Promise<string | null>
   signOut: () => Promise<void>
   resolveConflict: (itemId: string, keep: "phone" | "other") => void
+  /** Changes the colour theme at once; it goes to the account with the next sync. */
+  setColourTheme: (theme: ColourTheme) => void
 }
 
 const StoreContext = React.createContext<Ctx | null>(null)
@@ -117,6 +120,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // ----- syncing -----
+  /**
+   * The colour theme lives on the account (Supabase Auth user metadata), so it rides along with each sync
+   * rather than with the pantry's tables. A change made here is sent; otherwise the account's is read and
+   * the newer of the two wins. It's only a preference, so there's no clash to ask about.
+   */
+  const syncColourTheme = React.useCallback(async () => {
+    try {
+      const local = ref.current.colourTheme
+      if (local?.unsent) {
+        const { error } = await supabase.auth.updateUser({ data: colourThemeMetadata(local) })
+        if (!error && ref.current.colourTheme === local) put({ ...ref.current, colourTheme: { theme: local.theme, at: local.at } })
+        return
+      }
+      const { data, error } = await supabase.auth.getUser()
+      if (error || !data.user) return
+      const account = accountColourTheme(data.user.user_metadata)
+      const winner = newerColourTheme(local, account)
+      if (winner && winner === account && ref.current.colourTheme === local) put({ ...ref.current, colourTheme: { theme: account.theme, at: account.at } })
+    } catch {
+      // Offline or signed out: the phone keeps its own and tries again at the next sync.
+    }
+  }, [put])
+
   const syncNow = React.useCallback(async (): Promise<boolean> => {
     if (DEMO) {
       put({ ...ref.current, synced: { items: ref.current.items, categories: ref.current.categories, stores: ref.current.stores, recipes: ref.current.recipes }, outbox: [], syncedAt: new Date().toISOString() })
@@ -138,6 +164,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const outcome = await runSync(sent)
         const next = applySync(ref.current, sent, outcome)
         put({ ...next, shop: next.shop ? refreshShop(next.shop, next.items) : next.shop })
+        await syncColourTheme()
         setStatus("idle")
         setLastError(undefined)
         return true
@@ -158,7 +185,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       void syncNow()
     }
     return ok
-  }, [put])
+  }, [put, syncColourTheme])
 
   const pullToSync = React.useCallback(async () => {
     setPulling(true)
@@ -260,7 +287,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = React.useCallback(async () => {
     if (!DEMO) await supabase.auth.signOut({ scope: "local" }).catch(() => {})
-    put({ ...emptyState(), theme: ref.current.theme })
+    // Light or dark and the colour theme stay, so the sign-in screen looks the same.
+    put({ ...emptyState(), theme: ref.current.theme, colourTheme: ref.current.colourTheme })
   }, [put])
 
   // ----- changed in two places -----
@@ -278,10 +306,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     soon(300)
   }, [put, soon])
 
+  const setColourTheme = React.useCallback((theme: ColourTheme) => {
+    put({ ...ref.current, colourTheme: { theme, at: new Date().toISOString(), unsent: true } })
+    soon(300)
+  }, [put, soon])
+
   const pending = React.useMemo(() => pendingCount(state), [state])
 
   const value: Ctx = {
-    ready, state, change, local, status, online, pending, lastError, syncNow, pullToSync, pulling, toast, say, dismissToast, signIn, signOut, resolveConflict,
+    ready, state, change, local, status, online, pending, lastError, syncNow, pullToSync, pulling, toast, say, dismissToast, signIn, signOut, resolveConflict, setColourTheme,
   }
   return <StoreContext value={value}>{children}</StoreContext>
 }

@@ -37,12 +37,12 @@ export default function Pantry() {
       refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void pullToSync()} tintColor={c.muted} />}
     >
       {review.length > 0 && (
-        <Press onPress={() => router.push({ pathname: "/pantry/browse", params: { review: "1" } })} style={{ minHeight: 64, borderRadius: radius.base, backgroundColor: c.olive, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Press onPress={() => router.push({ pathname: "/pantry/browse", params: { review: "1" } })} style={{ minHeight: 64, borderRadius: radius.base, backgroundColor: c.primary, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 12 }}>
           <View style={{ flex: 1, paddingVertical: 10 }}>
-            <Text style={{ fontFamily: font.semibold, fontSize: 17, color: c.onOlive }}>{plural(review.length, "new item")} to review</Text>
-            <Text style={{ fontFamily: font.regular, fontSize: 14, color: c.onOlive }}>Check where they live and their tags.</Text>
+            <Text style={{ fontFamily: font.semibold, fontSize: 17, color: c.onPrimary }}>{plural(review.length, "new item")} to review</Text>
+            <Text style={{ fontFamily: font.regular, fontSize: 14, color: c.onPrimary }}>Check where they live and their tags.</Text>
           </View>
-          <ChevronRight size={22} color={c.onOlive} />
+          <ChevronRight size={22} color={c.onPrimary} />
         </Press>
       )}
       {everything.length > 0 && (
@@ -85,7 +85,7 @@ export default function Pantry() {
 function Card({ icon: Icon, label, count, sub, a11y, onPress }: { icon: LucideIcon; label: string; count: number; sub?: string; a11y: string; onPress: () => void }) {
   const c = useColours()
   return (
-    <Press onPress={onPress} accessibilityLabel={a11y} style={{ minHeight: 92, borderWidth: 1, borderColor: c.olive, borderRadius: radius.base, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 14 }}>
+    <Press onPress={onPress} accessibilityLabel={a11y} style={{ minHeight: 92, borderWidth: 1, borderColor: c.primary, borderRadius: radius.base, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 14 }}>
       <View style={{ width: 48, height: 48, borderRadius: radius.base, backgroundColor: c.panel, alignItems: "center", justifyContent: "center" }}>
         <Icon size={26} color={c.ink} strokeWidth={1.75} />
       </View>

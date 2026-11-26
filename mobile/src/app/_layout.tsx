@@ -48,7 +48,7 @@ function App() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }}>
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="list-item/[id]" options={{ ...full, contentStyle: { backgroundColor: "#3D2B1F" } }} />
+          <Stack.Screen name="list-item/[id]" options={{ ...full, contentStyle: { backgroundColor: c.focus.bg } }} />
           <Stack.Screen name="aisles" options={full} />
           <Stack.Screen name="search" options={full} />
           <Stack.Screen name="add" options={sheet} />
@@ -57,7 +57,7 @@ function App() {
           <Stack.Screen name="pantry-filters" options={sheet} />
           <Stack.Screen name="skipped" options={sheet} />
           <Stack.Screen name="stores" options={sheet} />
-          <Stack.Screen name="cooking/[id]" options={{ ...full, contentStyle: { backgroundColor: "#3D2B1F" } }} />
+          <Stack.Screen name="cooking/[id]" options={{ ...full, contentStyle: { backgroundColor: c.focus.bg } }} />
           <Stack.Screen name="cooked/[id]" options={sheet} />
           <Stack.Screen name="settings" options={full} />
         </Stack.Protected>

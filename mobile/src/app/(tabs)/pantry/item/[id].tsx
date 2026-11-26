@@ -171,7 +171,7 @@ function UseBy({ date, caption, onPick }: { date: string | null; caption: string
     DateTimePickerAndroid.open({ value, mode: "date", onChange: (e, d) => e.type === "set" && d && onPick(dayOf(d)) })
   const link = (label: string, onPress: () => void) => (
     <Press fade onPress={onPress} style={{ minHeight: 44, justifyContent: "center" }}>
-      <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.olive }}>{label}</Text>
+      <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.primary }}>{label}</Text>
     </Press>
   )
 
@@ -190,7 +190,7 @@ function UseBy({ date, caption, onPick }: { date: string | null; caption: string
       {date ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}>
           {Platform.OS === "ios" ? (
-            <DateTimePicker value={value} mode="date" display="compact" accentColor={c.olive} themeVariant={c.isDark ? "dark" : "light"} accessibilityLabel="Use by" onChange={(_, d) => d && onPick(dayOf(d))} style={{ marginLeft: -10 }} />
+            <DateTimePicker value={value} mode="date" display="compact" accentColor={c.primary} themeVariant={c.isDark ? "dark" : "light"} accessibilityLabel="Use by" onChange={(_, d) => d && onPick(dayOf(d))} style={{ marginLeft: -10 }} />
           ) : (
             link(new Date(`${date}T12:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }), pickAndroid)
           )}
@@ -201,7 +201,7 @@ function UseBy({ date, caption, onPick }: { date: string | null; caption: string
         // Picking a day only selects it (iOS sends no change for the day already selected, so today could never
         // be saved by tapping); Save keeps it.
         <View>
-          <DateTimePicker value={draft} mode="date" display="inline" accentColor={c.olive} themeVariant={c.isDark ? "dark" : "light"} accessibilityLabel="Use by" onChange={(_, d) => d && setDraft(d)} />
+          <DateTimePicker value={draft} mode="date" display="inline" accentColor={c.primary} themeVariant={c.isDark ? "dark" : "light"} accessibilityLabel="Use by" onChange={(_, d) => d && setDraft(d)} />
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 20 }}>
             {link("Cancel", () => setPicking(false))}
             <Button height={44} label={`Save ${draft.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`} onPress={() => { setPicking(false); onPick(dayOf(draft)) }} style={{ paddingHorizontal: 18 }} />

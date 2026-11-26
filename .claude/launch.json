@@ -16,6 +16,15 @@
         "storybook"
       ],
       "port": 6006
+    },
+    {
+      "name": "mobile-demo-web",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd mobile && EXPO_PUBLIC_DEMO=1 CI=1 npx expo start --web --port 8091"
+      ],
+      "port": 8091
     }
   ]
 }

@@ -4,9 +4,10 @@ import { AccessibilityInfo, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useStore } from "../data/store"
 import { Press } from "./kit"
-import { focus, font, radius } from "./theme"
+import { font, radius, useColours } from "./theme"
 
 export function ToastView() {
+  const { focus } = useColours()
   const { toast, dismissToast } = useStore()
   const insets = useSafeAreaInsets()
   React.useEffect(() => {

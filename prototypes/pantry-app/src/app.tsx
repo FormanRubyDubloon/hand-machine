@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Toaster } from "@/components/ui/sonner"
 import { isToday, plural, timeText, shortDate } from "./model"
 import { markSetupDone, setupDone, useAuthSession } from "../../shared/src/auth"
+import { syncColourTheme } from "./theme"
 import { hasRemotePantry } from "../../shared/src/pantry-remote"
 import { navigate, useRoute, type Route } from "./router"
 import { PantryProvider, usePantry } from "./state"
@@ -73,7 +74,7 @@ function Header({ route, online }: { route: Route; online: boolean }) {
                 aria-current={current ? "page" : undefined}
                 className={cn(
                   "flex items-center border-b-2 pt-0.5 text-xs font-semibold tracking-widest uppercase transition-colors",
-                  current ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+                  current ? "border-(--nav-active) text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
                 )}
               >
                 {n.label}
@@ -85,7 +86,16 @@ function Header({ route, online }: { route: Route; online: boolean }) {
       <Search />
       <div className="flex shrink-0 items-center justify-end gap-2">
         <SyncNote online={online} />
-        <Button variant="outline" size="icon" aria-label="Settings" title="Settings" data-tour="settings" onClick={() => navigate({ name: "settings", tab: "general" })}>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Settings"
+          title="Settings"
+          data-tour="settings"
+          aria-current={route.name === "settings" ? "page" : undefined}
+          className={cn(route.name === "settings" && "border-primary bg-secondary")}
+          onClick={() => navigate({ name: "settings", tab: "stores" })}
+        >
           <SettingsIcon className="size-4.5" />
         </Button>
         <Button data-tour="add-item" onClick={() => navigate({ name: "pantry", item: "new" })}>
@@ -145,6 +155,15 @@ function Shell() {
     })
     return () => { live = false }
     // Only when the account changes, not on every token refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
+  // The colour theme is on the account too: pick up a change made on the phone, now and on coming back.
+  React.useEffect(() => {
+    if (!session) return
+    void syncColourTheme(session)
+    const back = () => { if (document.visibilityState === "visible") void syncColourTheme(session) }
+    document.addEventListener("visibilitychange", back)
+    return () => document.removeEventListener("visibilitychange", back)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
   const ready = !session || setup === "done"

@@ -18,7 +18,7 @@ export function SheetHeader({ title, back, doneLabel = "Done", onDone, full, noD
       {back ? <BackLink label={back.label} onPress={back.onPress} /> : <Text accessibilityRole="header" style={{ fontFamily: font.semibold, fontSize: 17, color: c.ink }}>{title}</Text>}
       {!noDone && (
         <Press fade onPress={onDone ?? (() => router.back())} accessibilityLabel={doneLabel} style={{ minHeight: 44, minWidth: 56, alignItems: "flex-end", justifyContent: "center" }}>
-          <Text style={{ fontFamily: font.semibold, fontSize: 17, color: c.olive }}>{doneLabel}</Text>
+          <Text style={{ fontFamily: font.semibold, fontSize: 17, color: c.primary }}>{doneLabel}</Text>
         </Press>
       )}
     </View>

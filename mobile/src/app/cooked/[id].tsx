@@ -53,8 +53,8 @@ export default function Cooked() {
               const on = !!finished[i.id]
               right = i.inStock > 0 ? (
                 <Press accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={`Finished the ${name.toLowerCase()}`} onPress={() => setFinished((f) => ({ ...f, [i.id]: !on }))} style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44 }}>
-                  <View style={{ width: 28, height: 28, borderRadius: radius.base, borderWidth: 1, borderColor: c.olive, backgroundColor: on ? c.olive : "transparent", alignItems: "center", justifyContent: "center" }}>
-                    {on && <Check size={18} color={c.onOlive} strokeWidth={3} />}
+                  <View style={{ width: 28, height: 28, borderRadius: radius.base, borderWidth: 1, borderColor: c.primary, backgroundColor: on ? c.primary : "transparent", alignItems: "center", justifyContent: "center" }}>
+                    {on && <Check size={18} color={c.onPrimary} strokeWidth={3} />}
                   </View>
                   <Text style={{ fontFamily: font.medium, fontSize: 15, color: c.ink }}>Finished it</Text>
                 </Press>

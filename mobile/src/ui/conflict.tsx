@@ -35,7 +35,7 @@ export function ConflictDialog() {
   const storeName = (id: string) => state.stores.find((x) => x.id === id)?.name ?? "A deleted store"
   const what = conflict.fields.map((f) => FIELD_LABELS[f] ?? f).join(" and ")
   const option = (title: string, value: string, onPress: () => void) => (
-    <Press onPress={onPress} accessibilityLabel={`${title}: ${value}`} style={{ borderWidth: 1, borderColor: c.olive, borderRadius: radius.base, padding: 14, gap: 2 }}>
+    <Press onPress={onPress} accessibilityLabel={`${title}: ${value}`} style={{ borderWidth: 1, borderColor: c.primary, borderRadius: radius.base, padding: 14, gap: 2 }}>
       <Text style={{ fontFamily: font.semibold, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", color: c.muted }}>{title}</Text>
       <Text style={{ fontFamily: font.medium, fontSize: 18, color: c.ink }}>{value}</Text>
     </Press>

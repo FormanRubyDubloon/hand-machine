@@ -1,5 +1,6 @@
 /*
-  Warm reskin for the pantry app and the shopping list only.
+  Warm reskin for the pantry app and the shopping list only. Its colours are the
+  Walnut colour theme; theme-thyme.css, loaded after it, swaps in Thyme's.
   Handoff: prototypes/shared/RESKIN-WARM.md
 
   This file sits on top of src/index.css. It doesn't change the hand-machine
@@ -17,8 +18,13 @@
   filled the gap from the ten swatches (see Tokens-Warm, TOKENS-01).
 */
 
-/* Colour: light */
-:root.theme-warm {
+/*
+  Colour: light. The [data-colour-theme] selectors let a small part of the page show a colour
+  theme other than the app's (the previews in Settings → Appearance). Give that element its own
+  bg-background and text-foreground, since inherited colours are worked out on the ancestor.
+*/
+:root.theme-warm,
+.theme-warm [data-colour-theme="walnut"] {
   --radius: 4px;
 
   --font-sans: "stevie-sans", "Figtree", sans-serif;
@@ -41,7 +47,7 @@
   --destructive: oklch(0.470 0.140 31.1); /* #9A3324 */
   --destructive-foreground: oklch(0.993 0.033 107.0); /* #FFFFE6 generated */
   --border: oklch(0.861 0.021 91.6); /* #D6D1C2 */
-  --input: oklch(0.861 0.021 91.6); /* #D6D1C2 */
+  --input: oklch(0.624 0.027 89.3); /* #8E8775, darkened from #D6D1C2 so field underlines pass 3:1 (Isaac, 26 Nov 2026) */
   --ring: oklch(0.525 0.061 86.1); /* #7A6840 changed from the mockups for contrast */
   --chart-1: oklch(0.837 0.060 84.5); /* #DCC79D generated */
   --chart-2: oklch(0.740 0.086 87.5); /* #C2A86A generated */
@@ -58,10 +64,28 @@
   --sidebar-ring: oklch(0.525 0.061 86.1); /* #7A6840 changed from the mockups for contrast */
   /* Group header rules and quiet buttons on the recipe page (REC-10 layout A). Not a shadcn token. */
   --line-strong: oklch(0.795 0.020 93.7); /* #C0BCAE */
+  /*
+    Theme tokens (claude/handoff-themes.md). The warm screens drew these from primary; Thyme gives
+    them their own colours, so every colour theme sets them. Not shadcn tokens: use them as
+    bg-(--status-out) and so on. Walnut's values copy what PAN-10 and PAN-11 already draw.
+  */
+  --placeholder: oklch(0.585 0.033 63.8); /* #8A7868 */
+  --link: oklch(0.525 0.061 86.1); /* #7A6840 */
+  --nav-active: oklch(0.525 0.061 86.1); /* #7A6840 */
+  --status-out: oklch(0.525 0.061 86.1); /* #7A6840 */
+  --status-out-foreground: oklch(0.993 0.033 107.0); /* #FFFFE6 */
+  --status-low: oklch(0.951 0.016 95.2); /* #F2EFE3 */
+  --status-low-border: oklch(0.525 0.061 86.1); /* #7A6840 */
+  --status-low-foreground: oklch(0.307 0.034 54.8); /* #3D2B1F */
+  /* The gold New pill (an ingredient not in the pantry yet). The same in light and dark. */
+  --new: oklch(0.740 0.086 87.5); /* #C2A86A */
+  --new-border: oklch(0.525 0.061 86.1); /* #7A6840 */
+  --new-foreground: oklch(0.244 0.025 52.8); /* #2A1D15 */
 }
 
 /* Colour: dark. .theme-warm.dark outranks the design system's .dark. */
-:root.theme-warm.dark {
+:root.theme-warm.dark,
+.theme-warm.dark [data-colour-theme="walnut"] {
   --background: oklch(0.244 0.025 52.8); /* #2A1D15 */
   --foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 */
   --card: oklch(0.277 0.030 53.1); /* #34241A generated */
@@ -79,7 +103,7 @@
   --destructive: oklch(0.756 0.095 35.6); /* #E59A86 */
   --destructive-foreground: oklch(0.244 0.025 52.8); /* #2A1D15 generated */
   --border: oklch(0.392 0.032 51.5); /* #544136 */
-  --input: oklch(0.392 0.032 51.5); /* #544136 */
+  --input: oklch(0.546 0.033 56.9); /* #806C5E, darkened from #544136 so field underlines pass 3:1 (Isaac, 26 Nov 2026) */
   --ring: oklch(0.740 0.086 87.5); /* #C2A86A changed from the mockups for contrast */
   --chart-1: oklch(0.988 0.060 107.5); /* #FFFFD0 generated */
   --chart-2: oklch(0.837 0.060 84.5); /* #DCC79D generated */
@@ -95,6 +119,14 @@
   --sidebar-border: oklch(0.392 0.032 51.5); /* #544136 generated */
   --sidebar-ring: oklch(0.740 0.086 87.5); /* #C2A86A changed from the mockups for contrast */
   --line-strong: oklch(0.458 0.042 51.3); /* #6B5142, one step above the border; not on the dark board */
+  --placeholder: oklch(0.585 0.033 63.8); /* #8A7868 */
+  --link: oklch(0.740 0.086 87.5); /* #C2A86A */
+  --nav-active: oklch(0.740 0.086 87.5); /* #C2A86A */
+  --status-out: oklch(0.740 0.086 87.5); /* #C2A86A */
+  --status-out-foreground: oklch(0.244 0.025 52.8); /* #2A1D15 */
+  --status-low: oklch(0.244 0.025 52.8); /* #2A1D15 */
+  --status-low-border: oklch(0.740 0.086 87.5); /* #C2A86A */
+  --status-low-foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 */
 }
 
 /*
@@ -173,6 +205,17 @@
 .theme-warm [data-slot="toggle-group"][data-spacing="0"] > [data-slot="toggle-group-item"],
 .theme-warm [role="group"] > [data-slot="button"] {
   border-radius: 0;
+}
+
+/* Changing theme is instant: theme.ts adds this class for a frame so nothing fades. */
+.theme-switching,
+.theme-switching * {
+  transition: none !important;
+}
+
+/* Text links take the theme's link colour, which in Thyme isn't the primary. */
+.theme-warm [data-slot="button"][data-variant="link"] {
+  color: var(--link);
 }
 
 /*

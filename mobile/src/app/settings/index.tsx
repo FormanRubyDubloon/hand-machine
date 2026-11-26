@@ -1,9 +1,9 @@
-// SETTINGS (full screen, from ☰): account, theme, stores, asking for aisles, tags, how syncing is going, and Sign out.
+// SETTINGS (full screen, from ☰): account, colour theme, light or dark, stores, asking for aisles, tags, how syncing is going, and Sign out.
 import Constants from "expo-constants"
 import { router } from "expo-router"
 import { ChevronRight } from "lucide-react-native"
 import * as React from "react"
-import { Modal, ScrollView, Text, View } from "react-native"
+import { Modal, ScrollView, Text, View, useColorScheme } from "react-native"
 import { DEMO } from "../../data/supabase"
 import { useStore } from "../../data/store"
 import type { Theme } from "../../data/state"
@@ -12,10 +12,54 @@ import { addTag } from "../../logic/actions"
 import { Button, Caption, Field, Label, Press, Segmented, Toggle } from "../../ui/kit"
 import { useLeaveSettings } from "../../ui/leave-settings"
 import { SheetHeader } from "../../ui/sheet"
-import { font, radius, useColours } from "../../ui/theme"
+import { THEMES, font, radius, useColourTheme, useColours } from "../../ui/theme"
+import { COLOUR_THEMES, type ColourTheme } from "../../../../prototypes/shared/src/colour-theme"
+
+/**
+ * A small fixed drawing of a colour theme, in that theme's own colours: the tab underline, a primary bar,
+ * and a line of text with an Out dot. Decoration: the row's name and description carry the meaning.
+ */
+function ThemeTile({ theme, dark }: { theme: ColourTheme; dark: boolean }) {
+  const t = THEMES[theme][dark ? "dark" : "light"]
+  return (
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: 56, height: 56, borderRadius: radius.base, borderWidth: 1, borderColor: t.line, backgroundColor: t.bg, padding: 8, gap: 7, overflow: "hidden" }}>
+      <View style={{ width: 18, height: 3, backgroundColor: t.navActive }} />
+      <View style={{ height: 9, borderRadius: 2, backgroundColor: t.primary }} />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+        <View style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: t.ink }} />
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: t.statusOut }} />
+      </View>
+    </View>
+  )
+}
+
+function ColourThemeRow({ theme, name, description, on, dark, onPress }: { theme: ColourTheme; name: string; description: string; on: boolean; dark: boolean; onPress: () => void }) {
+  const c = useColours()
+  return (
+    <Press
+      accessibilityRole="radio"
+      accessibilityState={{ selected: on }}
+      accessibilityLabel={name}
+      accessibilityHint={description}
+      onPress={onPress}
+      style={{ minHeight: 76, flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 10, borderBottomWidth: 1, borderColor: c.line }}
+    >
+      <ThemeTile theme={theme} dark={dark} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: font.semibold, fontSize: 17, color: c.ink }}>{name}</Text>
+        <Caption>{description}</Caption>
+      </View>
+      <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: on ? c.primary : c.input, alignItems: "center", justifyContent: "center" }}>
+        {on && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.primary }} />}
+      </View>
+    </Press>
+  )
+}
 
 export default function Settings() {
-  const { state, local, change, say, status, online, pending, syncNow, signOut } = useStore()
+  const { state, local, change, say, status, online, pending, syncNow, signOut, setColourTheme } = useStore()
+  const colourTheme = useColourTheme()
+  const system = useColorScheme()
   const [tag, setTag] = React.useState("")
   const c = useColours()
   const [asking, setAsking] = React.useState(false)
@@ -29,15 +73,15 @@ export default function Settings() {
       : status === "error"
         ? "The last sync didn't go through. It tries again by itself."
         : state.syncedAt ? `Up to date. Last synced ${whenText(state.syncedAt)}.` : "Not synced yet."
-  const themeNote = state.theme === "system" ? "Follows your phone's appearance." : state.theme === "dark" ? "Dark, whatever your phone is set to." : "Light, whatever your phone is set to."
+  const themeNote = state.theme === "system" ? `Follows your phone. It's ${system === "dark" ? "dark" : "light"} right now.` : state.theme === "dark" ? "Dark, whatever your phone is set to." : "Light, whatever your phone is set to."
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <SheetHeader title="Settings" full onDone={() => leave(tag.trim())} />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 48 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-          <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: c.olive, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontFamily: font.bold, fontSize: 18, color: c.onOlive }}>{initials(email)}</Text>
+          <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: c.primary, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ fontFamily: font.bold, fontSize: 18, color: c.onPrimary }}>{initials(email)}</Text>
           </View>
           <View style={{ flex: 1 }}>
             <Caption>Signed in as</Caption>
@@ -46,8 +90,18 @@ export default function Settings() {
         </View>
 
         <View style={{ gap: 8 }}>
-          <Label>Theme</Label>
-          <Segmented<Theme> label="Theme" value={state.theme} onChange={(t) => local((s) => ({ ...s, theme: t }))} options={[{ value: "light", label: "Light" }, { value: "dark", label: "Dark" }, { value: "system", label: "Match phone" }]} />
+          <Label>Colour theme</Label>
+          <View accessibilityRole="radiogroup" accessibilityLabel="Colour theme" style={{ borderTopWidth: 1, borderColor: c.line }}>
+            {COLOUR_THEMES.map((t) => (
+              <ColourThemeRow key={t.value} theme={t.value} name={t.name} description={t.description} on={t.value === colourTheme} dark={c.isDark} onPress={() => setColourTheme(t.value)} />
+            ))}
+          </View>
+          <Caption>Saved to your account, so Collca on the web uses it too.</Caption>
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <Label>Light or dark</Label>
+          <Segmented<Theme> label="Light or dark" value={state.theme} onChange={(t) => local((s) => ({ ...s, theme: t }))} options={[{ value: "light", label: "Light" }, { value: "dark", label: "Dark" }, { value: "system", label: "Match phone" }]} />
           <Caption>{themeNote}</Caption>
         </View>
 

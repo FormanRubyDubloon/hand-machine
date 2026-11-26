@@ -8,14 +8,15 @@ import { useStore } from "../data/store"
 import { useNow, useTimers } from "../data/timers"
 import { clock, secondsLeft, timerFor, timersBySoonest, timesIn, type Timer } from "../logic/timers"
 import { Caption, Press } from "./kit"
-import { focus, font, radius, useColours } from "./theme"
+import { font, radius, useColours } from "./theme"
 
 /** Colours for the cooking view (always dark) or a plain page. */
 function usePalette(dark?: boolean) {
   const c = useColours()
+  const { focus } = c
   return dark
     ? { ink: focus.ink, sub: focus.label, line: focus.gold, fill: focus.gold, onFill: focus.onGold, panel: focus.field }
-    : { ink: c.ink, sub: c.muted, line: c.olive, fill: c.olive, onFill: c.onOlive, panel: c.panel }
+    : { ink: c.ink, sub: c.muted, line: c.primary, fill: c.primary, onFill: c.onPrimary, panel: c.panel }
 }
 
 export function StepTimers({ recipe, step, text, dark }: { recipe: { id: string; name: string }; step: number; text: string; dark?: boolean }) {

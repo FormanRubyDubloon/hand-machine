@@ -11,9 +11,10 @@ import { removeFromList, removeQuestion, restoreTicks, setListNote, setToGet, sk
 import { asksForAisle, tickedText, rowsOf } from "../../logic/list"
 import { minText, phrase } from "../../logic/phrases"
 import { AisleField, Button, Field, Press, Stepper } from "../../ui/kit"
-import { focus, font, radius } from "../../ui/theme"
+import { font, radius, useColours } from "../../ui/theme"
 
 export default function ListItemSheet() {
+  const { focus } = useColours()
   const { id } = useLocalSearchParams<{ id: string }>()
   const { state, change, local, say } = useStore()
   const insets = useSafeAreaInsets()
@@ -159,6 +160,7 @@ export default function ListItemSheet() {
 }
 
 function Box({ label, value }: { label: string; value: string }) {
+  const { focus } = useColours()
   return (
     <View style={{ flex: 1, borderWidth: 1, borderColor: focus.line, borderRadius: radius.base, padding: 12, gap: 4 }}>
       <Text style={{ fontFamily: font.semibold, fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: focus.label }}>{label}</Text>
