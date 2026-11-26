@@ -27,6 +27,10 @@ export type Colours = {
   link: string; navActive: string; statusOut: string; onStatusOut: string; statusLow: string; statusLowBorder: string; onStatusLow: string
   /** Home's Tonight pot (HOME-1): its body and the knob on its lid, drawn on the statusOut card. Decorative only. */
   potBody: string; potKnob: string
+  /** Home's Tonight card fill and its text: statusOut, except a warm cream in Thyme light (Isaac, 26 Nov 2026). */
+  tonight: string; onTonight: string
+  /** Home's shop bar fill, its text and its second line: focus.bg, except olive in Thyme light (Isaac, 26 Nov 2026). */
+  shopBar: string; onShopBar: string; shopBarLabel: string
   focus: Focus
 }
 
@@ -52,6 +56,7 @@ export const THEMES: Record<ColourTheme, { light: Colours; dark: Colours }> = {
       link: "#7A6840", navActive: "#7A6840", statusOut: "#7A6840", onStatusOut: "#FFFFE6", statusLow: "#F2EFE3", statusLowBorder: "#7A6840", onStatusLow: "#3D2B1F",
       // Walnut's pot colours are a guess, not yet checked on a mock-up (the card is brown with cream text here).
       potBody: "#DCC79D", potKnob: "#D98A4E",
+      tonight: "#7A6840", onTonight: "#FFFFE6", shopBar: "#3D2B1F", onShopBar: "#F2EFE3", shopBarLabel: "#C0BCAE",
       focus: walnutFocus,
     },
     dark: {
@@ -59,6 +64,7 @@ export const THEMES: Record<ColourTheme, { light: Colours; dark: Colours }> = {
       stone: "#6B5142", input: "#806C5E", danger: "#E59A86", onDanger: "#2A1D15", press: "rgba(242,239,227,0.12)", placeholder: "#9C8C7A",
       link: "#C2A86A", navActive: "#C2A86A", statusOut: "#C2A86A", onStatusOut: "#2A1D15", statusLow: "#2A1D15", statusLowBorder: "#C2A86A", onStatusLow: "#F2EFE3",
       potBody: "#7A6840", potKnob: "#D98A4E",
+      tonight: "#C2A86A", onTonight: "#2A1D15", shopBar: "#3D2B1F", onShopBar: "#F2EFE3", shopBarLabel: "#C0BCAE",
       focus: walnutFocus,
     },
   },
@@ -69,6 +75,10 @@ export const THEMES: Record<ColourTheme, { light: Colours; dark: Colours }> = {
       // The orange tab underline is darkened from #E68A0A in light so it passes 3:1 (Isaac, 26 Nov 2026).
       link: "#3D553A", navActive: "#C4740A", statusOut: "#E1B136", onStatusOut: "#23331F", statusLow: "#F7EAC2", statusLowBorder: "#E1B136", onStatusLow: "#23331F",
       potBody: "#5C6A26", potKnob: "#C4740A",
+      // Warm cream card, #E3D5B6: as light as the rule colour #DDD6C4 (L* 86) and the page's hue made a little warmer and
+      // richer, so it reads as a deeper shade of the page (Isaac, 26 Nov 2026; it was taupe, #B3AC98). Olive shop bar, with
+      // cream for both of the bar's lines (the green label is 4.0:1 on olive).
+      tonight: "#E3D5B6", onTonight: "#23331F", shopBar: "#5C6A26", onShopBar: "#F2EDE0", shopBarLabel: "#F2EDE0",
       focus: thymeFocus,
     },
     dark: {
@@ -77,6 +87,7 @@ export const THEMES: Record<ColourTheme, { light: Colours; dark: Colours }> = {
       link: "#E5B83A", navActive: "#E68A0A", statusOut: "#E5B83A", onStatusOut: "#23331F", statusLow: "#4F5A2A", statusLowBorder: "#E5B83A", onStatusLow: "#F2EDE0",
       // From the HOME-1 mock-up: Thyme light's primary and navActive, on the mustard card.
       potBody: "#5C6A26", potKnob: "#C4740A",
+      tonight: "#E5B83A", onTonight: "#23331F", shopBar: "#23331F", onShopBar: "#F2EDE0", shopBarLabel: "#D0D7C7",
       focus: thymeFocus,
     },
   },

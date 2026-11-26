@@ -83,11 +83,11 @@ export default function Home() {
             onPress={() => router.navigate("/list")}
             tint={c.focus.press}
             accessibilityLabel={`${plural(home.toBuy, "thing")} to buy${shopSub ? `. ${shopSub}` : ""}. Shop`}
-            style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: c.focus.bg, borderRadius: radius.base, paddingVertical: 14, paddingHorizontal: 16 }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: c.shopBar, borderRadius: radius.base, paddingVertical: 14, paddingHorizontal: 16 }}
           >
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ fontFamily: font.semibold, fontSize: 18, lineHeight: 23, color: c.focus.ink }}>{plural(home.toBuy, "thing")} to buy</Text>
-              {!!shopSub && <Text style={{ fontFamily: font.regular, fontSize: 14, lineHeight: 19, color: c.focus.label }}>{shopSub}</Text>}
+              <Text style={{ fontFamily: font.semibold, fontSize: 18, lineHeight: 23, color: c.onShopBar }}>{plural(home.toBuy, "thing")} to buy</Text>
+              {!!shopSub && <Text style={{ fontFamily: font.regular, fontSize: 14, lineHeight: 19, color: c.shopBarLabel }}>{shopSub}</Text>}
             </View>
             {/* Looks like the app's gold button; the whole bar is the one target. */}
             <View style={{ height: 44, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, borderRadius: radius.base, backgroundColor: c.focus.gold }}>
@@ -121,8 +121,8 @@ function Tonight() {
   }
   const openRecipe = () => pick && router.navigate({ pathname: "/recipes/[id]", params: { id: pick.recipe.id } })
 
-  const ink = c.onStatusOut
-  const pot = drawing && <TonightPotArt size={104} colours={{ ink, body: c.potBody, knob: c.potKnob, stitch: c.statusOut }} />
+  const ink = c.onTonight
+  const pot = drawing && <TonightPotArt size={104} colours={{ ink, body: c.potBody, knob: c.potKnob, stitch: c.tonight }} />
   const text = (body: string) => <Text style={{ fontFamily: font.regular, fontSize: 15, lineHeight: 21, color: ink }}>{body}</Text>
   const dark = { backgroundColor: c.focus.bg, borderColor: c.focus.bg }
 
@@ -179,5 +179,5 @@ function Tonight() {
     )
   }
 
-  return <View style={{ backgroundColor: c.statusOut, borderRadius: radius.base, padding: 18, gap: 14 }}>{content}</View>
+  return <View style={{ backgroundColor: c.tonight, borderRadius: radius.base, padding: 18, gap: 14 }}>{content}</View>
 }

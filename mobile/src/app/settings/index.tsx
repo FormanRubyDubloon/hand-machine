@@ -101,7 +101,7 @@ export default function Settings() {
 
         <View style={{ gap: 8 }}>
           <Label>Light or dark</Label>
-          <Segmented<Theme> label="Light or dark" value={state.theme} onChange={(t) => local((s) => ({ ...s, theme: t }))} options={[{ value: "light", label: "Light" }, { value: "dark", label: "Dark" }, { value: "system", label: "Match phone" }]} />
+          <Segmented<Theme> label="Light or dark" value={state.theme} onChange={(t) => local((s) => ({ ...s, theme: t }))} options={[{ value: "light", label: "Light" }, { value: "dark", label: "Dark" }, { value: "system", label: "Auto" }]} />
           <Caption>{themeNote}</Caption>
         </View>
 
