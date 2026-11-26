@@ -11,9 +11,11 @@ import { Animated, PanResponder, Platform, RefreshControl, ScrollView, Text, Vie
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import type { PhoneState } from "../../../data/state"
 import { TOAST_UNDO_MS, useStore } from "../../../data/store"
-import { restoreTicks, tickAll, tickOne, untick, clearShop } from "../../../logic/actions"
-import { asksForAisle, filtersOn, leftOf, refreshShop, rowsOf, shopGroups, shownRows, sortRows, tickedText, type Row } from "../../../logic/list"
+import { chooseStore, restoreTicks, tickAll, tickOne, untick, clearShop } from "../../../logic/actions"
+import { homeSummary } from "../../../logic/home"
+import { asksForAisle, filtersOn, leftOf, refreshShop, rowsOf, shopGroups, shownRows, sortRows, tickedText, whereNext, type Row } from "../../../logic/list"
 import { Body, Button, Caption, Display, IconButton, Press } from "../../../ui/kit"
+import { ShopDone } from "../../../ui/shop-done"
 import { TagMark } from "../../../ui/tags"
 import { font, radius, space, useColours, useReduceMotion } from "../../../ui/theme"
 
@@ -21,7 +23,6 @@ import { font, radius, space, useColours, useReduceMotion } from "../../../ui/th
 const ASK_AFTER_MS = 1500
 
 export default function ListScreen() {
-  const { focus } = useColours()
   const { state, change, local, say, status, online, pulling, pullToSync } = useStore()
   const c = useColours()
   const insets = useSafeAreaInsets()
@@ -67,13 +68,17 @@ export default function ListScreen() {
   // Every tick shows a toast with Undo. Taps in a row on one item while its toast is up share the toast, and
   // Undo puts back all of them (the same run is one History entry too).
   const run = React.useRef<{ id: string; before: number; at: number } | null>(null)
+  // The last run of ticks, for Shop done's Undo last tick (kept while the list is open, not saved).
+  const lastTick = React.useRef<{ id: string; before: number; name: string } | null>(null)
   const ticked = (r: Row, got: number) => {
     const last = run.current
     const before = last && last.id === r.id && Date.now() - last.at < TOAST_UNDO_MS ? last.before : r.got
     run.current = { id: r.id, before, at: Date.now() }
+    lastTick.current = { id: r.id, before, name: r.item.name }
     const title = `Took ${r.item.name.toLowerCase()} off what you got`
     say(tickedText({ ...r, got: before }, got), () => {
       run.current = null
+      lastTick.current = null
       change((s) => restoreTicks(s, r.id, before), { title, key: `shop:${r.id}` })
     })
   }
@@ -101,6 +106,7 @@ export default function ListScreen() {
     if (r.done) {
       cancelAsk()
       run.current = null
+      lastTick.current = null
       change((s) => untick(s, r.id), { title: `Took ${r.item.name.toLowerCase()} off what you got`, key: `shop:${r.id}` })
       return
     }
@@ -154,6 +160,31 @@ export default function ListScreen() {
   const byTag = state.groupBy === "tag"
   const headingTag = byTag && aisle?.tag ? state.categories.find((t) => t.id === aisle.tag) : undefined
 
+  if (shopDone) {
+    const undo = lastTick.current && state.shop?.rows[lastTick.current.id] ? lastTick.current : null
+    return (
+      <ShopDone
+        storeName={store?.name}
+        got={allRows.filter((r) => r.done).length}
+        left={skipped.length}
+        next={whereNext(state)}
+        undo={undo ? {
+          name: undo.name,
+          onPress: () => {
+            lastTick.current = null
+            run.current = null
+            change((s) => restoreTicks(s, undo.id, undo.before), { title: `Took ${undo.name.toLowerCase()} off what you got`, key: `shop:${undo.id}` })
+          },
+        } : undefined}
+        offline={offline}
+        toReview={homeSummary(state).toReview}
+        onStore={(id) => local((s) => chooseStore(s, id))}
+        onFinish={() => change((s) => clearShop(s))}
+        onReview={() => router.navigate({ pathname: "/pantry/browse", params: { review: "1" } })}
+      />
+    )
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <View style={{ paddingHorizontal: space.screen, paddingTop: 10, paddingBottom: 12, gap: 6 }}>
@@ -200,15 +231,6 @@ export default function ListScreen() {
         contentContainerStyle={{ paddingHorizontal: space.screen, paddingBottom: insets.bottom + 40, flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void pullToSync()} tintColor={c.muted} />}
       >
-        {shopDone && (
-          <View accessibilityRole="summary" style={{ backgroundColor: focus.bg, borderRadius: radius.base, padding: 16, gap: 12, marginBottom: 12 }}>
-            <Text style={{ fontFamily: font.regular, fontSize: 16, lineHeight: 22, color: focus.ink }}>
-              <Text style={{ fontFamily: font.bold }}>Shop done. </Text>
-              {offline ? "It goes to your pantry when you're back online." : "Your pantry is up to date."}
-            </Text>
-            <Button kind="gold" label="Start a new list" height={48} onPress={() => change((s) => clearShop(s))} />
-          </View>
-        )}
         {empty && (
           <Body style={{ paddingVertical: 24 }}>
             <Text style={{ fontFamily: font.bold }}>Nothing to buy.</Text> Every Staple is at or above its minimum.

@@ -256,3 +256,29 @@ export const tickedText = (r: Row, got: number) => {
   const now = got - r.got
   return `${r.item.name}: got ${count(r.item, now)}, ${count(r.item, r.need - got)} to get.`
 }
+
+// ---------- shop done ----------
+
+/** One store on the Shop done screen's "Where next?": the things still to get that it sells. */
+export type NextStore = { store: Store; rows: Row[]; names: string }
+
+/**
+ * Where next (Shop done screen, 26 Nov 2026): the other stores, by how many of the things still to get (skipped
+ * this shop) each one sells, most first. An item with no store chosen is for every store, as in the This store
+ * filter. Stores that sell none of them are left out.
+ */
+export function whereNext(state: Pick<PhoneState, "items" | "shop" | "stores" | "storeId">): NextStore[] {
+  const left = rowsOf(state).filter((r) => r.skipped)
+  return state.stores
+    .filter((s) => s.id !== state.storeId)
+    .map((store) => {
+      const rows = left.filter((r) => forStore(r.item, store.id)).sort((a, b) => a.item.name.localeCompare(b.item.name))
+      const names = rows.map((r, k) => {
+        const name = k === 0 ? r.item.name : r.item.name.toLowerCase()
+        return r.left > 1 ? `${name} × ${r.left}` : name
+      }).join(", ")
+      return { store, rows, names }
+    })
+    .filter((n) => n.rows.length > 0)
+    .sort((a, b) => b.rows.length - a.rows.length || a.store.name.localeCompare(b.store.name))
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { demoState } from "../src/data/demo"
-import { clearShop, removeFromList, removeQuestion, restoreTicks, tickAll, tickOne, untick, addNew, setToGet } from "../src/logic/actions"
-import { filtersOn, leftOf, matchesFilter, NO_FILTER, refreshShop, rowsOf, shopGroups, shownRows, tickedText, type Row } from "../src/logic/list"
+import { clearShop, removeFromList, removeQuestion, restoreTicks, skip, tickAll, tickOne, untick, addNew, setToGet } from "../src/logic/actions"
+import { filtersOn, leftOf, matchesFilter, NO_FILTER, refreshShop, rowsOf, shopGroups, shownRows, tickedText, whereNext, type Row } from "../src/logic/list"
 import type { PhoneState } from "../src/data/state"
 
 const start = (): PhoneState => {
@@ -154,5 +154,28 @@ describe("the list filters", () => {
     expect(matchesFilter(rowsOf(s)[0], NO_FILTER)).toBe(true)
     expect(filtersOn(s.filter)).toBe(1)
     expect(clearShop(s).filter).toBeUndefined()
+  })
+})
+
+describe("shop done: where next", () => {
+  it("lists the other stores by how many of the skipped things each sells, most first", () => {
+    let s = start()
+    s = { ...s, storeId: "sainsburys", stores: [...s.stores, { id: "corner", name: "Corner shop", aisles: {} }] }
+    s = { ...s, items: { ...s.items, eggs: { ...s.items.eggs, where: ["tesco"] }, rice: { ...s.items.rice, where: ["corner"] } } }
+    for (const id of ["eggs", "rice", "sardines"]) s = skip(s, id)
+    const next = whereNext(s)
+    // Sardines has no store, so every store sells it.
+    expect(next.map((n) => [n.store.id, n.rows.map((r) => r.id).sort()])).toEqual([
+      ["corner", ["rice", "sardines"]],
+      ["tesco", ["eggs", "sardines"]],
+    ])
+    expect(next.find((n) => n.store.id === "tesco")!.names).toMatch(/^Eggs × 2, /)
+  })
+
+  it("leaves out the store you're in and stores that sell none of it", () => {
+    let s = { ...start(), storeId: "sainsburys" }
+    expect(whereNext(s)).toEqual([])
+    s = skip(s, "eggs")
+    expect(whereNext(s).map((n) => n.store.id)).toEqual(["tesco"])
   })
 })

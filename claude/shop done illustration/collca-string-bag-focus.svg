@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A string bag full of shopping" viewBox="30 4 140 208" width="140" height="208">
+<rect x="-10" y="0" width="20" height="112" rx="10" transform="translate(130 36) rotate(15)" fill="#F7EAC2"/>
+<path d="M-4 16L4 23M-4 34L4 41M-4 52L4 59" transform="translate(130 36) rotate(15)" fill="none" stroke="#23331F" stroke-width="2" stroke-linecap="round"/>
+<path d="M70 70C54 48 50 28 56 10C68 24 76 46 80 68ZM78 68C78 42 86 24 98 14C98 34 94 52 88 70Z" fill="#8FA486"/>
+<rect x="-7" y="0" width="14" height="84" rx="7" transform="translate(76 62) rotate(-8)" fill="#D0D7C7"/>
+<circle cx="76" cy="150" r="24" fill="#E68A0A"/>
+<path d="M76 128C78 120 86 118 92 120C90 126 84 130 76 128Z" fill="#8FA486"/>
+<circle cx="124" cy="158" r="20" fill="#F7B9A6"/>
+<path d="M124 140C124 134 126 131 129 129" fill="none" stroke="#F7EAC2" stroke-width="2.5" stroke-linecap="round"/>
+<ellipse cx="100" cy="188" rx="24" ry="11" fill="#8FA486"/>
+<g fill="none" stroke="#E5B83A" stroke-linecap="round" stroke-linejoin="round">
+<path d="M62 84C54 12 146 12 138 84" stroke-width="4"/>
+<path d="M44 84H156" stroke-width="4"/>
+<path d="M48 84C38 128 44 192 100 206C156 192 162 128 152 84M45 110Q100 121 155 110M44 136Q100 149 156 136M49 162Q100 177 151 162M64 187Q100 199 136 187M72 84C64 130 70 180 84 203M100 84V206M128 84C136 130 130 180 116 203" stroke-width="2.5"/>
+</g>
+</svg>

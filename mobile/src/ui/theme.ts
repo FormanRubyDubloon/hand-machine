@@ -8,10 +8,14 @@ import { AccessibilityInfo, Platform, useColorScheme } from "react-native"
 import { useStore } from "../data/store"
 import { DEFAULT_COLOUR_THEME, type ColourTheme } from "../../../prototypes/shared/src/colour-theme"
 
-/** The always-dark screens: list item sheet, cooking view, toast, Shop done banner. */
+/** The always-dark screens: list item sheet, cooking view, toast, Shop done screen. */
 export type Focus = {
   bg: string; ink: string; gold: string; onGold: string; place: string; label: string; field: string
   danger: string; toast: string; line: string; press: string; placeholder: string
+  /** A highlight badge on the dark screens (Shop done's "Has most"): orange in Thyme, gold in Walnut. */
+  badge: string; onBadge: string
+  /** Shop done's string bag: the soft green of the leek and vegetable, and the orange. */
+  leaf: string; fruit: string
 }
 
 // bg = background, muted = muted-foreground, primary and onPrimary = primary and primary-foreground,
@@ -27,10 +31,15 @@ export type Colours = {
 const walnutFocus: Focus = {
   bg: "#3D2B1F", ink: "#F2EFE3", gold: "#C2A86A", onGold: "#1F1712", place: "#DCC79D", label: "#C0BCAE", field: "#2A1D15",
   danger: "#E59A86", toast: "#2A1D15", line: "rgba(242,239,227,0.18)", press: "rgba(242,239,227,0.14)", placeholder: "#B5A88E",
+  badge: "#C2A86A", onBadge: "#1F1712",
+  // Walnut's bag colours are a guess, not yet checked on a mock-up.
+  leaf: "#A89B6E", fruit: "#D98A4E",
 }
 const thymeFocus: Focus = {
   bg: "#23331F", ink: "#F2EDE0", gold: "#E5B83A", onGold: "#1B2818", place: "#F7EAC2", label: "#D0D7C7", field: "#1B2818",
   danger: "#F7B9A6", toast: "#1B2818", line: "rgba(242,237,224,0.18)", press: "rgba(242,237,224,0.14)", placeholder: "#A9B69F",
+  badge: "#E68A0A", onBadge: "#1B2818",
+  leaf: "#8FA486", fruit: "#E68A0A",
 }
 
 export const THEMES: Record<ColourTheme, { light: Colours; dark: Colours }> = {
