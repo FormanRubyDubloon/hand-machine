@@ -81,3 +81,42 @@ describe("Recent searches", () => {
     expect(r[0]).toBe("thing 19")
   })
 })
+
+// HOME-1 (26 Nov 2026): the greeting and the Tonight card's pick.
+import { dateLine, greeting, tonightLabel, tonightLine, tonightPicks } from "../src/logic/home"
+import type { RecipeRow } from "../src/logic/recipes"
+
+describe("Home: greeting and Tonight", () => {
+  it("greets by the time of day and says the date", () => {
+    expect(greeting(new Date(2026, 10, 26, 9))).toBe("Good morning")
+    expect(greeting(new Date(2026, 10, 26, 12))).toBe("Good afternoon")
+    expect(greeting(new Date(2026, 10, 26, 17))).toBe("Good evening")
+    expect(dateLine(new Date(2026, 10, 26, 9))).toBe("Thursday 26 November")
+    expect(tonightLabel(new Date(2026, 10, 26, 14))).toBe("Today")
+    expect(tonightLabel(new Date(2026, 10, 26, 15))).toBe("Tonight")
+  })
+
+  const r = (id: string, o: Partial<RecipeRow> & { minutes?: number; want?: boolean } = {}): RecipeRow => ({
+    recipe: { id, name: id, serves: 2, minutes: o.minutes ?? 30, wantToCook: !!o.want, ingredients: [], method: [] } as unknown as RecipeRow["recipe"],
+    short: o.short ?? 0, onList: 0, usesUp: o.usesUp ?? null,
+  })
+
+  it("offers only what you can cook: uses up first, then Want to cook, then quickest, then A to Z", () => {
+    const rows = [
+      r("short", { short: 1, usesUp: { name: "Parsley", date: "2026-11-26" } }),
+      r("quick", { minutes: 10 }),
+      r("notime", { minutes: 0 }),
+      r("want", { want: true, minutes: 50 }),
+      r("later", { usesUp: { name: "Milk", date: "2026-11-28" } }),
+      r("sooner", { usesUp: { name: "Parsley", date: "2026-11-26" } }),
+      r("b", { minutes: 20 }),
+      r("a", { minutes: 20 }),
+    ]
+    expect(tonightPicks(rows).map((x) => x.recipe.id)).toEqual(["sooner", "later", "want", "quick", "a", "b", "notime"])
+  })
+
+  it("says the time, that you have everything, and what it uses up", () => {
+    expect(tonightLine(r("x", { minutes: 25, usesUp: { name: "Parsley", date: "2026-11-26" } }))).toBe("25 min · you have everything, and it uses the parsley")
+    expect(tonightLine(r("x", { minutes: 0 }))).toBe("you have everything")
+  })
+})

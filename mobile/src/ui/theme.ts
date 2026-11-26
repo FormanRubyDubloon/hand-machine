@@ -25,6 +25,8 @@ export type Colours = {
   bg: string; ink: string; muted: string; primary: string; onPrimary: string; panel: string; line: string; stone: string
   input: string; danger: string; onDanger: string; press: string; placeholder: string
   link: string; navActive: string; statusOut: string; onStatusOut: string; statusLow: string; statusLowBorder: string; onStatusLow: string
+  /** Home's Tonight pot (HOME-1): its body and the knob on its lid, drawn on the statusOut card. Decorative only. */
+  potBody: string; potKnob: string
   focus: Focus
 }
 
@@ -48,12 +50,15 @@ export const THEMES: Record<ColourTheme, { light: Colours; dark: Colours }> = {
       bg: "#F2EFE3", ink: "#3D2B1F", muted: "#6B5142", primary: "#7A6840", onPrimary: "#FFFFE6", panel: "#E8E5D8", line: "#D6D1C2",
       stone: "#C0BCAE", input: "#8E8775", danger: "#9A3324", onDanger: "#FFFFFF", press: "rgba(61,43,31,0.1)", placeholder: "#8A7B6E",
       link: "#7A6840", navActive: "#7A6840", statusOut: "#7A6840", onStatusOut: "#FFFFE6", statusLow: "#F2EFE3", statusLowBorder: "#7A6840", onStatusLow: "#3D2B1F",
+      // Walnut's pot colours are a guess, not yet checked on a mock-up (the card is brown with cream text here).
+      potBody: "#DCC79D", potKnob: "#D98A4E",
       focus: walnutFocus,
     },
     dark: {
       bg: "#2A1D15", ink: "#F2EFE3", muted: "#C0BCAE", primary: "#C2A86A", onPrimary: "#2A1D15", panel: "#3D2B1F", line: "#544136",
       stone: "#6B5142", input: "#806C5E", danger: "#E59A86", onDanger: "#2A1D15", press: "rgba(242,239,227,0.12)", placeholder: "#9C8C7A",
       link: "#C2A86A", navActive: "#C2A86A", statusOut: "#C2A86A", onStatusOut: "#2A1D15", statusLow: "#2A1D15", statusLowBorder: "#C2A86A", onStatusLow: "#F2EFE3",
+      potBody: "#7A6840", potKnob: "#D98A4E",
       focus: walnutFocus,
     },
   },
@@ -63,12 +68,15 @@ export const THEMES: Record<ColourTheme, { light: Colours; dark: Colours }> = {
       stone: "#B3AC98", input: "#857F69", danger: "#A3361F", onDanger: "#F2EDE0", press: "rgba(35,51,31,0.1)", placeholder: "#737E6C",
       // The orange tab underline is darkened from #E68A0A in light so it passes 3:1 (Isaac, 26 Nov 2026).
       link: "#3D553A", navActive: "#C4740A", statusOut: "#E1B136", onStatusOut: "#23331F", statusLow: "#F7EAC2", statusLowBorder: "#E1B136", onStatusLow: "#23331F",
+      potBody: "#5C6A26", potKnob: "#C4740A",
       focus: thymeFocus,
     },
     dark: {
       bg: "#344A31", ink: "#F2EDE0", muted: "#D0D7C7", primary: "#E5B83A", onPrimary: "#23331F", panel: "#405A3C", line: "#4B6345",
       stone: "#677E60", input: "#849A7E", danger: "#F7B9A6", onDanger: "#23331F", press: "rgba(242,237,224,0.12)", placeholder: "#9EA995",
       link: "#E5B83A", navActive: "#E68A0A", statusOut: "#E5B83A", onStatusOut: "#23331F", statusLow: "#4F5A2A", statusLowBorder: "#E5B83A", onStatusLow: "#F2EDE0",
+      // From the HOME-1 mock-up: Thyme light's primary and navActive, on the mustard card.
+      potBody: "#5C6A26", potKnob: "#C4740A",
       focus: thymeFocus,
     },
   },
