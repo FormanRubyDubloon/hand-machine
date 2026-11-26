@@ -115,6 +115,10 @@ Web measured in Storybook (all matched but one row height, fixed); phone compare
 
 The pieces Batch 7 found in the phone's screens rather than `mobile/src/ui`: the list row and its count box, the list heading (aisle header with the filter button), the Home tiles and the Pantry location cards. On the Phone page, under the phone kit. Details in `GAPS-COLLCA.md`.
 
+## Thyme theme (done 26 Nov 2026)
+
+The second colour theme (`claude/handoff-themes.md`): three Thyme modes beside the renamed Walnut ones, the theme tokens (link, nav underline, Out and Low pills, New pill), the pills, link buttons, phone tab underline and toast rebound to them, and the Foundations page in six columns. Details and gaps in `GAPS-COLLCA.md`.
+
 ## Not included
 
 - The shopping-list web app's own components (`RecipePill`, `SyncReminder` and others): the app is switched off.

@@ -429,3 +429,48 @@ Built from frames bound to the tokens, and named "(not in kit)" or with the reas
 ### Figma limit found (again)
 
 Library imports through the Desktop Bridge stalled twice: once with 59 imports fired at the same time, once later on a few icons. Importing one at a time works after the plugin is restarted. When it stalls, icons already used elsewhere in the file can be reused without importing.
+
+## Thyme colour theme (26 November 2026)
+
+The second colour theme from `claude/handoff-themes.md`, added to the library to match the code (`prototypes/shared/src/theme-thyme.css`, `mobile/src/ui/theme.ts`). Built through the Desktop Bridge plugin. Checked by screenshot with instances in Thyme light, dark and focus, against Walnut light (the mock was removed afterwards).
+
+### Modes
+
+- `Semantic` now has six modes: **Walnut light, Walnut dark, Walnut focus** (renamed from Light, Dark, Focus) and **Thyme light, Thyme dark, Thyme focus**. Renaming kept the mode ids, so anything already set to Light, Dark or Focus, including the Collca screens file once the library is republished, now shows Walnut.
+- Thyme light and dark take `theme-thyme.css`. Thyme focus is the phone's deep-green always-dark set (`thymeFocus` in `theme.ts`): background `#23331F`, the panels `#1B2818`, primary and ring `#E5B83A`, text on primary `#1B2818`, muted text `#D0D7C7`, border and input cream at 18%. Charts and sidebar copy Thyme dark, as Walnut focus copies Walnut dark.
+- `state/*` raw alphas use the same rule as Walnut's, worked out from Thyme's colours (for example `state/primary-80` is Thyme primary at 80%). `state/secondary-hover` is a 5% sRGB mix of secondary and foreground; the code mixes in oklch, so it can be a step off.
+- Tags, `category-tint` and the overlays copy Walnut per light, dark and focus: the tint is the hue at an opacity, the same in both themes.
+
+### Primitives
+
+35 added, hidden: `green/*`, `cream/*`, `mustard/*`, `orange/*`, `red/red-510` and `red-160`, and `alpha/*` for the 10% to 18% overlays. Named as before, family and (1 − L) × 1000. Two are Walnut's new field edges: `earth/earth-380` (`#8E8775`) and `earth/earth-450` (`#806C5E`).
+
+### New tokens
+
+- **Theme tokens** in every mode, as in the CSS: `link`, `nav-active`, `status-out`, `status-out-foreground`, `status-low`, `status-low-border`, `status-low-foreground`, `new`, `new-border`, `new-foreground`. In Walnut they're the colours the components already drew (mostly primary). Focus copies dark: the always-dark screens draw none of them.
+- **`phone/toast`, `phone/toast-foreground`, `phone/toast-action`**: dark in every mode, Walnut brown or Thyme green. The toast used to be pinned to the Focus mode, and a pinned mode can't follow the colour theme, so it stayed brown in Thyme. It now reads these and isn't pinned.
+
+### Components rebound
+
+- `badge` solid and outlined (the Out and Low pills) use the status tokens, as `StockPill` does.
+- `new-pill` was bound to primitives (gold and earth), not tokens; it now uses `new`, `new-border` and `new-foreground`.
+- `button` link variants (all 32) use `link`.
+- `phone-tab-bar`'s current-tab underline uses `nav-active` (orange in Thyme). The emblem and avatar stay primary.
+- `stock-mark` (a recipe ingredient's Too little and Short) still uses primary, as the code's StockMark does.
+
+### Walnut changes that came with it
+
+- `input` is darker (`#8E8775` light, `#806C5E` dark) so field edges pass 3:1, matching the code.
+- `phone/field-line` follows `input` now, because the phone kit draws field edges from `input` since this change.
+
+### Foundations page
+
+Six columns in two rows: Walnut light, dark and focus, then Thyme light, dark and focus. Each has a new Theme tokens group.
+
+### Gaps
+
+- **The New pill's glow is still gold.** It's a drop shadow in `#C2A86A` at 60%. Effect colours with alpha can't take a token without losing the alpha, so in Thyme the glow is gold under a mustard pill. The code mixes the glow from `--new`.
+- **No web header component.** The web nav underline (`nav-active`) isn't in the library: the header is frames in the Collca screens file, which draw `primary`.
+- **The library needs publishing** (Assets → Publish in Figma) before the Collca screens file sees the new modes and tokens. The plugin can't publish.
+- **Screens file:** its frames are set to the old modes by id, so they show Walnut. Nothing there is in Thyme yet.
+- **Contrast** was checked in the code, not in Figma.
