@@ -10,8 +10,9 @@ import * as React from "react"
 import { ActivityIndicator, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useStore } from "../../data/store"
+import { HomeTabEmblem } from "../../ui/art"
 import { Press } from "../../ui/kit"
-import { font, radius, useColours } from "../../ui/theme"
+import { font, useColours } from "../../ui/theme"
 import { plural } from "../../logic/phrases"
 
 const TABS = [
@@ -76,14 +77,10 @@ function SearchButton() {
   )
 }
 
-/** The Collca emblem: a ringed C in the display serif. It stands for Home (Batch 5). */
+/** The Collca emblem: the arched window with the jar inside (HOME-1, 26 Nov 2026; it was a ringed C). It stands for Home. */
 function Emblem({ on }: { on: boolean }) {
   const c = useColours()
-  return (
-    <View style={{ width: 28, height: 28, borderRadius: radius.pill, borderWidth: 1.5, borderColor: c.primary, alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ fontFamily: font.serif, fontWeight: "700", fontSize: 15, lineHeight: 18, color: on ? c.ink : c.primary }}>C</Text>
-    </View>
-  )
+  return <HomeTabEmblem colour={on ? c.ink : c.primary} />
 }
 
 function TabButton({ label, emblem, isFocused, root, onPress, ref, ...p }: Omit<TabTriggerSlotProps, "ref"> & { label: string; emblem?: boolean; root: string; ref?: React.Ref<React.ComponentRef<typeof View>> }) {

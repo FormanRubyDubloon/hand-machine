@@ -162,3 +162,50 @@ export function ShopBagArt({ width = 118, colours: c }: { width?: number; colour
     </Svg>
   )
 }
+
+// HOME-1 (26 Nov 2026, claude/collca-home-1-handoff.zip, art from claude/collca-illustrations.zip).
+
+/**
+ * The Home tab's emblem: the arched window with the jar inside, cut down to a 24-point mark. One colour: ink when
+ * Home is the current tab, primary when not.
+ */
+export function HomeTabEmblem({ size = 26, colour }: { size?: number; colour: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" accessible={false}>
+      {/* The window and its sill. */}
+      <Path d="M4 21 V11 a8 8 0 0 1 16 0 v10 M2 21 h20" stroke={colour} strokeWidth={1.6} strokeLinecap="round" />
+      {/* The jar: lid, then body. */}
+      <Path d="M9 9 h6 v2 H9 z M9.5 12 h5 a1.5 1.5 0 0 1 1.5 1.5 V20 H8 v-6.5 A1.5 1.5 0 0 1 9.5 12 z" fill={colour} />
+    </Svg>
+  )
+}
+
+/** The colours the pot is drawn in (theme tokens: onStatusOut, potBody, potKnob, statusOut). */
+export type TonightPotColours = {
+  /** Steam, lid and rim. */
+  ink: string
+  /** The pot's body and handles. */
+  body: string
+  /** The knob on the lid. */
+  knob: string
+  /** The dashed line across the body: the card's own colour, so it reads as cut out. */
+  stitch: string
+}
+
+/** Home's Tonight card: a steaming pot with its lid on. Drawn on a 100 x 100 grid. Decorative. */
+export function TonightPotArt({ size = 104, colours: c }: { size?: number; colours: TonightPotColours }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 100 100" accessible={false}>
+      {/* Steam. */}
+      <Path d="M36 30 q-6 -7 0 -14 M50 28 q-6 -7 0 -14 M64 30 q-6 -7 0 -14" fill="none" stroke={c.ink} strokeWidth={3} strokeLinecap="round" />
+      {/* Lid, knob and rim. */}
+      <Path d="M22 54 Q50 30 78 54 Z" fill={c.ink} />
+      <Circle cx={50} cy={38} r={5} fill={c.knob} />
+      <Path d="M14 56 H86" stroke={c.ink} strokeWidth={4} strokeLinecap="round" />
+      {/* Body, handles and the dashed line. */}
+      <Path d="M20 60 H80 V76 Q80 90 66 90 H34 Q20 90 20 76 Z" fill={c.body} />
+      <Path d="M20 66 H10 M80 66 H90" stroke={c.body} strokeWidth={5} strokeLinecap="round" />
+      <Path d="M28 72 H72" stroke={c.stitch} strokeWidth={2} strokeDasharray="2 5" strokeLinecap="round" />
+    </Svg>
+  )
+}
