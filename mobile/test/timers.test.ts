@@ -1,6 +1,6 @@
 // Batch 6 (24 Nov 2026): finding the times in a recipe step, and the timers made from them.
 import { describe, expect, it } from "vitest"
-import { clock, durationText, newTimer, secondsLeft, timesIn } from "../src/logic/timers"
+import { clock, durationText, newTimer, RING_FOR_MS, ringing, secondsLeft, timesIn } from "../src/logic/timers"
 
 describe("times in a step", () => {
   it("finds minutes, hours and seconds as a step says them", () => {
@@ -45,5 +45,15 @@ describe("the demo's 20-second step", () => {
     const [t] = timesIn("Stir in the berries and let them warm through for 20 seconds.")
     expect(t).toEqual({ label: "20 sec", seconds: 20 })
     expect(secondsLeft(newTimer({ id: "p", name: "P" }, 2, t), Date.now())).toBe(20)
+  })
+})
+
+describe("ringing", () => {
+  it("rings for done timers until they're cleared, but not for ones done over an hour ago", () => {
+    const now = Date.parse("2026-11-26T18:00:00Z")
+    const t = (id: string, msAgo: number) => ({ ...newTimer({ id: "r", name: "R" }, 0, { label: "1 min", seconds: 60 }, now), id, endsAt: new Date(now - msAgo).toISOString() })
+    const state = { timers: [t("running", -30_000), t("done", 5_000), t("old", RING_FOR_MS + 1)] }
+    expect(ringing(state, now).map((x) => x.id)).toEqual(["done"])
+    expect(ringing({ timers: [] }, now)).toEqual([])
   })
 })

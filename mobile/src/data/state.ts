@@ -8,6 +8,8 @@ import type { GroupBy, ListFilter } from "../logic/list"
 import type { PantryView } from "../logic/pantry"
 import type { Timer } from "../logic/timers"
 import type { ColourTheme } from "../../../prototypes/shared/src/colour-theme"
+import type { RecipeFilter } from "../logic/recipes"
+import type { RecipeSort } from "../logic/sort"
 
 export type { Category, HistoryEntry, Item, Items, ListEntry, Recipe, Store }
 
@@ -79,6 +81,9 @@ export type PhoneState = {
   pantryAll?: boolean
   /** All items' sort and filters (its Filters sheet). Kept on this phone, not synced. */
   pantryView?: PantryView
+  /** The recipe lists' filters and sort (their Filters sheet, 26 Nov 2026). Kept on this phone, not synced. */
+  recipeFilter?: RecipeFilter
+  recipeSort?: RecipeSort
   theme: Theme
   /**
    * The colour theme (Walnut or Thyme) and when it was chosen. Saved on the account so the web matches;

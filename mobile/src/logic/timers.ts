@@ -95,3 +95,13 @@ export const timerFor = (state: Pick<PhoneState, "timers">, recipeId: string, st
 
 /** Timers, soonest to end first. */
 export const timersBySoonest = (state: Pick<PhoneState, "timers">) => [...(state.timers ?? [])].sort((a, b) => a.endsAt.localeCompare(b.endsAt))
+
+/** A done timer rings for this long at most; one left done for longer is quiet when the app next opens. */
+export const RING_FOR_MS = 60 * 60_000
+
+/** The timers that should be ringing now: done, not cleared, and done within the last hour. Soonest done first. */
+export const ringing = (state: Pick<PhoneState, "timers">, now: number) =>
+  timersBySoonest(state).filter((t) => {
+    const ends = Date.parse(t.endsAt)
+    return ends <= now && now - ends < RING_FOR_MS
+  })

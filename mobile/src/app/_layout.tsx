@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { StoreProvider, useStore } from "../data/store"
 import { ConflictDialog } from "../ui/conflict"
+import { TimerAlarm } from "../ui/timer-alarm"
 import { ToastView } from "../ui/toast"
 import { useColours } from "../ui/theme"
 
@@ -55,6 +56,7 @@ function App() {
           <Stack.Screen name="aisle" options={sheet} />
           <Stack.Screen name="filters" options={sheet} />
           <Stack.Screen name="pantry-filters" options={sheet} />
+          <Stack.Screen name="recipe-filters" options={sheet} />
           <Stack.Screen name="skipped" options={sheet} />
           <Stack.Screen name="stores" options={sheet} />
           <Stack.Screen name="cooking/[id]" options={{ ...full, contentStyle: { backgroundColor: c.focus.bg } }} />
@@ -67,6 +69,7 @@ function App() {
       </Stack>
       {signedIn && <ConflictDialog />}
       <ToastView />
+      {signedIn && <TimerAlarm />}
     </>
   )
 }
