@@ -1,5 +1,5 @@
 import * as React from "react"
-import { CloudAlertIcon, CloudOffIcon, PlusIcon, SettingsIcon } from "lucide-react"
+import { CloudAlertIcon, CloudOffIcon, HistoryIcon, PlusIcon, SettingsIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Toaster } from "@/components/ui/sonner"
@@ -10,6 +10,7 @@ import { hasRemotePantry } from "../../shared/src/pantry-remote"
 import { navigate, useRoute, type Route } from "./router"
 import { PantryProvider, usePantry } from "./state"
 import { Search } from "./search"
+import { HistoryPanel, openHistory } from "./history"
 import { ConflictsDialog } from "./screens/conflicts"
 import { Home } from "./screens/home"
 import { ImportScreen } from "./screens/import"
@@ -86,6 +87,9 @@ function Header({ route, online }: { route: Route; online: boolean }) {
       <Search />
       <div className="flex shrink-0 items-center justify-end gap-2">
         <SyncNote online={online} />
+        <Button variant="outline" size="icon" aria-label="History" title="History" data-tour="history" onClick={openHistory}>
+          <HistoryIcon className="size-4.5" />
+        </Button>
         <Button
           variant="outline"
           size="icon"
@@ -210,6 +214,7 @@ function Shell() {
         <Screen route={route} />
       </main>
       <ConflictsDialog open={conflicts && count > 0} onOpenChange={setConflicts} />
+      <HistoryPanel />
       <IntroDialog open={intro && ready} onSkip={() => setIntro(false)} onTour={startTour} />
       {tour && <Tour onDone={() => setTour(false)} />}
     </div>

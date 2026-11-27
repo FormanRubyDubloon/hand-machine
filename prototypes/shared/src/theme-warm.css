@@ -81,6 +81,15 @@
   --new: oklch(0.740 0.086 87.5); /* #C2A86A */
   --new-border: oklch(0.525 0.061 86.1); /* #7A6840 */
   --new-foreground: oklch(0.244 0.025 52.8); /* #2A1D15 */
+  /* Focus: always dark, as the phone's focus set (Home's shop card). Deep brown, the same in light and dark. */
+  --focus: oklch(0.307 0.034 54.8); /* #3D2B1F */
+  --focus-foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 */
+  --focus-muted: oklch(0.795 0.020 93.7); /* #C0BCAE */
+  --focus-gold: oklch(0.740 0.086 87.5); /* #C2A86A */
+  --focus-gold-foreground: oklch(0.213 0.016 53.6); /* #1F1712 */
+  /* Home's Tonight pot, drawn on the --status-out card (as the phone's potBody and potKnob; a guess in Walnut). */
+  --pot-body: oklch(0.837 0.060 84.5); /* #DCC79D */
+  --pot-knob: oklch(0.704 0.123 56.3); /* #D98A4E */
 }
 
 /* Colour: dark. .theme-warm.dark outranks the design system's .dark. */
@@ -126,6 +135,7 @@
   --status-out-foreground: oklch(0.244 0.025 52.8); /* #2A1D15 */
   --status-low: oklch(0.244 0.025 52.8); /* #2A1D15 */
   --status-low-border: oklch(0.740 0.086 87.5); /* #C2A86A */
+  --pot-body: oklch(0.525 0.061 86.1); /* #7A6840 */
   --status-low-foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 */
 }
 
