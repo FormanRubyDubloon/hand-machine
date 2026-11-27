@@ -14,7 +14,8 @@ export const COLOUR_THEMES: { value: ColourTheme; name: string; description: str
   { value: "thyme", name: "Thyme", description: "Cream, deep green and mustard, with an orange highlight." },
 ]
 
-export const DEFAULT_COLOUR_THEME: ColourTheme = "walnut"
+// Thyme for anyone who hasn't chosen (Isaac, 27 Nov 2026; it was Walnut).
+export const DEFAULT_COLOUR_THEME: ColourTheme = "thyme"
 
 export const colourThemeName = (t: ColourTheme) => COLOUR_THEMES.find((c) => c.value === t)!.name
 

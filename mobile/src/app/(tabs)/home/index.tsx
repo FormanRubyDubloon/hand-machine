@@ -9,6 +9,7 @@ import { AccessibilityInfo, RefreshControl, ScrollView, Text, useWindowDimension
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { soonest } from "../../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../../data/store"
+import { guessesToCheck } from "../../../logic/aisle-guesses"
 import { dateLine, greeting, homeSummary, tonightLabel, tonightLine, tonightPicks } from "../../../logic/home"
 import { expiryText, plural } from "../../../logic/phrases"
 import { recipeRows } from "../../../logic/recipes"
@@ -28,6 +29,7 @@ export default function Home() {
 
   const seeSoon = () => router.navigate({ pathname: "/pantry/browse", params: { all: "1", show: "soon" } })
   const store = state.stores.find((s) => s.id === state.storeId) ?? state.stores[0]
+  const guesses = guessesToCheck(state).length
   const shopSub = [store?.name, home.lowOrOut ? `${home.lowOrOut} low or out` : ""].filter(Boolean).join(" · ")
 
   const row = (key: string, title: string, sub: string, onPress: () => void, label: string) => (
@@ -74,6 +76,10 @@ export default function Home() {
         {/* New items to review had no place in HOME-1; a single row, only when there are some (the handoff's suggestion). */}
         {home.toReview > 0 &&
           row("review", plural(home.toReview, "new item to review", "new items to review"), "", () => router.navigate({ pathname: "/pantry/browse", params: { review: "1" } }), plural(home.toReview, "new item to review", "new items to review"))}
+
+        {/* Aisle guesses from tags (27 Nov 2026): a single row, only when there are some for the store you're in. */}
+        {guesses > 0 && !!store &&
+          row("aisles", plural(guesses, "aisle guess", "aisle guesses") + " to check", `At ${store.name}, from your tags`, () => router.push("/aisle-guesses"), `${plural(guesses, "aisle guess", "aisle guesses")} to check at ${store.name}`)}
       </ScrollView>
 
       {/* The shop bar, fixed above the safe area (Isaac's choice, 26 Nov 2026); hidden with nothing to buy. */}

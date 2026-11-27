@@ -28,12 +28,12 @@
          The same keys as src/theme.ts, which takes over once the app loads. -->
     <script>
       (function () {
-        var root = document.documentElement, dark = false, thyme = false
+        var root = document.documentElement, dark = false, thyme = true
         try {
           var t = localStorage.getItem("pantry.theme")
           dark = t === "dark" || (t !== "light" && matchMedia("(prefers-color-scheme: dark)").matches)
           var c = JSON.parse(localStorage.getItem("collca.colourTheme") || "null")
-          thyme = !!c && c.theme === "thyme"
+          thyme = !c || c.theme !== "walnut" // Thyme unless Walnut was chosen: the default since 27 Nov 2026
         } catch (e) {}
         if (new URLSearchParams(location.search).get("theme") !== "ds") root.classList.add("theme-warm")
         if (dark) root.classList.add("dark")

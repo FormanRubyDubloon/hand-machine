@@ -136,7 +136,7 @@ Each recipe records:
 - I can undo any change from History on the same day, including a merge, a delete and removing a tag. Changes Claude makes can be undone the same way.
 
 **Look** (added 26 Nov 2026)
-- There are two colour themes: Walnut (cream, brown and olive, the original colours) and Thyme (cream, deep green and mustard, with an orange highlight). Each has a light and a dark version.
+- There are two colour themes: Walnut (cream, brown and olive, the original colours) and Thyme (cream, deep green and mustard, with an orange highlight). Each has a light and a dark version. Thyme is the default for anyone who hasn't chosen (decided 27 November 2026), and the phone's sign-in screen follows the theme.
 - I choose the colour theme once and it applies everywhere: the phone and the admin app follow the same choice. If I change it in both places before they catch up, the later change wins. It's only a preference, so nothing asks me.
 - Light or dark is chosen on each device, and can follow the device's own setting. A dark phone and a light laptop is normal.
 - A change applies straight away, with no Save button, and the app never opens in the wrong theme first.
@@ -193,5 +193,4 @@ Each recipe records:
 - **Phone features:** notifications (for recipe timers) and keeping the screen awake while cooking are in. Which of barcode scanning and widgets come, and when?
 - **Named aisles in the walk:** named places (Freezer, Tills) go after the numbered aisles. Should I be able to put them in order among the numbers instead (Freezer between aisles 8 and 9)?
 - **Bought date:** one date per item (when I last bought it), or one per unit like use-by dates?
-- **Default theme:** new accounts start in Walnut. Should that change if Thyme becomes the look of Collca?
 - **Shopping by tag:** can I pick more than one tag at once (butcher and fishmonger), and does an item with two tags show under both?

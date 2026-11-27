@@ -472,7 +472,7 @@ export const numberedAisles = (store: Store) => (store.noAisleNumbers ? 0 : new 
 
 // ---------- aisles on items (Batch 4, 24 Nov 2026) ----------
 // Aisles belong to stores and sit on each item: a number or a named place, blank until set. Tags don't set
-// them. A store walks No aisle first, then the numbers in order, then its named places in their own order.
+// them, but they suggest them (guessAisle, 27 Nov 2026). A store walks No aisle first, then the numbers in order, then its named places in their own order.
 
 export type { AisleValue } from "../../shared/src/pantry"
 type Aisle = number | string
@@ -539,6 +539,83 @@ export const DEFAULT_AISLES = 20
  * the store has already gone if that's more. Anything higher is typed in.
  */
 export const aisleTiles = (store: Store, items: Item[]) => store.aisleCount ?? Math.max(DEFAULT_AISLES, highestAisle(store, items))
+
+// ---------- aisle guesses from tags (Isaac's idea, 27 Nov 2026) ----------
+// The app learns where things go from the items you've placed: in each store, each tag's placed items vote for
+// their aisles. A tag whose items mostly share one aisle (Tinned) counts for a lot; one with under half its items
+// in any one aisle (Staples) doesn't count. It guesses only when the vote is clear, since a wrong guess is worse than none.
+
+/** A guessed aisle for an item in one store, with the tag that says most for it ("4 of your 5 Tinned items"). */
+export type AisleGuess = { itemId: string; storeId: string; aisle: Aisle; tagId: string; agree: number; of: number }
+
+/** At least this many placed items must agree with a guess. */
+export const GUESS_MIN_AGREE = 2
+/** A tag votes only when at least this share of its placed items are in one aisle. */
+export const GUESS_MIN_TAG = 1 / 2
+/** The winning aisle's share of the weighted vote. */
+export const GUESS_MIN_SHARE = 2 / 3
+
+type TagAisles = { total: number; top: number; aisles: Map<string, { aisle: Aisle; n: number }> }
+
+/** Each tag's placed items in a store, counted by aisle. */
+function tagAisles(store: Store, items: Item[]): Map<string, TagAisles> {
+  const byTag = new Map<string, TagAisles>()
+  if (store.noAisleNumbers) return byTag
+  for (const i of items) {
+    const a = i.aisleAt?.[store.id]
+    if (a === undefined || a === null || a === "") continue
+    for (const t of tagsOf(i)) {
+      const g = byTag.get(t) ?? { total: 0, top: 0, aisles: new Map() }
+      const k = aisleKey(a)
+      const e = g.aisles.get(k) ?? { aisle: a, n: 0 }
+      e.n++
+      g.aisles.set(k, e)
+      g.total++
+      g.top = Math.max(g.top, e.n)
+      byTag.set(t, g)
+    }
+  }
+  return byTag
+}
+
+function guessFrom(byTag: Map<string, TagAisles>, store: Store, item: Item): AisleGuess | null {
+  if (store.noAisleNumbers || itemAisle(item, store) !== null) return null
+  // Each tag with two or more placed items spreads a vote across its aisles, weighted by how often its items share one.
+  const score = new Map<string, { aisle: Aisle; s: number; best?: { tagId: string; s: number; n: number; of: number } }>()
+  let sum = 0
+  for (const t of tagsOf(item)) {
+    const g = byTag.get(t)
+    if (!g || g.total < 2) continue
+    // Less than half in any one aisle: the tag is spread across the shop and says nothing about where this goes.
+    const weight = g.top / g.total
+    if (weight < GUESS_MIN_TAG) continue
+    for (const [k, e] of g.aisles) {
+      const s = weight * (e.n / g.total)
+      const v = score.get(k) ?? { aisle: e.aisle, s: 0 }
+      v.s += s
+      if (!v.best || s > v.best.s) v.best = { tagId: t, s, n: e.n, of: g.total }
+      score.set(k, v)
+      sum += s
+    }
+  }
+  let win: { aisle: Aisle; s: number; best?: { tagId: string; s: number; n: number; of: number } } | undefined
+  for (const v of score.values()) if (!win || v.s > win.s) win = v
+  if (!win?.best || sum === 0 || win.s / sum < GUESS_MIN_SHARE || win.best.n < GUESS_MIN_AGREE) return null
+  return { itemId: item.id, storeId: store.id, aisle: win.aisle, tagId: win.best.tagId, agree: win.best.n, of: win.best.of }
+}
+
+/** A guess for one item's aisle in a store from its tags, or null when it has an aisle there or the vote isn't clear. */
+export const guessAisle = (store: Store, items: Item[], item: Item) => guessFrom(tagAisles(store, items), store, item)
+
+/** Guesses for every item with no aisle in a store (one-off items left out), A to Z. */
+export function guessAisles(store: Store, items: Item[]): AisleGuess[] {
+  const byTag = tagAisles(store, items)
+  return items
+    .filter((i) => !i.oneOff)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((i) => guessFrom(byTag, store, i))
+    .filter((g): g is AisleGuess => g !== null)
+}
 
 /** An item's tags (what the code calls categories), in order. Items from before Batch 4b have only categoryId. */
 export const tagsOf = (i: Item): string[] => i.tagIds ?? (i.categoryId ? [i.categoryId] : [])

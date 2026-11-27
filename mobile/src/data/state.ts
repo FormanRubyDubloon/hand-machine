@@ -68,6 +68,11 @@ export type PhoneState = {
   aisle: number | "all"
   /** Shopping by aisle (the default) or by tag (Batch 4). Kept on this phone, not synced. */
   groupBy?: GroupBy
+  /**
+   * Aisle guesses you said no to (27 Nov 2026), "storeId:itemId" to the guessed aisle's key, so they don't come back.
+   * A different guess for the same item shows again. Kept on this phone, not synced.
+   */
+  aisleNo?: Record<string, string>
   /** "Ask for the aisle after ticking off" turned off (Batch 4). Kept on this phone, not synced. */
   noAislePrompt?: boolean
   /** What you've searched for, newest first (Batch 5). Kept on this phone, not synced. */
