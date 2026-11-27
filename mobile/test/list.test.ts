@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { demoState } from "../src/data/demo"
 import { clearShop, removeFromList, removeQuestion, restoreAll, restoreTicks, skip, tickAll, tickRows, tickOne, untick, addNew, setToGet } from "../src/logic/actions"
-import { filtersOn, leftOf, matchesFilter, NO_FILTER, refreshShop, rowsOf, shopGroups, shownRows, tickedText, whereNext, type Row } from "../src/logic/list"
+import { filtersOn, leftOf, matchesFilter, NO_FILTER, refreshShop, rowsOf, shopGroups, shownRows, tickedText, gotPopupText, whereNext, type Row } from "../src/logic/list"
 import type { PhoneState } from "../src/data/state"
 
 const start = (): PhoneState => {
@@ -112,6 +112,11 @@ describe("the toast after a tick", () => {
   it("says got all on the last one", () => {
     expect(tickedText(row({}, 6, 5), 6)).toBe("Got all 6 eggs.")
     expect(tickedText(row({}, 1), 1)).toBe("Got eggs.")
+  })
+  it("says what you got in the item sheet's popup, without all or a full stop", () => {
+    expect(gotPopupText(row({ name: "Bin bags" }, 2))).toBe("Got 2 bin bags")
+    expect(gotPopupText(row({}, 1))).toBe("Got eggs")
+    expect(gotPopupText(row({ name: "Flour", unit: ["bag", "bags"] }, 3))).toBe("Got 3 bags of flour")
   })
 })
 

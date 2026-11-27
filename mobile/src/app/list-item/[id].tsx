@@ -1,16 +1,16 @@
-// The item sheet (full screen, always dark): what's in the pantry, the minimum, how many to get, a note, and
-// Got all / Skip this shop / Remove from list, and Edit in pantry for the rest. Things not in the pantry yet get an aisle picker instead of stock.
+// The item sheet (full screen, always dark), Isaac's design of 27 Nov 2026: the aisle and tags, the name, a panel with
+// how many to get (− and +) over a Got all pill, Skip and Edit (to the item in the Pantry tab), and Remove from
+// list. Stock, minimum, note and aisle field went; the item's pantry page has them.
 import { router, useLocalSearchParams } from "expo-router"
-import { ChevronRight } from "lucide-react-native"
+import { Check, Minus, PenLine, Plus, SkipForward, Undo2 } from "lucide-react-native"
 import * as React from "react"
-import { ScrollView, Text, View } from "react-native"
+import { Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { aisleTitle, isBulk, isStaple, itemAisle, tagsOf } from "../../../../prototypes/pantry-app/src/model"
+import { aisleTitle, itemAisle, tagsOf } from "../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../data/store"
-import { removeFromList, removeQuestion, restoreTicks, setListNote, setToGet, skip, tickAll, untick } from "../../logic/actions"
-import { asksForAisle, tickedText, rowsOf } from "../../logic/list"
-import { minText, phrase } from "../../logic/phrases"
-import { AisleField, Button, Field, Press, Stepper } from "../../ui/kit"
+import { removeFromList, removeQuestion, restoreTicks, setToGet, skip, tickAll, untick } from "../../logic/actions"
+import { asksForAisle, gotPopupText, rowsOf } from "../../logic/list"
+import { Button, Press } from "../../ui/kit"
 import { font, radius, useColours } from "../../ui/theme"
 
 export default function ListItemSheet() {
@@ -20,7 +20,6 @@ export default function ListItemSheet() {
   const insets = useSafeAreaInsets()
   const row = rowsOf(state).find((r) => r.id === id)
   const item = state.items[id]
-  const [note, setNote] = React.useState(item?.notes ?? "")
   const [asking, setAsking] = React.useState(false)
 
   if (!item || !row) {
@@ -38,30 +37,23 @@ export default function ListItemSheet() {
   // The aisle in this store, then its tags. A store with no aisle numbers shows only the tags.
   const where = [store?.noAisleNumbers ? null : aisleTitle(aisle), ...tags].filter(Boolean).join(" · ")
   const notInPantry = !!row.isNew && item.inStock - row.got <= 0
-  const handAdded = (row.item.entries ?? []).length > 0 || !isStaple(item)
-  const openNote = isBulk(item) && isStaple(item) && (item.open ?? 0) > 0 && !item.openCounts
-  const counts = isBulk(item) && !item.openCounts ? item.inStock - (item.open ?? 0) : item.inStock
-  const recipeNote = (item.entries ?? []).find((e) => e.source.kind === "recipe")
 
-  const saveNote = () => {
-    if (handAdded && note !== (item.notes ?? "")) change((s) => setListNote(s, id, note), { title: `Changed the note on ${item.name.toLowerCase()}` })
-  }
-  const close = () => {
-    saveNote()
-    router.back()
+  const close = () => router.back()
+  const minToGet = Math.max(1, row.got + 1)
+  const setNeed = (n: number) => {
+    if (n < minToGet) return
+    change((s) => setToGet(s, id, n - row.got), { title: `${item.name} on the list: ${n}`, key: `toget:${id}` })
   }
   // To the item in the Pantry tab, for anything this sheet doesn't change (location, use-by, notes, store).
   const editInPantry = () => {
-    saveNote()
     router.back()
     router.navigate({ pathname: "/pantry/item/[id]", params: { id } })
   }
   // Not this time: off the list while you shop here, still to buy. Only on this phone, so it isn't in History.
   const skipThis = () => {
-    saveNote()
     local((s) => skip(s, id))
     router.back()
-    say(`Skipped ${item.name.toLowerCase()} this shop. It's still on your list for next time.`, () => local((s) => skip(s, id, false)))
+    say(`Skipped ${item.name.toLowerCase()}`, () => local((s) => skip(s, id, false)), "skip")
   }
   const gotAll = () => {
     if (row.done) {
@@ -77,7 +69,7 @@ export default function ListItemSheet() {
       return
     }
     router.back()
-    say(tickedText(row, row.need), () => change((s) => restoreTicks(s, id, before), { title: `Took ${item.name.toLowerCase()} off what you got`, key: `shop:${id}` }))
+    say(gotPopupText(row), () => change((s) => restoreTicks(s, id, before), { title: `Took ${item.name.toLowerCase()} off what you got`, key: `shop:${id}` }), "got")
   }
 
   return (
@@ -88,48 +80,38 @@ export default function ListItemSheet() {
           <Text style={{ fontFamily: font.semibold, fontSize: 16, color: focus.gold }}>Done</Text>
         </Press>
       </View>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
-        <Text accessibilityRole="header" style={{ fontFamily: font.serif, fontWeight: "700", fontSize: 34, lineHeight: 37, letterSpacing: 1.2, textTransform: "uppercase", color: focus.ink }}>{item.name}</Text>
+      <Text accessibilityRole="header" style={{ marginTop: 24, marginHorizontal: 20, textAlign: "center", fontFamily: font.serif, fontWeight: "700", fontSize: 38, lineHeight: 42, color: focus.ink }}>{item.name}</Text>
 
-        {notInPantry ? (
-          <Text style={{ fontFamily: font.regular, fontSize: 16, lineHeight: 22, color: focus.ink }}>Not in your pantry yet. It joins your pantry once you tick it off.</Text>
-        ) : (
-          <View style={{ gap: 10 }}>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <Box label="In the pantry now" value={item.inStock > 0 ? phrase(item) : "None"} />
-              <Box label="Minimum to keep" value={minText(item)} />
-            </View>
-            {openNote && <Text style={{ fontFamily: font.regular, fontSize: 14, lineHeight: 19, color: focus.label }}>Only full {item.unit?.[1] ?? "packs"} count towards the minimum, so you have {counts} that {counts === 1 ? "counts" : "count"}.</Text>}
-            {!item.oneOff && (
-              <Press fade onPress={editInPantry} accessibilityRole="link" accessibilityLabel={`Edit ${item.name} in the pantry`} style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}>
-                <Text style={{ fontFamily: font.semibold, fontSize: 15, letterSpacing: 0.9, textTransform: "uppercase", color: focus.gold }}>Edit in pantry</Text>
-                <ChevronRight size={18} color={focus.gold} />
-              </Press>
-            )}
+      {/* How many to get, then Got all, in one panel (Isaac's design, 27 Nov 2026). */}
+      <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 20 }}>
+        <View style={{ backgroundColor: focus.field, borderRadius: 40, paddingHorizontal: 20, paddingTop: 28, paddingBottom: 20, gap: 12 }}>
+          <Text style={{ textAlign: "center", fontFamily: font.semibold, fontSize: 13, letterSpacing: 1.2, textTransform: "uppercase", color: focus.label }}>In the basket</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 8 }}>
+            <Round label="One fewer in the basket" disabled={row.need <= minToGet} onPress={() => setNeed(row.need - 1)}>
+              <Minus size={24} color={focus.ink} />
+            </Round>
+            <Text accessibilityLabel={`${row.need} in the basket`} accessibilityLiveRegion="polite" style={{ fontFamily: font.serif, fontWeight: "700", fontSize: 52, lineHeight: 60, color: focus.ink }}>{row.need}</Text>
+            <Round label="One more in the basket" onPress={() => setNeed(row.need + 1)}>
+              <Plus size={24} color={focus.ink} />
+            </Round>
           </View>
-        )}
-
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Text style={{ fontFamily: font.semibold, fontSize: 13, letterSpacing: 1.2, textTransform: "uppercase", color: focus.label }}>To get</Text>
-          <Stepper dark label="How many to get" value={row.need} min={Math.max(1, row.got + 1)} onChange={(n) => change((s) => setToGet(s, id, n - row.got), { title: `${item.name} on the list: ${n}`, key: `toget:${id}` })} />
+          <Press
+            onPress={gotAll}
+            tint={focus.press}
+            accessibilityLabel={row.done ? `Not got ${item.name}` : `Got all ${row.need}`}
+            style={{ marginTop: 12, minHeight: 76, borderRadius: 38, borderWidth: 2, borderColor: focus.gold, backgroundColor: row.done ? "transparent" : focus.gold, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12 }}
+          >
+            {row.done ? <Undo2 size={24} color={focus.gold} strokeWidth={2.5} /> : <Check size={26} color={focus.onGold} strokeWidth={3} />}
+            <Text style={{ fontFamily: font.semibold, fontSize: 18, letterSpacing: 1, textTransform: "uppercase", color: row.done ? focus.gold : focus.onGold }}>{row.done ? "Not got it" : "Got all"}</Text>
+          </Press>
         </View>
+      </View>
 
-        {handAdded ? (
-          <Field dark label="Note" value={note} onChangeText={setNote} placeholder="Brand, size, what it's for" multiline style={{ minHeight: 64 }} />
-        ) : (
-          <View style={{ gap: 4 }}>
-            <Text style={{ fontFamily: font.semibold, fontSize: 13, letterSpacing: 1.2, textTransform: "uppercase", color: focus.label }}>Why it's on the list</Text>
-            <Text style={{ fontFamily: font.regular, fontSize: 16, color: focus.ink }}>{recipeNote && recipeNote.source.kind === "recipe" ? `For ${recipeNote.source.recipe}` : row.note}</Text>
-          </View>
-        )}
-
-        {store && !store.noAisleNumbers && (
-          <AisleField dark label={`Aisle at ${store.name}`} value={aisle === null ? null : aisleTitle(aisle)} onPress={() => router.push({ pathname: "/aisle", params: { id, from: "edit" } })} />
-        )}
-      </ScrollView>
-      <View style={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 16, gap: 8 }}>
-        <Button kind="gold" height={64} label={row.done ? "Not got it" : `Got all (${row.need})`} onPress={gotAll} />
-        {!row.done && <Button kind="goldOutline" height={52} label="Skip this shop" accessibilityLabel={`Skip ${item.name} this shop. It stays on your list`} onPress={skipThis} />}
+      <View style={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 16, gap: 12 }}>
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          {!row.done && <Button kind="goldOutline" height={64} label="Skip" icon={<SkipForward size={20} color={focus.ink} />} textColour={focus.ink} accessibilityLabel={`Skip ${item.name} this shop. It stays on your list`} onPress={skipThis} style={{ flex: 1 }} />}
+          {!notInPantry && !item.oneOff && <Button kind="goldOutline" height={64} label="Edit" icon={<PenLine size={20} color={focus.ink} />} textColour={focus.ink} accessibilityLabel={`Edit ${item.name} in the pantry`} onPress={editInPantry} style={{ flex: 1 }} />}
+        </View>
         {asking ? (
           // Asks first, in place: says what removing will do, then Remove or Keep it.
           <View accessibilityLiveRegion="polite" style={{ gap: 12, paddingTop: 4 }}>
@@ -151,7 +133,7 @@ export default function ListItemSheet() {
           </View>
         ) : (
           <Press fade onPress={() => setAsking(true)} style={{ minHeight: 48, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontFamily: font.semibold, fontSize: 15, letterSpacing: 0.9, textTransform: "uppercase", color: focus.danger }}>Remove from list</Text>
+            <Text style={{ fontFamily: font.regular, fontSize: 16, textDecorationLine: "underline", color: focus.danger }}>Remove from list</Text>
           </Press>
         )}
       </View>
@@ -159,12 +141,18 @@ export default function ListItemSheet() {
   )
 }
 
-function Box({ label, value }: { label: string; value: string }) {
+function Round({ label, onPress, disabled, children }: { label: string; onPress: () => void; disabled?: boolean; children: React.ReactNode }) {
   const { focus } = useColours()
   return (
-    <View style={{ flex: 1, borderWidth: 1, borderColor: focus.line, borderRadius: radius.base, padding: 12, gap: 4 }}>
-      <Text style={{ fontFamily: font.semibold, fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: focus.label }}>{label}</Text>
-      <Text accessibilityLiveRegion="polite" style={{ fontFamily: font.semibold, fontSize: 18, color: focus.ink }}>{value}</Text>
-    </View>
+    <Press
+      fade
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 1.5, borderColor: focus.gold, alignItems: "center", justifyContent: "center", opacity: disabled ? 0.4 : 1 }}
+    >
+      {children}
+    </Press>
   )
 }
