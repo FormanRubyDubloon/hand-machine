@@ -607,6 +607,14 @@ function guessFrom(byTag: Map<string, TagAisles>, store: Store, item: Item): Ais
 /** A guess for one item's aisle in a store from its tags, or null when it has an aisle there or the vote isn't clear. */
 export const guessAisle = (store: Store, items: Item[], item: Item) => guessFrom(tagAisles(store, items), store, item)
 
+/** Why a guess: "4 of your 5 Tinned items are in aisle 7", "Both your Dairy items are at the Tills". */
+export function aisleGuessReason(g: AisleGuess, tagName: string) {
+  const where = typeof g.aisle === "number" ? `in aisle ${g.aisle}` : `at ${g.aisle}`
+  const items = `${tagName} items`
+  if (g.agree === g.of) return `${g.of === 2 ? "Both" : `All ${g.of} of`} your ${items} are ${where}`
+  return `${g.agree} of your ${g.of} ${items} are ${where}`
+}
+
 /** Guesses for every item with no aisle in a store (one-off items left out), A to Z. */
 export function guessAisles(store: Store, items: Item[]): AisleGuess[] {
   const byTag = tagAisles(store, items)

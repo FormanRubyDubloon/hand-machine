@@ -16,6 +16,7 @@ import { CategoryMark } from "../category-look"
 import { QuickUseActions } from "../quick-use"
 import { ItemPanel } from "./item-panel"
 import { RecipePanel } from "./recipe"
+import { ReviewSection } from "../review"
 
 type Group = "often" | Location
 
@@ -279,6 +280,8 @@ export function Home({ item, recipe }: { item?: string; recipe?: string }) {
           />
           <Eyebrow>Press / to search</Eyebrow>
         </label>
+
+        {!q && <ReviewSection />}
 
         {!q && <UseToday all={all} />}
 
