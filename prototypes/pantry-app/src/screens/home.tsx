@@ -281,10 +281,6 @@ export function Home({ item, recipe }: { item?: string; recipe?: string }) {
           <Eyebrow>Press / to search</Eyebrow>
         </label>
 
-        {!q && <ReviewSection />}
-
-        {!q && <UseToday all={all} />}
-
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-baseline gap-4">
             <Eyebrow className="text-foreground">{q ? `Matching "${q}"` : group === "often" ? "Used most often" : locationLabel(group)}</Eyebrow>
@@ -325,6 +321,10 @@ export function Home({ item, recipe }: { item?: string; recipe?: string }) {
             )}
           </div>
         )}
+
+        {!q && <UseToday all={all} />}
+
+        {!q && <ReviewSection />}
       </div>
 
       <aside className="flex w-[360px] shrink-0 flex-col gap-8 overflow-y-auto border-l border-border bg-muted/50 px-6 py-8">
