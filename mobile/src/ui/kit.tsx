@@ -318,7 +318,8 @@ export function Picker({ label, value, options, onPick, dark, placeholder = "Cho
  * An item's aisle in the store you're in, as a field (Batch 4, 24 Nov 2026). It opens the Which aisle? sheet rather
  * than a dropdown, since an aisle can be any number or a named place.
  */
-export function AisleField({ label, value, onPress, dark }: { label: string; value: string | null; onPress: () => void; dark?: boolean }) {
+/** `guess`: the value is a guess from the item's tags, not set yet (27 Nov 2026); it shows a Guess pill, and `why` is read out. */
+export function AisleField({ label, value, onPress, dark, guess, why }: { label: string; value: string | null; onPress: () => void; dark?: boolean; guess?: boolean; why?: string }) {
   const c = useColours()
   const { focus } = c
   const ink = dark ? focus.ink : c.ink
@@ -326,12 +327,15 @@ export function AisleField({ label, value, onPress, dark }: { label: string; val
     <View style={{ gap: 6 }}>
       <Label colour={dark ? focus.label : undefined}>{label}</Label>
       <Press
-        accessibilityLabel={`${label}: ${value ?? "none yet"}. Change`}
+        accessibilityLabel={`${label}: ${value ?? "none yet"}${guess ? `, a guess${why ? `. ${why}` : ""}` : ""}. Change`}
         onPress={onPress}
         tint={dark ? focus.press : undefined}
         style={{ minHeight: 52, borderWidth: 1, borderColor: dark ? focus.line : c.input, borderRadius: radius.base, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: dark ? focus.field : "transparent" }}
       >
-        <Text style={{ fontFamily: font.medium, fontSize: 17, color: value ? ink : dark ? focus.label : c.muted, flex: 1 }}>{value ?? "None yet"}</Text>
+        <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Text style={{ fontFamily: font.medium, fontSize: 17, color: value ? ink : dark ? focus.label : c.muted }}>{value ?? "None yet"}</Text>
+          {guess && <View style={{ alignSelf: "center" }}><Pill label="Guess" /></View>}
+        </View>
         <ChevronRight size={20} color={ink} />
       </Press>
     </View>

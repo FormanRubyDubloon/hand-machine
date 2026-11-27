@@ -35,15 +35,12 @@ export default function PantryItem() {
   const name = item.name.toLowerCase()
   const store = state.stores.find((s) => s.id === state.storeId) ?? state.stores[0]
   const aisle = itemAisle(item, store)
-  // No aisle here yet: the guess from its tags, if there's a clear one (27 Nov 2026). Shown under the aisle field, and
-  // "Looks right, save it" on a new item takes it, since the New box calls its aisle a guess.
+  // No aisle here yet: the guess from its tags, if there's a clear one (27 Nov 2026). The aisle field shows it with a
+  // Guess pill (Isaac's change); tapping it opens the aisle question with the guess outlined. "Looks right, save it"
+  // on a new item takes it, since the New box calls its aisle a guess.
   const guess = store && aisle === null ? guessFor(state, store, item) : null
   const guessTitle = guess ? aisleTitle(guess.aisle) : ""
   const guessWhy = guess ? guessReason(guess, state.categories.find((k) => k.id === guess.tagId)?.name ?? "tagged") : ""
-  const takeGuess = () => {
-    if (!guess || !store) return
-    change((s) => acceptGuesses(s, [guess]), note(`${item.name}: ${guessTitle.toLowerCase()} at ${store.name}`, `aisle:${store.id}:${id}`))
-  }
   const tagList = tagsOf(item).map((t) => state.categories.find((k) => k.id === t)).filter((k): k is NonNullable<typeof k> => !!k)
   const tags = tagList.map((k) => k.name)
   const bulk = isBulk(item)
@@ -125,17 +122,13 @@ export default function PantryItem() {
         </View>
 
         {store && !store.noAisleNumbers && (
-          <View style={{ gap: 8 }}>
-            <AisleField label={`Aisle at ${store.name}`} value={aisle === null ? null : aisleTitle(aisle)} onPress={() => router.push({ pathname: "/aisle", params: { id, from: "edit" } })} />
-            {guess && (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <Caption style={{ flex: 1 }}>Guess: {guessWhy.charAt(0).toLowerCase() + guessWhy.slice(1)}.</Caption>
-                <Press fade onPress={takeGuess} accessibilityLabel={`Use ${guessTitle} for ${item.name}`} style={{ minHeight: 44, justifyContent: "center" }}>
-                  <Text style={{ fontFamily: font.semibold, fontSize: 15, color: c.primary }}>Use it</Text>
-                </Press>
-              </View>
-            )}
-          </View>
+          <AisleField
+            label={`Aisle at ${store.name}`}
+            value={aisle !== null ? aisleTitle(aisle) : guess ? guessTitle : null}
+            guess={!!guess}
+            why={guessWhy}
+            onPress={() => router.push({ pathname: "/aisle", params: { id, from: "edit" } })}
+          />
         )}
 
         {state.stores.length > 1 && (
