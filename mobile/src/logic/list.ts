@@ -255,6 +255,13 @@ export function asksForAisle(state: Pick<PhoneState, "stores" | "storeId" | "noA
 /** "Got all 6 eggs." */
 export const gotAllText = (r: Row) => `Got all ${count(r.item, r.need)}${r.item.unit ? ` of ${r.item.name.toLowerCase()}` : ` ${r.item.name.toLowerCase()}`}.`
 
+/** The item sheet's Got all popup (Isaac's design, 27 Nov 2026): "Got 2 bin bags", "Got 3 tins of tomatoes", "Got eggs". */
+export const gotPopupText = (r: Row) => {
+  const name = r.item.name.toLowerCase()
+  if (r.need === 1) return `Got ${name}`
+  return `Got ${count(r.item, r.need)}${r.item.unit ? ` of ${name}` : ` ${name}`}`
+}
+
 /**
  * The toast after ticking a row up to `got` (`r` is the row as it was before): "Eggs: got 1, 2 to get.",
  * "Got all 6 eggs." or, when only one was needed, "Got eggs."

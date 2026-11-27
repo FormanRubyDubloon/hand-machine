@@ -30,7 +30,12 @@ const FRONT_GAP_MS = 20_000
 export const TOAST_UNDO_MS = 5000
 
 export type SyncStatus = "idle" | "syncing" | "offline" | "error"
-export type Toast = { id: number; message: string; undo?: () => void }
+/** How long the Got all and Skip popup stays still between sliding in and out (Isaac, 27 Nov 2026: one or two seconds). */
+export const POPUP_HOLD_MS = 2000
+/** The popup's slide in, and again out. */
+export const POPUP_MOVE_MS = 320
+/** popup: shown as the centred popup (the item sheet's Got all and Skip), not the toast at the bottom. */
+export type Toast = { id: number; message: string; undo?: () => void; popup?: "got" | "skip" }
 
 /** A History entry for Collca on the web: what changed, and what the items were before, so it can be undone there. */
 export type Note = { title: string; detail?: string; recipeId?: string; key?: string }
@@ -51,7 +56,7 @@ type Ctx = {
   pullToSync: () => Promise<void>
   pulling: boolean
   toast: Toast | null
-  say: (message: string, undo?: () => void) => void
+  say: (message: string, undo?: () => void, popup?: "got" | "skip") => void
   dismissToast: () => void
   signIn: (email: string, password: string) => Promise<string | null>
   signOut: () => Promise<void>
@@ -259,10 +264,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   // ----- toasts -----
   const toastTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const say = React.useCallback((message: string, undo?: () => void) => {
+  const say = React.useCallback((message: string, undo?: () => void, popup?: "got" | "skip") => {
     clearTimeout(toastTimer.current)
-    setToast({ id: Date.now(), message, undo })
-    toastTimer.current = setTimeout(() => setToast(null), undo ? TOAST_UNDO_MS : 3200)
+    setToast({ id: Date.now(), message, undo, popup })
+    // The popup times itself, so it can slide out before it goes; it calls dismissToast when it's done.
+    if (!popup) toastTimer.current = setTimeout(() => setToast(null), undo ? TOAST_UNDO_MS : 3200)
   }, [])
   const dismissToast = React.useCallback(() => {
     clearTimeout(toastTimer.current)
