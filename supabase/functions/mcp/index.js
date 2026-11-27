@@ -465,6 +465,8 @@ function storeAisles(store, items) {
   return [...groups.values()].sort((x, y) => compareAisles(store, x.aisle, y.aisle)).map((g) => ({ ...g, items: g.items.sort((x, y) => x.name.localeCompare(y.name)) }));
 }
 var DEFAULT_AISLES = 20;
+var GUESS_MIN_TAG = 1 / 2;
+var GUESS_MIN_SHARE = 2 / 3;
 var tagsOf = (i) => i.tagIds ?? (i.categoryId ? [i.categoryId] : []);
 var withTags = (i, tags) => {
   const unique = [...new Set(tags.filter(Boolean))];

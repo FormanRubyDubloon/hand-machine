@@ -75,10 +75,10 @@ export const THEMES: Record<ColourTheme, { light: Colours; dark: Colours }> = {
       // The orange tab underline is darkened from #E68A0A in light so it passes 3:1 (Isaac, 26 Nov 2026).
       link: "#3D553A", navActive: "#C4740A", statusOut: "#E1B136", onStatusOut: "#23331F", statusLow: "#F7EAC2", statusLowBorder: "#E1B136", onStatusLow: "#23331F",
       potBody: "#5C6A26", potKnob: "#C4740A",
-      // Warm cream card, #E3D5B6: as light as the rule colour #DDD6C4 (L* 86) and the page's hue made a little warmer and
-      // richer, so it reads as a deeper shade of the page (Isaac, 26 Nov 2026; it was taupe, #B3AC98). Olive shop bar, with
-      // cream for both of the bar's lines (the green label is 4.0:1 on olive).
-      tonight: "#E3D5B6", onTonight: "#23331F", shopBar: "#5C6A26", onShopBar: "#F2EDE0", shopBarLabel: "#F2EDE0",
+      // Warm cream card, #E5D9C1 (L* about 87.5): the page's hue made a little warmer, so it reads as a deeper shade of
+      // the page. On 27 Nov 2026 (Isaac) it went a little brighter than #E3D5B6, to #E7DABF, then a tenth less
+      // saturated; it was taupe, #B3AC98, before 26 Nov. Olive shop bar, with cream for both of the bar's lines (the green label is 4.0:1 on olive).
+      tonight: "#E5D9C1", onTonight: "#23331F", shopBar: "#5C6A26", onShopBar: "#F2EDE0", shopBarLabel: "#F2EDE0",
       focus: thymeFocus,
     },
     dark: {
