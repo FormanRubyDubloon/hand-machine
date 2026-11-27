@@ -79,7 +79,7 @@ export default function Home() {
 
         {/* Aisle guesses from tags (27 Nov 2026): a single row, only when there are some for the store you're in. */}
         {guesses > 0 && !!store &&
-          row("aisles", plural(guesses, "aisle guess", "aisle guesses") + " to check", `At ${store.name}, from your tags`, () => router.push("/aisle-guesses"), `${plural(guesses, "aisle guess", "aisle guesses")} to check at ${store.name}`)}
+          row("aisles", plural(guesses, "aisle guess", "aisle guesses") + " to check", `At ${store.name}, from your tags`, () => router.navigate({ pathname: "/pantry/browse", params: { review: "aisles" } }), `${plural(guesses, "aisle guess", "aisle guesses")} to check at ${store.name}`)}
       </ScrollView>
 
       {/* The shop bar, fixed above the safe area (Isaac's choice, 26 Nov 2026); hidden with nothing to buy. */}

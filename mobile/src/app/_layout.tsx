@@ -54,7 +54,6 @@ function App() {
           <Stack.Screen name="search" options={full} />
           <Stack.Screen name="add" options={sheet} />
           <Stack.Screen name="aisle" options={sheet} />
-          <Stack.Screen name="aisle-guesses" options={sheet} />
           <Stack.Screen name="filters" options={sheet} />
           <Stack.Screen name="pantry-filters" options={sheet} />
           <Stack.Screen name="recipe-filters" options={sheet} />
