@@ -220,3 +220,19 @@ describe("shop done: where next", () => {
     expect(whereNext(s).map((n) => n.store.id)).toEqual(["tesco"])
   })
 })
+
+describe("an open pack running low", () => {
+  it("goes on the list with its reason when it's the last pack, and leaves once one is bought", async () => {
+    const { setOpenLow, addOne } = await import("../src/logic/actions")
+    let s = start()
+    s = { ...s, items: { ...s.items, rice: { ...s.items.rice, target: 0, inStock: 1, open: 1 } } }
+    s = { ...s, shop: refreshShop(s.shop, s.items) }
+    expect(rowsOf(s).find((r) => r.id === "rice")).toBeUndefined()
+    s = setOpenLow(s, "rice", true)
+    const row = rowsOf(s).find((r) => r.id === "rice")!
+    expect([row.need, row.note, row.group, row.status]).toEqual([1, "Open bag running low", "staples", "low"])
+    s = addOne(s, "rice")
+    expect(s.items.rice.openLow).toBe(true)
+    expect(rowsOf({ ...s, shop: refreshShop(null, s.items) }).find((r) => r.id === "rice")).toBeUndefined()
+  })
+})

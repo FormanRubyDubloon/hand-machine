@@ -409,6 +409,7 @@ const removeRecipeEntries = (i: SharedItem, recipeName: string): SharedItem | nu
 
 const reasonText = (r: Reason, i: SharedItem) =>
   r.kind === "staple" ? `Staple, have ${haveText(i)}, keep ${i.target}`
+    : r.kind === "low" ? `open ${i.unit?.[0] ?? "pack"} running low, none full`
     : r.kind === "recipe" ? `for ${r.recipe}`
       : r.kind === "claude" ? "added by Claude"
         : "added by you"
@@ -709,7 +710,7 @@ export const tools: Tool[] = [
     name: "record_used",
     title: "Record what was used",
     description:
-      "Takes used things off stock, when the user says what they've used: \"I used the last of the rice\", \"we had 4 eggs\", \"I opened a new bag of flour\". This isn't an edit, so it doesn't need asking. Counted items: amount is how many were used. Bulk items: amount is how many packs were finished; opened_pack opens one instead.",
+      "Takes used things off stock, when the user says what they've used: \"I used the last of the rice\", \"we had 4 eggs\", \"I opened a new bag of flour\", \"the rice is nearly out\". This isn't an edit, so it doesn't need asking. Counted items: amount is how many were used. Bulk items: amount is how many packs were finished; opened_pack opens one instead; running_low marks the open pack as running low.",
     inputSchema: {
       type: "object",
       properties: {
@@ -717,6 +718,10 @@ export const tools: Tool[] = [
         amount: { type: "number", description: "Default 1." },
         all: { type: "boolean", description: "Used all of it (\"the last of the rice\")." },
         opened_pack: { type: "boolean", description: "Bulk only: opened a pack, nothing finished." },
+        running_low: {
+          type: "boolean",
+          description: "Bulk only: true when the open pack is running low (\"nearly out of rice\"), false to take that back. Nothing is taken off stock. If no full pack is left, one goes on the shopping list. Needs a pack open: if none is, open one with opened_pack first.",
+        },
       },
       required: ["item"],
     },
@@ -724,6 +729,13 @@ export const tools: Tool[] = [
     async run(args, ctx) {
       const i = findItem(ctx.data.items, args.item)
       const pack = i.unit?.[0] ?? "pack"
+      if (typeof args.running_low === "boolean") {
+        if (!isBulk(i)) throw new ToolError(`${i.name} is counted, not bulk, so it has no open pack. Use amount for what was used.`)
+        if ((i.open ?? 0) <= 0) throw new ToolError(`No ${pack} of ${lower(i.name)} is open (${haveText(i)}). Ask the user whether they opened one; if so, use opened_pack first.`)
+        const next = normalise({ ...i, openLow: args.running_low || undefined })
+        await commit(ctx, { items: [next], title: args.running_low ? `Open ${pack} of ${lower(i.name)} running low` : `Open ${pack} of ${lower(i.name)} not running low`, detail: stockDetail(next), itemIds: [i.id] })
+        return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`
+      }
       if (args.opened_pack === true) {
         if (!isBulk(i)) throw new ToolError(`${i.name} is counted, not bulk: use amount instead.`)
         if ((i.open ?? 0) >= i.inStock) throw new ToolError(`Every ${pack} of ${lower(i.name)} is already open (${haveText(i)}). Ask the user whether one was finished or more came in.`)
@@ -961,6 +973,7 @@ export const tools: Tool[] = [
             location: { type: ["string", "null"], enum: [...LOCATIONS, null], description: "household is shown to the user as Other." },
             use_by: { type: "array", items: { type: "string" }, description: "Replaces every date, one per unit or pack. YYYY-MM-DD. [] clears them." },
             open_counts: { type: "boolean", description: "Bulk only: true if an open pack counts towards the minimum like a full one. false (the default) counts only full packs." },
+            open_low: { type: "boolean", description: "Bulk only, with a pack open: true marks the open pack as running low, false clears it. When the user just says something's nearly out, use record_used running_low instead (no asking)." },
             use_within_weeks: { type: ["number", "null"], description: "Bulk only: weeks to use a pack within once it's open (1 to 52). Opening a pack then moves its use-by no later than that. null clears it." },
             no_expiry: { type: "boolean", description: "true for things that never go off (salt, tins, cleaning products): clears every date and stops the item asking for one. false to track dates again." },
             use_by_one: {
@@ -1048,6 +1061,12 @@ export const tools: Tool[] = [
         if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs.`)
         next.openCounts = c.open_counts || undefined
         said.push(c.open_counts ? "open pack counts towards the minimum" : "open pack doesn't count towards the minimum")
+      }
+      if (typeof c.open_low === "boolean") {
+        if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs.`)
+        if ((next.open ?? 0) <= 0 && c.open_low) throw new ToolError(`No pack of ${lower(i.name)} is open, so none can be running low. Set open first, or use record_used opened_pack.`)
+        next.openLow = c.open_low || undefined
+        said.push(c.open_low ? "open pack running low" : "open pack no longer running low")
       }
       if (has("use_within_weeks")) {
         if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs.`)

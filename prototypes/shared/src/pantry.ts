@@ -68,6 +68,11 @@ export type SharedItem = {
   noExpiry?: boolean
   /** Bulk: an open pack counts towards the minimum like a full one. Otherwise only full packs count. */
   openCounts?: boolean
+  /**
+   * Bulk: the open pack is running low (you said so; the app doesn't measure it). It never counts towards the
+   * minimum, and with no full pack to follow it, one goes on the shopping list. Cleared when no pack is open.
+   */
+  openLow?: boolean
   /** Bulk with use-by dates: weeks to use a pack within once it's open. Opening moves its use-by no later than that. */
   useWithinWeeks?: number
   /** Bulk: when each open pack was opened, matching the first `open` entries of useBy. */

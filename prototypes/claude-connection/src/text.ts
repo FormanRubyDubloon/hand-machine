@@ -1,7 +1,7 @@
 // How the pantry reads to Claude: one line per item, recipe or list row, in plain words. Claude
 // rephrases for the chat, so these favour being unambiguous (ids, ISO dates) over being pretty.
 import {
-  aisleTitle, daysUntil, haveText, isBulk, itemAisle, money, isStaple, locationLabel, needOf, normalise, recipeInfo, shortNames, soonest, stockOf, tagsOf,
+  aisleTitle, daysUntil, haveText, isBulk, isOpenLow, itemAisle, money, isStaple, locationLabel, needOf, normalise, recipeInfo, shortNames, soonest, stockOf, tagsOf,
   type IngredientRow, type Items,
 } from "../../pantry-app/src/model"
 import { minutesText, type Category, type SharedItem, type SharedRecipe, type SharedStore } from "../../shared/src/pantry"
@@ -38,6 +38,7 @@ export function itemLine(i: SharedItem, categories: Category[], stores: SharedSt
   if (i.packSize) parts.push(`pack size ${i.packSize.amount} ${i.packSize.measure}`)
   const opened = (i.openedAt ?? []).filter((x): x is string => !!x)
   if (opened.length) parts.push(`opened ${opened.join(", ")}`)
+  if (isOpenLow(i)) parts.push("open pack running low")
   if (i.location) parts.push(locationLabel(i.location).toLowerCase())
   const tags = tagNames(categories, i)
   parts.push(tags.length ? `tags: ${tags.join(", ")}` : "no tags")

@@ -32,6 +32,13 @@ function Why({ row }: { row: ListRow }) {
             <span>Staple · {cap(inStockText(i))} · {i.target} min</span>
           </span>
         )
+      case "low":
+        return (
+          <span key={k} className="flex items-center gap-2">
+            <StockPill item={i} />
+            <span>Open {i.unit?.[0] ?? "pack"} running low · none full</span>
+          </span>
+        )
       case "recipe":
         return (
           <span key={k} className="flex items-center gap-2">

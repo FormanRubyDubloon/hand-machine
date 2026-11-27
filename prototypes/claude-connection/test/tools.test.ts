@@ -116,6 +116,25 @@ describe("adding, no asking", () => {
     expect((mem.history[0].undo as { items: Record<string, { inStock: number }> }).items.eggs.inStock).toBe(4)
   })
 
+  it("update_item sets and clears open_low, and refuses it on a counted item", async () => {
+    const { call, mem } = setup()
+    await call("update_item", { item: "rice", changes: { open_low: true }, confirmed: true })
+    expect(mem.state.items.rice.openLow).toBe(true)
+    await call("update_item", { item: "rice", changes: { open_low: false }, confirmed: true })
+    expect(mem.state.items.rice.openLow).toBeUndefined()
+    expect((await call("update_item", { item: "eggs", changes: { open_low: true }, confirmed: true })).isError).toBe(true)
+  })
+
+  it("marks an open pack running low, and the last one goes on the list", async () => {
+    const { call, mem } = setup()
+    const r = await call("record_used", { item: "plain-flour", running_low: true })
+    expect(r.isError).toBe(false)
+    expect(mem.state.items["plain-flour"]).toMatchObject({ inStock: 1, openLow: true })
+    expect(needOf(mem.state.items["plain-flour"])).toBe(1)
+    expect(mem.history[0]).toMatchObject({ who: "claude", title: "Open bag of plain flour running low" })
+    expect((await call("record_used", { item: "eggs", running_low: true })).isError).toBe(true)
+  })
+
   it("the last of the rice: all packs gone, open count follows", async () => {
     const { call, mem } = setup()
     await call("record_used", { item: "rice", all: true })

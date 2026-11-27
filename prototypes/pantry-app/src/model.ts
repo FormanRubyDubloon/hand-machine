@@ -90,19 +90,28 @@ export const locationLabel = (l?: Location) => locations.find((x) => x.value ===
 export const isStaple = (i: Item) => i.target > 0
 export const isBulk = (i: Item) => i.type === "bulk"
 
-/** Whole packs that count towards the minimum. An open pack doesn't, unless the item says it does. */
-export const fullOf = (i: Item, total = i.inStock) => (isBulk(i) && !i.openCounts ? Math.max(0, total - (i.open ?? 0)) : total)
+/** Bulk: an open pack you've marked as running low (27 Nov 2026). */
+export const isOpenLow = (i: Item) => isBulk(i) && !!i.openLow && (i.open ?? 0) > 0
+/**
+ * Whole packs that count towards the minimum. An open pack doesn't, unless the item says it does; a pack
+ * marked running low never does.
+ */
+export const fullOf = (i: Item, total = i.inStock) =>
+  !isBulk(i) ? total : Math.max(0, total - (i.openCounts ? (isOpenLow(i) ? 1 : 0) : i.open ?? 0))
+/** An open pack running low with no full pack to follow it: one goes on the list, Staple or not. */
+export const lowAndLast = (i: Item) => isOpenLow(i) && i.inStock - (i.open ?? 0) <= 0
 /** How many a Staple is short of its minimum. */
 export const shortfall = (i: Item) => Math.max(0, i.target - fullOf(i))
 export const entryTotal = (i: Item) => (i.entries ?? []).reduce((n, e) => n + e.qty, 0)
-/** How many to buy: a Staple's shortfall, or what's on the list for it, whichever is more. */
-export const needOf = (i: Item) => Math.max(shortfall(i), entryTotal(i))
+/** How many to buy: a Staple's shortfall, or what's on the list for it, whichever is more (and one for a last pack running low). */
+export const needOf = (i: Item) => Math.max(shortfall(i), entryTotal(i), lowAndLast(i) ? 1 : 0)
 
 export type Stock = "out" | "low" | null
 /** Low means half the minimum or fewer. Between half and the minimum it's below minimum, but not Low. */
 export const LOW_AT = 0.5
-/** Only Staples are Out or Low. */
-export const stockOf = (i: Item): Stock => (!isStaple(i) ? null : i.inStock <= 0 ? "out" : fullOf(i) <= i.target * LOW_AT ? "low" : null)
+/** Staples are Out or Low by their counts. Any bulk item is Low when its last pack is open and running low. */
+export const stockOf = (i: Item): Stock =>
+  isStaple(i) && i.inStock <= 0 ? "out" : (isStaple(i) && fullOf(i) <= i.target * LOW_AT) || lowAndLast(i) ? "low" : null
 
 export function unitText(i: Item, n: number) {
   if (!i.unit) return String(n)
@@ -144,7 +153,7 @@ export function normalise(i: Item): Item {
   const opened = [...(i.openedAt ?? [])].slice(0, open ?? 0)
   while (opened.length < (open ?? 0)) opened.push(null)
   // New (made from a recipe, not bought yet) until some arrives. Ordered until it's off the list.
-  return { ...i, open, useBy: dates, openedAt: isBulk(i) ? opened : undefined, review: i.review && i.inStock <= 0 ? true : undefined, ordered: i.ordered && needOf(i) > 0 ? true : undefined }
+  return { ...i, open, useBy: dates, openedAt: isBulk(i) ? opened : undefined, openLow: (isBulk(i) && i.openLow && (open ?? 0) > 0) || undefined, review: i.review && i.inStock <= 0 ? true : undefined, ordered: i.ordered && needOf(i) > 0 ? true : undefined }
 }
 
 /** Sets stock. Using takes the soonest date first; buying adds an undated unit at the end. */
@@ -298,6 +307,7 @@ export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 export function stockSentence(i: Item) {
   const need = needOf(i)
   const listed = need > 0 ? `so ${need} ${need === 1 ? "is" : "are"} on the shopping list.` : "so nothing's on the shopping list."
+  if (lowAndLast(i) && shortfall(i) === 0) return `The open ${unitNames(i)[0]} is running low and there's no full one, so 1 is on the shopping list.`
   if (!isStaple(i)) {
     const e = entryTotal(i)
     return e ? `Not a Staple. ${e} on the shopping list.` : "Not a Staple, so it only goes on the list when you add it."
@@ -342,6 +352,9 @@ export function listBox(i: Item): ListBox {
         : `You have ${full}, below your minimum of ${t}.`
     if (listed > short) reason += ` ${listed} ${listed === 1 ? "was" : "were"} added ${entrySources(i)}.`
     return { on: true, head: `${need} on the shopping list`, reason }
+  }
+  if (lowAndLast(i) && listed === 0) {
+    return { on: true, head: "1 on the shopping list", reason: `The open ${unitNames(i)[0]} is running low and there's no full one to follow it.` }
   }
   if (listed > 0) {
     const why = isStaple(i) ? `It meets your minimum of ${t}.` : "It isn't a Staple, so it only goes on the list when you or a recipe adds it."
@@ -390,6 +403,8 @@ export function distance(a: string, b: string) {
 
 export type Reason =
   | { kind: "staple"; stock: Stock }
+  /** Not short of a minimum, but the last pack is open and running low. */
+  | { kind: "low" }
   | { kind: "recipe"; recipe: string }
   | { kind: "claude"; at?: string }
   | { kind: "hand" }
@@ -402,13 +417,14 @@ export function listRows(items: Items): ListRow[] {
     .map((i) => {
       const reasons: Reason[] = []
       if (shortfall(i) > 0) reasons.push({ kind: "staple", stock: stockOf(i) })
+      else if (lowAndLast(i)) reasons.push({ kind: "low" })
       for (const e of i.entries ?? []) {
         if (e.source.kind === "recipe") reasons.push({ kind: "recipe", recipe: e.source.recipe })
         else if (e.source.kind === "claude") reasons.push({ kind: "claude", at: e.at })
         else reasons.push({ kind: "hand" })
       }
       const first = reasons[0]?.kind
-      return { item: i, qty: needOf(i), reasons, group: first === "staple" ? "staples" : first === "recipe" ? "recipes" : "added" }
+      return { item: i, qty: needOf(i), reasons, group: first === "staple" || first === "low" ? "staples" : first === "recipe" ? "recipes" : "added" }
     })
 }
 
