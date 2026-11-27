@@ -144,12 +144,12 @@ export default function ListScreen() {
       const r = tickRows(s, ids)
       before = r.before
       return r.state
-    }, { title: `Got everything left in ${where} on the phone`, detail: toGet.map((r) => r.item.name).join(", ") })
+    }, { title: `Got everything left in ${where} on the phone`, detail: toGet.map((r) => r.item.name).join(", "), counts: { as: "shop" } })
     const restore = (s: PhoneState) => restoreAll(s, before)
     lastTick.current = { ids, name, restore }
     say(`Got ${name.toLowerCase()}.`, () => {
       lastTick.current = null
-      change(restore, { title: `Took ${name.toLowerCase()} off what you got` })
+      change(restore, { title: `Took ${name.toLowerCase()} off what you got`, counts: { as: "shop" } })
     })
   }
 

@@ -1,333 +1,387 @@
-// PAN-09: quick use. Record what you used in a couple of clicks, see History, and what to cook first.
+// Home (new design, 27 Nov 2026): Today and Insights. Today is a greeting, then four cards: Tonight (one recipe you
+// can cook now, picked as the phone's Home picks it), Use it up (what goes off first), the next shop (hidden with
+// nothing to buy) and Used one? Tap it (the most-used items, with −1). A bar under them says what's waiting to be
+// reviewed. Insights (insights.tsx) adds up the facts on History entries for this week, month or year.
+// Search moved to the header (it was already there) and History to a panel off the header's clock.
 import * as React from "react"
-import { CopyIcon, SearchIcon, SmartphoneIcon, Trash2Icon } from "lucide-react"
-import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { FilterChips } from "@/components/ui/filter-chips"
+import { cn } from "@/lib/utils"
+import { minutesText } from "../../../shared/src/pantry"
 import {
-  containsText, dateText, daysUntil, haveText, inStockText, isToday, lower, recipesUsing, shortDate, soonest, isBulk, locationLabel, namesOf, recipeInfo, timeText, type Db, type HistoryEntry, type Item, type Items, type Location, type Who,
+  daysUntil, isBulk, isStaple, listRows, listTotal, locationLabel, lower, recipeInfo, soonest, stockOf, type Item, type Items, type Recipe,
 } from "../model"
-import { href, navigate } from "../router"
-import { canRevert, canUndo, usePantry } from "../state"
-import { Eyebrow, ExpiryAlert, HistoryRow, StockPill, type HistoryLinks } from "../components"
-import { CategoryMark } from "../category-look"
-import { QuickUseActions } from "../quick-use"
+import { navigate } from "../router"
+import { usePantry } from "../state"
+import { Eyebrow, Segmented } from "../components"
 import { ItemPanel } from "./item-panel"
 import { RecipePanel } from "./recipe"
+import { ReviewBar } from "../review"
+import { Insights, insightsTitle, periodLabel } from "../insights"
+import type { Period } from "../insights-model"
 
-type Group = "often" | Location
+type View = "today" | "insights"
 
-/** PAN-09 tile: name, where, a big number, Out or Low, and the actions that fit the type. */
-function QuickUseTile({ item }: { item: Item }) {
-  const { db } = usePantry()
-  const category = db.categories.find((c) => c.id === item.categoryId)
-  const bulk = isBulk(item)
-  const where = [locationLabel(item.location), bulk && item.inStock ? haveText(item).replace(/^\d+ /, "") : null].filter(Boolean).join(" · ")
-  return (
-    <div className={cn("flex flex-col justify-between gap-4 rounded-lg border border-border p-4", item.inStock === 0 && "bg-muted")}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <CategoryMark category={category} size="lg" />
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="flex items-center gap-1.5">
-              <button type="button" className="text-left text-[15px] leading-tight font-semibold hover:underline" onClick={() => navigate({ name: "home", item: item.id })}>
-                {item.name}
-              </button>
-              <ExpiryAlert item={item} />
-            </span>
-            <span className="text-xs text-muted-foreground">{where}</span>
-          </div>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <span className="text-[28px] leading-none font-semibold tabular-nums" aria-label={`${haveText(item)} in stock`}>
-            {item.inStock}
-          </span>
-          <StockPill item={item} />
-        </div>
-      </div>
-      {item.inStock === 0 ? (
-        <span className="text-xs text-muted-foreground">None left{item.target > 0 ? " · on the shopping list" : ""}</span>
-      ) : (
-        <QuickUseActions item={item} />
-      )}
-    </div>
+// ---------- words ----------
+
+const local = (date: string) => new Date(`${date}T00:00`)
+const weekday = (date: string) => local(date).toLocaleDateString("en-GB", { weekday: "long" })
+
+/** Good morning before 12:00, good afternoon from 12:00, good evening from 17:00 (as the phone). */
+const greeting = (now = new Date()) => (now.getHours() < 12 ? "Good morning" : now.getHours() < 17 ? "Good afternoon" : "Good evening")
+const dateLine = (now = new Date()) => now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }).replace(",", "")
+
+/** "the spinach and chorizo", "the spinach, chorizo and 2 more". */
+function namesText(items: Item[]) {
+  const names = items.map((i) => lower(i.name))
+  if (names.length <= 2) return `the ${names.join(" and ")}`
+  return `the ${names.slice(0, 2).join(", ")} and ${names.length - 2} more`
+}
+
+/** Past its use-by or within two days of it, as the phone's Use soon. */
+const goingOffSoon = (i: Item) => {
+  const d = soonest(i)
+  return !!d && daysUntil(d) <= 2
+}
+
+// ---------- Tonight ----------
+
+type Pick = { recipe: Recipe; usesUp: { item: Item; date: string } | null }
+
+/**
+ * The recipes Tonight can offer, best first (the phone's tonightPicks): only those you can cook now; those that use
+ * something going off first (soonest use-by first); then Want to cook; then the quickest; ties A to Z.
+ */
+function tonightPicks(recipes: Recipe[], items: Items): Pick[] {
+  const picks: Pick[] = []
+  for (const recipe of recipes) {
+    const info = recipeInfo(recipe, items)
+    if (!info.canCook) continue
+    let usesUp: Pick["usesUp"] = null
+    for (const r of info.rows) {
+      if (!r.item || r.status === "short" || r.status === "listed" || !goingOffSoon(r.item)) continue
+      const d = soonest(r.item)!
+      if (!usesUp || d < usesUp.date) usesUp = { item: r.item, date: d }
+    }
+    picks.push({ recipe, usesUp })
+  }
+  const mins = (p: Pick) => (p.recipe.minutes > 0 ? p.recipe.minutes : Infinity)
+  return picks.sort((a, b) =>
+    (a.usesUp ? 0 : 1) - (b.usesUp ? 0 : 1) ||
+    (a.usesUp && b.usesUp ? a.usesUp.date.localeCompare(b.usesUp.date) : 0) ||
+    Number(!!b.recipe.wantToCook) - Number(!!a.recipe.wantToCook) ||
+    mins(a) - mins(b) ||
+    a.recipe.name.localeCompare(b.recipe.name),
   )
 }
 
-const MAX_ITEM_LINKS = 4
-
-/**
- * What a History entry links to. A recipe or a single item opens in the side panel here; an entry
- * about several items links each one. Store and category changes go to their settings. Things that
- * have since been deleted don't link.
- */
-function linksFor(entry: HistoryEntry, db: Db, items: Items): HistoryLinks | undefined {
-  const recipe = entry.recipeId ? db.recipes.find((r) => r.id === entry.recipeId) : undefined
-  const live = [...new Set(entry.itemIds ?? [])].filter((id) => items[id])
-  const itemLinks = live.length > 1
-    ? { items: live.slice(0, MAX_ITEM_LINKS).map((id) => ({ href: href({ name: "home", item: id }), label: items[id].name })), more: Math.max(0, live.length - MAX_ITEM_LINKS) }
-    : {}
-  if (recipe) return { href: href({ name: "home", recipe: recipe.id }), ...itemLinks }
-  if (live.length === 1) return { href: href({ name: "home", item: live[0] }) }
-  if (entry.itemIds?.length) return itemLinks
-  // No item or recipe: a category or store change. Claude's store entries carry no store id, so
-  // the store is found by its name in the title (the longest name wins, so "Co-op" loses to "Co-op Express").
-  // Tag entries (called category before 24 Nov 2026) open Settings → Tags.
-  if (/\b(category|tag)\b/i.test(entry.title)) return { href: href({ name: "settings", tab: "tags" }) }
-  const store = [...db.stores].sort((a, b) => b.name.length - a.name.length).find((x) => x.name && entry.title.includes(x.name))
-  if (store) return { href: href({ name: "settings", tab: "stores", store: store.id }) }
-  if (/\bstore\b/i.test(entry.title)) return { href: href({ name: "settings", tab: "stores" }) }
-  return undefined
+/** "35 min · serves 2 · you have everything, and it uses the chorizo before Sunday." */
+function pickLine({ recipe, usesUp }: Pick) {
+  let uses = ""
+  if (usesUp) {
+    const n = daysUntil(usesUp.date)
+    const name = lower(usesUp.item.name)
+    uses = n <= 0 ? `, and it uses up the ${name}` : `, and it uses the ${name} before ${n === 1 ? "tomorrow" : weekday(usesUp.date)}`
+  }
+  return [recipe.minutes > 0 ? minutesText(recipe.minutes) : "", recipe.serves ? `serves ${recipe.serves}` : "", `you have everything${uses}.`].filter(Boolean).join(" · ")
 }
 
-function History() {
-  const { db, items, actions, phoneSyncedAt } = usePantry()
-  const [who, setWho] = React.useState<"all" | Who>("all")
-  const [shown, setShown] = React.useState(6)
-  const entries = db.history.filter((h) => who === "all" || h.who === who)
+/** The pot from the phone's Tonight card (TonightPotArt), in the theme's pot colours. */
+function PotArt({ className }: { className?: string }) {
   return (
-    <section aria-label="History" data-tour="history" className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold tracking-widest uppercase">History</h2>
-        <span className="text-xs text-muted-foreground">Undo works for today's changes</span>
+    <svg viewBox="0 0 100 100" aria-hidden="true" className={className}>
+      <path d="M36 30 q-6 -7 0 -14 M50 28 q-6 -7 0 -14 M64 30 q-6 -7 0 -14" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" />
+      <path d="M22 54 Q50 30 78 54 Z" fill="currentColor" />
+      <circle cx={50} cy={38} r={5} fill="var(--pot-knob)" />
+      <path d="M14 56 H86" stroke="currentColor" strokeWidth={4} strokeLinecap="round" />
+      <path d="M20 60 H80 V76 Q80 90 66 90 H34 Q20 90 20 76 Z" fill="var(--pot-body)" />
+      <path d="M20 66 H10 M80 66 H90" stroke="var(--pot-body)" strokeWidth={5} strokeLinecap="round" />
+      <path d="M28 72 H72" stroke="var(--status-out)" strokeWidth={2} strokeDasharray="2 5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function Tonight() {
+  const { db, items } = usePantry()
+  const picks = React.useMemo(() => tonightPicks(db.recipes, items), [db.recipes, items])
+  const [at, setAt] = React.useState(0)
+  // The card's label follows the time of day, as on the phone.
+  const label = new Date().getHours() < 15 ? "Today" : "Tonight"
+  const i = picks.length ? at % picks.length : 0
+  const pick = picks[i]
+  const others = picks.length > 1 ? [1, 2].map((k) => (i + k) % picks.length).filter((k, n, a) => k !== i && a.indexOf(k) === n) : []
+
+  return (
+    <section aria-labelledby="tonight" className="flex min-h-[420px] flex-col justify-between gap-6 rounded-lg bg-(--status-out) p-11 text-(--status-out-foreground)">
+      <div className="flex items-start justify-between gap-8">
+        <div className="flex min-w-0 flex-col gap-4">
+          <Eyebrow className="text-[13px] text-(--status-out-foreground)">{label}</Eyebrow>
+          {pick ? (
+            <>
+              <h2 id="tonight" className="font-serif text-[54px] leading-[1.05] font-bold">{pick.recipe.name}</h2>
+              <p className="max-w-[640px] text-lg leading-snug">{pickLine(pick)}</p>
+            </>
+          ) : (
+            <>
+              <h2 id="tonight" className="font-serif text-[44px] leading-[1.05] font-bold">Nothing you can cook from what's in</h2>
+              <p className="max-w-[640px] text-lg leading-snug">Every recipe is short of something. Recipes shows what each one needs.</p>
+            </>
+          )}
+        </div>
+        <PotArt className="mt-16 size-52 shrink-0" />
       </div>
-      <FilterChips
-        aria-label="Who made the change"
-        value={who}
-        onValueChange={(v) => {
-          setWho(v)
-          setShown(6)
-        }}
-        options={[
-          { value: "all", label: "All" },
-          { value: "you", label: "You" },
-          { value: "claude", label: "Claude" },
-          { value: "phone", label: "Shopping app" },
-        ]}
-        className="flex-wrap [&>button]:h-7 [&>button]:px-2.5 [&>button]:text-[10px]"
-      />
-      <div className="flex flex-col">
-        {entries.slice(0, shown).map((h) => (
-          <HistoryRow key={h.id} entry={h} compact links={linksFor(h, db, items)} onUndo={canUndo(h) ? () => actions.undo(h.id) : undefined} onRevert={canRevert(h) ? () => actions.revert(h.id) : undefined} />
-        ))}
-        {entries.length === 0 && <p className="py-4 text-sm text-muted-foreground">Nothing yet.</p>}
+      <div className="flex flex-col gap-5">
+        <div className="flex gap-3">
+          {pick ? (
+            <>
+              <Button size="lg" className="h-14 bg-(--focus) px-8 text-(--focus-foreground) hover:bg-(--focus)/90" onClick={() => navigate({ name: "recipe-full", id: pick.recipe.id, tab: "cook" })}>
+                Start cooking
+              </Button>
+              {picks.length > 1 && (
+                <Button size="lg" variant="outline" className="h-14 border-(--status-out-foreground) bg-transparent px-7 text-(--status-out-foreground) hover:bg-(--status-out-foreground)/10" onClick={() => setAt(i + 1)}>
+                  Another
+                </Button>
+              )}
+            </>
+          ) : (
+            <Button size="lg" className="h-14 bg-(--focus) px-8 text-(--focus-foreground) hover:bg-(--focus)/90" onClick={() => navigate({ name: "recipes", tab: "cook" })}>
+              See recipes
+            </Button>
+          )}
+        </div>
+        {others.length > 0 && (
+          <p className="text-[15px]">
+            Or:{" "}
+            {others.map((k, n) => (
+              <React.Fragment key={picks[k].recipe.id}>
+                {n > 0 && " · "}
+                <button type="button" className="underline underline-offset-4 hover:no-underline" onClick={() => setAt(k)}>
+                  {picks[k].recipe.name}
+                </button>
+              </React.Fragment>
+            ))}
+          </p>
+        )}
       </div>
-      {entries.length > shown && (
-        <Button variant="link" className="h-auto self-start p-0 text-xs normal-case tracking-normal" onClick={() => setShown(shown + 10)}>
-          Show older
-        </Button>
-      )}
-      <span className="flex items-center gap-1.5 border-t border-border pt-3 text-xs text-muted-foreground" title="When the shopping app last synced with the pantry">
-        <SmartphoneIcon className="size-3.5" aria-hidden="true" />
-        Phone synced {isToday(phoneSyncedAt) ? "today" : shortDate(phoneSyncedAt)}, {timeText(phoneSyncedAt)}
-      </span>
     </section>
   )
 }
 
-// ---------- Use today ----------
+// ---------- Use it up ----------
 
-/** Recipes for an item that's due: ones you can cook now first, then the fewest short, then A to Z. Up to three. */
-function suggestions(itemId: string, db: Db, items: Items) {
-  return recipesUsing(db.recipes, itemId)
-    .map((recipe) => ({ recipe, info: recipeInfo(recipe, items) }))
-    .sort((a, b) => Number(b.info.canCook) - Number(a.info.canCook) || a.info.short.length - b.info.short.length || a.recipe.name.localeCompare(b.recipe.name))
-    .slice(0, 3)
+/** In stock with a use-by within this many days (or past it). */
+const USE_UP_DAYS = 7
+const USE_UP_SHOWN = 4
+
+/** Today, tomorrow or past: an orange pill. The two days after: a pale pill with the weekday. Later: the date. */
+function WhenPill({ date }: { date: string }) {
+  const n = daysUntil(date)
+  if (n <= 1) {
+    return (
+      <span className="shrink-0 rounded-full bg-(--nav-active) px-3.5 py-1 text-[11px] font-semibold tracking-widest text-(--status-out-foreground) uppercase">
+        {n < 0 ? "Past its date" : n === 0 ? "Today" : "Tomorrow"}
+      </span>
+    )
+  }
+  if (n <= 3) {
+    return (
+      <span className="shrink-0 rounded-full border border-(--status-low-border) bg-(--status-low) px-3.5 py-1 text-[11px] font-semibold tracking-widest text-(--status-low-foreground) uppercase">
+        {weekday(date)}
+      </span>
+    )
+  }
+  return <span className="shrink-0 text-sm text-muted-foreground">{local(date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</span>
 }
 
-function UseTodayCard({ item }: { item: Item }) {
-  const { db, items, actions } = usePantry()
-  const date = soonest(item)!
-  const n = daysUntil(date)
-  const recipes = suggestions(item.id, db, items)
-  const ask = `Find me a recipe that uses ${lower(item.name)} and save it to my pantry`
+function UseItUp({ all }: { all: Item[] }) {
+  const [more, setMore] = React.useState(false)
+  const due = all
+    .filter((i) => i.inStock > 0)
+    .map((item) => ({ item, date: soonest(item) }))
+    .filter((d): d is { item: Item; date: string } => !!d.date && daysUntil(d.date) <= USE_UP_DAYS)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.item.name.localeCompare(b.item.name))
+  const shown = more ? due : due.slice(0, USE_UP_SHOWN)
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="flex items-center gap-1.5">
-            <button type="button" className="text-left text-[15px] leading-tight font-semibold hover:underline" onClick={() => navigate({ name: "home", item: item.id })}>
-              {item.name}
-            </button>
-            <ExpiryAlert item={item} />
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {n === 0 ? "Use by today" : `Was due ${n === -1 ? "yesterday" : dateText(date)}`} · {inStockText(item, ", ")}
-          </span>
-        </div>
-        <div className="flex shrink-0 gap-1.5">
-          <QuickUseActions item={item} compact />
-          {n < 0 && (
-            <Button
-              size="icon-xs"
-              variant="outline"
-              className="text-destructive hover:text-destructive"
-              aria-label={`Throw out the out-of-date ${lower(item.name)}`}
-              title="Throw out what's past its use-by"
-              onClick={() => actions.throwOutExpired(item.id)}
-            >
-              <Trash2Icon />
-            </Button>
-          )}
-        </div>
+    <section aria-labelledby="use-it-up" data-tour="use-today" className="flex flex-col gap-4 rounded-lg border border-border bg-card/40 p-10">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 id="use-it-up"><Eyebrow className="text-[13px] text-foreground">Use it up</Eyebrow></h2>
+        {due.length > USE_UP_SHOWN && (
+          <button type="button" className="text-sm underline underline-offset-4 hover:no-underline" onClick={() => setMore(!more)}>
+            {more ? "Show fewer" : `See all ${due.length}`}
+          </button>
+        )}
       </div>
-      {recipes.length ? (
-        <ul className="flex flex-col border-t border-border" aria-label={`Recipes that use ${lower(item.name)}`}>
-          {recipes.map(({ recipe, info }) => (
-            <li key={recipe.id} className="border-b border-border last:border-b-0">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-3 py-2 text-left text-sm transition-colors hover:bg-muted"
-                onClick={() => navigate({ name: "home", recipe: recipe.id })}
-              >
-                <span className="min-w-0 truncate">{recipe.name}</span>
-                <Badge variant={info.canCook ? "solid" : "outlined"} className="shrink-0">{info.canCook ? "Can cook" : `Short ${info.short.length}`}</Badge>
+      {shown.length ? (
+        <ul className="flex flex-col">
+          {shown.map(({ item, date }) => (
+            <li key={item.id} className="border-b border-border last:border-b-0">
+              <button type="button" className="flex w-full items-center justify-between gap-4 py-3.5 text-left hover:bg-muted/50" onClick={() => navigate({ name: "home", item: item.id })}>
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-[19px] font-semibold">{item.name}</span>
+                  <span className="text-sm text-muted-foreground">{[locationLabel(item.location), isBulk(item) && item.open ? "open" : null].filter(Boolean).join(" · ")}</span>
+                </span>
+                <WhenPill date={date} />
               </button>
             </li>
           ))}
         </ul>
       ) : (
-        <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-          <span className="text-xs text-muted-foreground">No recipes use it yet.</span>
-          <Button
-            size="xs"
-            variant="outline"
-            className="h-8 shrink-0 border-primary"
-            onClick={() => {
-              navigator.clipboard?.writeText(ask).catch(() => {})
-              toast("Copied a message for Claude", { description: `"${ask}". Paste it into Claude, on your phone or here.` })
-            }}
-          >
-            <CopyIcon />
-            Ask Claude for one
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground">Nothing goes off in the next week.</p>
+      )}
+    </section>
+  )
+}
+
+// ---------- the next shop ----------
+
+function NextShop() {
+  const { db, items } = usePantry()
+  const rows = listRows(items).filter((r) => !r.item.ordered)
+  if (!rows.length) return null
+  const store = db.stores.find((s) => s.id === db.defaultStoreId) ?? db.stores[0]
+  const total = listTotal(rows)
+  const low = rows.filter((r) => isStaple(r.item) && stockOf(r.item) !== null).length
+  const line = [
+    store?.name,
+    total.pence > 0 ? `${total.approximate ? "about " : ""}£${Math.round(total.pence / 100)}` : null,
+    low ? `${low} ${low === 1 ? "Staple" : "Staples"} running low` : null,
+  ].filter(Boolean).join(" · ")
+  return (
+    <section aria-labelledby="next-shop" className="flex flex-col justify-between gap-6 rounded-lg bg-(--focus) p-10 text-(--focus-foreground)">
+      <div className="flex flex-col gap-4">
+        <h2 id="next-shop"><Eyebrow className="text-[13px] text-(--focus-foreground)">Next shop</Eyebrow></h2>
+        <p className="flex items-baseline gap-4">
+          <span className="font-serif text-[72px] leading-none font-bold tabular-nums">{rows.length}</span>
+          <span className="text-2xl">{rows.length === 1 ? "thing" : "things"}</span>
+        </p>
+        <p className="text-lg text-(--focus-muted)">{line}</p>
+      </div>
+      <Button size="lg" className="h-14 self-start bg-(--focus-gold) px-7 text-(--focus-gold-foreground) hover:bg-(--focus-gold)/90" onClick={() => navigate({ name: "list" })}>
+        Open the list
+      </Button>
+    </section>
+  )
+}
+
+// ---------- Used one? Tap it ----------
+
+const TILES = 8
+
+function UsedTile({ item }: { item: Item }) {
+  const { actions } = usePantry()
+  const bulk = isBulk(item)
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-5 py-5">
+      <button type="button" className="min-w-0 truncate text-left text-[17px] font-semibold hover:underline" onClick={() => navigate({ name: "home", item: item.id })}>
+        {item.name}
+      </button>
+      {bulk ? (
+        <button
+          type="button"
+          className="shrink-0 rounded-sm px-1.5 py-1 text-[15px] text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label={`Finished a pack of ${lower(item.name)}`}
+          onClick={() => actions.finishPack(item.id)}
+        >
+          Finished
+        </button>
+      ) : (
+        <span className="flex shrink-0 items-center gap-1 text-[15px] tabular-nums text-muted-foreground">
+          <span aria-label={`${item.inStock} in stock`}>{item.inStock}</span>
+          <span aria-hidden="true">·</span>
+          <button type="button" className="rounded-sm px-1.5 py-1 hover:bg-muted hover:text-foreground" aria-label={`Used one ${lower(item.name)}`} onClick={() => actions.useOne(item.id)}>
+            −1
+          </button>
+        </span>
       )}
     </div>
   )
 }
 
-/** Items in stock at or past their use-by date, with recipes that use each. Nothing shows when nothing is due. */
-function UseToday({ all }: { all: Item[] }) {
-  const due = all
-    .map((item) => ({ item, date: soonest(item) }))
-    .filter((d): d is { item: Item; date: string } => !!d.date && daysUntil(d.date) <= 0)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.item.name.localeCompare(b.item.name))
-  if (!due.length) return null
+function UsedOne({ all }: { all: Item[] }) {
+  const often = all.filter((i) => i.inStock > 0).sort((a, b) => (b.uses ?? 0) - (a.uses ?? 0) || a.name.localeCompare(b.name)).slice(0, TILES)
   return (
-    <section aria-labelledby="use-today" data-tour="use-today" className="flex flex-col gap-3">
-      <div className="flex items-baseline gap-4">
-        <h2 id="use-today"><Eyebrow className="text-foreground">Use today · {due.length}</Eyebrow></h2>
-        <span className="text-[13px] text-muted-foreground">At or past the use-by date, with recipes that use them</span>
+    <section aria-labelledby="used-one" data-tour="use-field" className="flex flex-col gap-6 rounded-lg border border-border bg-card/40 p-10">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 id="used-one"><Eyebrow className="text-[13px] text-foreground">Used one? Tap it</Eyebrow></h2>
+        <a href="#/pantry" className="text-sm underline underline-offset-4 hover:no-underline">All {all.length} items</a>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
-        {due.map(({ item }) => <UseTodayCard key={item.id} item={item} />)}
-      </div>
+      {often.length ? (
+        <div className="grid grid-cols-4 gap-3">
+          {often.map((i) => <UsedTile key={i.id} item={i} />)}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">Nothing in stock yet.</p>
+      )}
     </section>
   )
 }
 
+// ---------- the page ----------
+
 export function Home({ item, recipe }: { item?: string; recipe?: string }) {
   const { items } = usePantry()
-  const [query, setQuery] = React.useState("")
-  const [group, setGroup] = React.useState<Group>("often")
-  const inputRef = React.useRef<HTMLInputElement>(null)
-
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "/" || (e.target as HTMLElement).closest("input, textarea")) return
-      e.preventDefault()
-      inputRef.current?.focus()
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [])
-
-  // Home is for recording what you used, so the field is ready to type into. Not when Home opens with a
-  // side panel: the panel takes the focus.
-  React.useEffect(() => {
-    if (!item && !recipe) inputRef.current?.focus({ preventScroll: true })
-    // Only on arriving at Home.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
+  const [view, setView] = React.useState<View>("today")
+  const [period, setPeriod] = React.useState<Period>("month")
   const all = Object.values(items).filter((i) => !i.oneOff)
-  const often = all.filter((i) => i.inStock > 0).sort((a, b) => (b.uses ?? 0) - (a.uses ?? 0)).slice(0, 12)
-  const byLocation = (l: Location) => all.filter((i) => i.location === l && i.inStock > 0).sort((a, b) => a.name.localeCompare(b.name))
-  const q = query.trim()
-  const tiles = q
-    ? all.filter((i) => namesOf(i).some((n) => containsText(n, q))).sort((a, b) => b.inStock - a.inStock)
-    : group === "often" ? often : byLocation(group)
+  const soon = all.filter((i) => i.inStock > 0 && goingOffSoon(i)).sort((a, b) => (soonest(a) ?? "").localeCompare(soonest(b) ?? ""))
+  const hasShop = listRows(items).some((r) => !r.item.ordered)
+  const sub = view === "insights"
+    ? "What you bought, cooked and threw out, up to today."
+    : soon.length
+      ? `${namesText(soon).replace(/^the/, "The")} ${soon.length === 1 ? "wants" : "want"} using soon.`
+      : "Nothing needs using up."
 
   return (
     <div className="flex min-h-0 flex-1">
-      <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-8 py-8">
-        <label data-tour="use-field" className="flex shrink-0 items-center gap-4 rounded-lg border border-primary px-5 py-5 focus-within:ring-1 focus-within:ring-inset focus-within:ring-primary">
-          <SearchIcon className="size-5 shrink-0" aria-hidden="true" />
-          <input
-            ref={inputRef}
-            data-page-search
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && setQuery("")}
-            placeholder="What did you use?"
-            aria-label="What did you use?"
-            className="min-w-0 flex-1 bg-transparent text-2xl outline-none! placeholder:text-muted-foreground"
-          />
-          <Eyebrow>Press / to search</Eyebrow>
-        </label>
-
-        {!q && <UseToday all={all} />}
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-baseline gap-4">
-            <Eyebrow className="text-foreground">{q ? `Matching "${q}"` : group === "often" ? "Used most often" : locationLabel(group)}</Eyebrow>
-            <a href="#/pantry" className="text-[13px] underline underline-offset-4">
-              See all {all.length} items in the pantry
-            </a>
+      <div className="flex min-w-0 flex-1 flex-col gap-8 overflow-y-auto px-14 py-12">
+        <header className="flex flex-wrap items-end justify-between gap-6 border-b border-border pb-8">
+          <div className="flex min-w-0 flex-col gap-3">
+            <Eyebrow className="text-[13px]">{dateLine()}</Eyebrow>
+            <h1 className="font-serif text-[64px] leading-none font-bold">{view === "insights" ? insightsTitle(period) : greeting()}</h1>
+            <p className="text-xl text-muted-foreground">{sub}</p>
           </div>
-          {!q && (
-            <FilterChips<Group>
-              aria-label="Show"
-              value={group}
-              onValueChange={setGroup}
+          <div className="flex items-center gap-4">
+          {view === "insights" && (
+            <Segmented<Period>
+              label="Period"
+              value={period}
+              onChange={setPeriod}
+              className="h-14 w-[330px] [&>button]:h-14 [&>button]:text-[15px] [&>button]:normal-case [&>button]:tracking-normal"
               options={[
-                { value: "often", label: "Often used", count: often.length },
-                { value: "fridge", label: "Fridge", count: byLocation("fridge").length },
-                { value: "cupboard", label: "Cupboard", count: byLocation("cupboard").length },
-                { value: "freezer", label: "Freezer", count: byLocation("freezer").length },
-                { value: "counter", label: "Counter", count: byLocation("counter").length },
-                { value: "household", label: "Other", count: byLocation("household").length },
+                { value: "week", label: periodLabel("week") },
+                { value: "month", label: periodLabel("month") },
+                { value: "year", label: periodLabel("year") },
               ]}
             />
           )}
-        </div>
+          <Segmented<View>
+            label="Home view"
+            value={view}
+            onChange={setView}
+            className="h-14 w-[320px] [&>button]:h-14 [&>button]:text-sm [&>button]:tracking-widest"
+            options={[
+              { value: "today", label: "Today" },
+              { value: "insights", label: "Insights" },
+            ]}
+          />
+          </div>
+        </header>
 
-        {tiles.length ? (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
-            {tiles.map((i) => (
-              <QuickUseTile key={i.id} item={i} />
-            ))}
-          </div>
+        {view === "today" ? (
+          <>
+            <div className="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-8">
+              <Tonight />
+              <UseItUp all={all} />
+            </div>
+            <div className={cn("grid gap-8", hasShop && "grid-cols-[minmax(0,1fr)_minmax(0,2fr)]")}>
+              <NextShop />
+              <UsedOne all={all} />
+            </div>
+            <ReviewBar />
+          </>
         ) : (
-          <div className="flex flex-col items-start gap-3 py-6">
-            <p className="text-sm text-muted-foreground">{q ? `Nothing in the pantry called "${q}".` : "Nothing in stock here."}</p>
-            {q && (
-              <Button variant="outline" onClick={() => navigate({ name: "pantry", item: "new", prefill: q })}>
-                Add "{q}" as an item
-              </Button>
-            )}
-          </div>
+          <Insights period={period} />
         )}
       </div>
-
-      <aside className="flex w-[360px] shrink-0 flex-col gap-8 overflow-y-auto border-l border-border bg-muted/50 px-6 py-8">
-        <History />
-        <p className="mt-auto text-xs text-muted-foreground">A Staple that drops below its minimum goes on the shopping list by itself.</p>
-      </aside>
       <ItemPanel id={item} onClose={() => navigate({ name: "home" })} />
       <RecipePanel id={recipe} onClose={() => navigate({ name: "home" })} />
     </div>

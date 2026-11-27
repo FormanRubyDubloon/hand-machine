@@ -7,6 +7,7 @@ import * as React from "react"
 import { Platform, ScrollView, Text, View } from "react-native"
 import { aisleTitle, isBulk, isStaple, itemAisle, shortfall, locationLabel, tagsOf, type Location } from "../../../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../../../data/store"
+import { acceptGuesses, guessFor, guessReason } from "../../../../logic/aisle-guesses"
 import { addOne, approve, openOne, setOpenLow, setLocation, setMin, setNotes, setStore, setUseBy, usedOne } from "../../../../logic/actions"
 import { stockStatus, expiryText } from "../../../../logic/phrases"
 import { AisleField, BackLink, Body, Button, Caption, Chip, Display, Field, InfoBox, Label, Picker, Press, Stepper, Toggle } from "../../../../ui/kit"
@@ -34,6 +35,12 @@ export default function PantryItem() {
   const name = item.name.toLowerCase()
   const store = state.stores.find((s) => s.id === state.storeId) ?? state.stores[0]
   const aisle = itemAisle(item, store)
+  // No aisle here yet: the guess from its tags, if there's a clear one (27 Nov 2026). The aisle field shows it with a
+  // Guess pill (Isaac's change); tapping it opens the aisle question with the guess outlined. "Looks right, save it"
+  // on a new item takes it, since the New box calls its aisle a guess.
+  const guess = store && aisle === null ? guessFor(state, store, item) : null
+  const guessTitle = guess ? aisleTitle(guess.aisle) : ""
+  const guessWhy = guess ? guessReason(guess, state.categories.find((k) => k.id === guess.tagId)?.name ?? "tagged") : ""
   const tagList = tagsOf(item).map((t) => state.categories.find((k) => k.id === t)).filter((k): k is NonNullable<typeof k> => !!k)
   const tags = tagList.map((k) => k.name)
   const bulk = isBulk(item)
@@ -65,7 +72,10 @@ export default function PantryItem() {
         {item.review && (
           <InfoBox>
             <Body><Text style={{ fontFamily: font.bold }}>New.</Text> Its aisle and where it lives are guesses. Change them below if they're wrong.</Body>
-            <Button label="Looks right, save it" height={48} onPress={() => { change((s) => approve(s, id), note(`Checked ${name}`)); say(`Saved ${name}.`) }} />
+            <Button label="Looks right, save it" height={48} onPress={() => {
+              change((s) => approve(guess ? acceptGuesses(s, [guess]) : s, id), note(`Checked ${name}${guess ? `, ${guessTitle.toLowerCase()} at ${store?.name}` : ""}`))
+              say(guess ? `Saved ${name}, in ${guessTitle.toLowerCase()}.` : `Saved ${name}.`)
+            }} />
           </InfoBox>
         )}
 
@@ -112,7 +122,13 @@ export default function PantryItem() {
         </View>
 
         {store && !store.noAisleNumbers && (
-          <AisleField label={`Aisle at ${store.name}`} value={aisle === null ? null : aisleTitle(aisle)} onPress={() => router.push({ pathname: "/aisle", params: { id, from: "edit" } })} />
+          <AisleField
+            label={`Aisle at ${store.name}`}
+            value={aisle !== null ? aisleTitle(aisle) : guess ? guessTitle : null}
+            guess={!!guess}
+            why={guessWhy}
+            onPress={() => router.push({ pathname: "/aisle", params: { id, from: "edit" } })}
+          />
         )}
 
         {state.stores.length > 1 && (

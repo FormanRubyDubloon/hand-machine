@@ -271,6 +271,23 @@ function supabaseBackend(db) {
 }
 
 // prototypes/pantry-app/src/model.ts
+function factsOf(before, after, c) {
+  const out = [];
+  if (c.cooked) out.push({ kind: "cooked", recipeId: c.cooked });
+  for (const [id, was] of Object.entries(before ?? {})) {
+    const now = after[id];
+    if (!was || !now || now.oneOff) continue;
+    const d = now.inStock - was.inStock;
+    if (!d) continue;
+    const price = now.price ? { pence: Math.round(now.price * Math.abs(d)) * Math.sign(d), estimate: now.priceEstimate || void 0 } : {};
+    if (c.as === "shop" || c.as === "stock" && d > 0) {
+      out.push({ kind: "bought", itemId: id, qty: d, ...price, storeId: c.storeId, shopId: c.shopId });
+    } else if (d < 0 && c.as === "threw") {
+      out.push({ kind: "threw", itemId: id, qty: -d, ...now.price ? { pence: Math.round(now.price * -d), estimate: now.priceEstimate || void 0 } : {} });
+    } else if (d < 0) out.push({ kind: "used", itemId: id, qty: -d });
+  }
+  return out;
+}
 var locations = [
   { value: "fridge", label: "Fridge" },
   { value: "freezer", label: "Freezer" },
@@ -651,6 +668,8 @@ async function commit(ctx, change) {
     undone: false,
     key: null
   };
+  const facts = change.counts ? factsOf(undoItems, Object.fromEntries(items.map((i) => [i.id, i])), change.counts) : [];
+  if (facts.length) row.facts = facts;
   await backend.addHistory(row);
   for (const i of items) data.items[i.id] = i;
   for (const id of change.deleteItems ?? []) delete data.items[id];
@@ -1166,7 +1185,7 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
       while (old.length < i.inStock) old.push(null);
       const fresh = Array.from({ length: amount }, (_, n) => dates[n] ?? null);
       const next = { ...withStock(i, i.inStock + amount), useBy: [...old, ...fresh].sort(byDate), entries: settle(i.entries, amount), boughtAt: ctx.now().toISOString().slice(0, 10) };
-      await commit(ctx, { items: [next], title: `Added ${amountOf(i, amount)}`, detail: stockDetail(normalise(next)), itemIds: [i.id] });
+      await commit(ctx, { items: [next], title: `Added ${amountOf(i, amount)}`, detail: stockDetail(normalise(next)), itemIds: [i.id], counts: { as: "stock" } });
       return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`;
     }
   },
@@ -1213,7 +1232,7 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
       const taken = Math.min(used, i.inStock);
       const next = { ...withStock(i, i.inStock - taken), uses: (i.uses ?? 0) + 1 };
       const title = args.all === true ? `Used all the ${lower(i.name)}` : isBulk(i) ? taken === 1 ? `Finished a ${pack} of ${lower(i.name)}` : `Finished ${amountOf(i, taken)}` : next.inStock === 0 ? `Used the last ${lower(i.name)}` : `Used ${amountOf(i, taken)}`;
-      await commit(ctx, { items: [next], title, detail: stockDetail(normalise(next)), itemIds: [i.id] });
+      await commit(ctx, { items: [next], title, detail: stockDetail(normalise(next)), itemIds: [i.id], counts: { as: "stock" } });
       const note = used > taken ? ` Only ${taken} were in stock, so it's now at 0.` : "";
       return `Done.${note} ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`;
     }
@@ -1389,7 +1408,8 @@ ${recipeLine(recipe, ctx.data.items)}`;
         title: `Cooked ${r.name}`,
         detail: parts.join(", ") || "No stock changes",
         itemIds: [...Object.keys(counts), ...finished],
-        recipeId: r.id
+        recipeId: r.id,
+        counts: { as: "stock", cooked: r.id }
       });
       return `Recorded ${r.name} as cooked. ${parts.length ? `Stock: ${parts.join(", ")}.` : "No stock changed."}`;
     }
@@ -1606,7 +1626,7 @@ ${recipeLine(recipe, ctx.data.items)}`;
         next.openedAt = void 0;
       }
       if (!said.length) return "Nothing to change.";
-      await commit(ctx, { items: [next], title: `Changed ${next.name}`, detail: cap(said.join(", ")), itemIds: [i.id] });
+      await commit(ctx, { items: [next], title: `Changed ${next.name}`, detail: cap(said.join(", ")), itemIds: [i.id], counts: { as: "stock" } });
       if (storeChange) await commitStores(ctx, { save: [storeChange], title: `${storeChange.name}: added the place ${(storeChange.places ?? []).at(-1)}` });
       return `Changed. ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`;
     }

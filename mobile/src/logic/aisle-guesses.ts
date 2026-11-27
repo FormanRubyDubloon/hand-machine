@@ -2,7 +2,7 @@
 // suggests aisles for the rest, in the aisle question and on Home. The guessing is shared (guessAisles in the pantry
 // model); this is the phone's part: what's still to check, what you said no to, and how a guess is put. Pure, so it's
 // tested (test/aisle-guesses.test.ts).
-import { aisleKey, guessAisle, guessAisles, type AisleGuess, type Item, type Store } from "../../../prototypes/pantry-app/src/model"
+import { aisleGuessReason, aisleKey, guessAisle, guessAisles, type AisleGuess, type Item, type Store } from "../../../prototypes/pantry-app/src/model"
 import type { PhoneState } from "../data/state"
 import { setItemAisle } from "./actions"
 
@@ -31,10 +31,5 @@ export const sayNo = (s: PhoneState, g: AisleGuess): PhoneState => ({ ...s, aisl
 /** Puts the guessed aisles on their items. */
 export const acceptGuesses = (s: PhoneState, gs: AisleGuess[]): PhoneState => gs.reduce((t, g) => setItemAisle(t, g.itemId, g.storeId, g.aisle), s)
 
-/** "4 of your 5 Tinned items are in aisle 7", "Both your Dairy items are at the Tills". */
-export function guessReason(g: AisleGuess, tagName: string) {
-  const where = typeof g.aisle === "number" ? `in aisle ${g.aisle}` : `at ${g.aisle}`
-  const items = `${tagName} items`
-  if (g.agree === g.of) return `${g.of === 2 ? "Both" : `All ${g.of} of`} your ${items} are ${where}`
-  return `${g.agree} of your ${g.of} ${items} are ${where}`
-}
+/** "4 of your 5 Tinned items are in aisle 7". Shared with the web, in the pantry model. */
+export const guessReason = aisleGuessReason

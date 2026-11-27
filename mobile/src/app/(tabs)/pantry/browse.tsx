@@ -1,5 +1,5 @@
 // A list of pantry items: one location (soonest use-by first), everything (See all, with sorting and filters),
-// search results, or the New items to review. One location and See all follow the In stock only switch
+// search results, or To review, with two tabs: New items and Aisles (guesses from tags; 27 Nov 2026). One location and See all follow the In stock only switch
 // (Batch 2, 24 Nov 2026); search and To review always show everything, so nothing you look for is hidden.
 // All items' sort and filters (and the switch) are in a Filters sheet from the button by its title, as on the
 // shopping list (Isaac's change, 24 Nov 2026); one location keeps its switch on the page.
@@ -11,8 +11,10 @@ import { containsText, locationLabel, namesOf, soonest, type Item } from "../../
 import { useStore } from "../../../data/store"
 import { defaultView, inStockOnly, pantryFiltersOn, pantryItems, SHOWS, SORTS, viewOf } from "../../../logic/pantry"
 import { phrase, plural, expiryText } from "../../../logic/phrases"
-import { BackLink, Caption, Display, IconButton, Pill, Press, Toggle } from "../../../ui/kit"
+import { AisleGuessRow, useAisleGuesses } from "../../../ui/aisle-guesses"
+import { BackLink, Button, Caption, Display, IconButton, Pill, Press, Segmented, Toggle } from "../../../ui/kit"
 import { LOCATIONS } from "../../../ui/locations"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { font, space, useColours } from "../../../ui/theme"
 
 const bySoonest = (a: Item, b: Item) => (soonest(a) ?? "9999").localeCompare(soonest(b) ?? "9999") || a.name.localeCompare(b.name)
@@ -22,6 +24,11 @@ export default function Browse() {
   const { loc, q, review, all: seeAll, show } = useLocalSearchParams<{ loc?: string; q?: string; review?: string; all?: string; show?: string }>()
   const { state, local } = useStore()
   const c = useColours()
+  const insets = useSafeAreaInsets()
+  // To review's tabs: `review=aisles` opens on Aisles (Home's aisle guesses row), anything else on New.
+  const [tab, setTab] = React.useState<"new" | "aisles">(review === "aisles" ? "aisles" : "new")
+  React.useEffect(() => { if (review) setTab(review === "aisles" ? "aisles" : "new") }, [review])
+  const ag = useAisleGuesses()
   const view = state.pantryView ?? defaultView
   // Home's counts open All items with one Show filter, starting from no others.
   React.useEffect(() => {
@@ -54,6 +61,7 @@ export default function Browse() {
   }
   // One location keeps the switch on the page; All items has it in its Filters sheet.
   const switchable = !review && !q && !seeAll
+  const onAisles = !!review && tab === "aisles"
   const showLoc = !loc
   const filtersOnNow = seeAll ? pantryFiltersOn(view, !only) : 0
 
@@ -71,7 +79,7 @@ export default function Browse() {
       <View style={{ paddingHorizontal: space.screen, paddingBottom: 10, flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
         <View style={{ flex: 1, gap: 4 }}>
           <Display size={30}>{title}</Display>
-          <Caption>{plural(list.length, "item")}{caption ? ` · ${caption}` : ""}</Caption>
+          <Caption numberOfLines={1}>{onAisles ? `${plural(ag.guesses.length, "guess", "guesses")}${ag.store ? ` at ${ag.store.name}` : ""}` : `${plural(list.length, "item")}${caption ? ` · ${caption}` : ""}`}</Caption>
         </View>
         {seeAll && (
           <IconButton label={filtersOnNow ? `Filters, ${filtersOnNow} on` : "Filters"} filled={!!filtersOnNow} onPress={() => router.push("/pantry-filters")}>
@@ -79,6 +87,32 @@ export default function Browse() {
           </IconButton>
         )}
       </View>
+      {!!review && (
+        <View style={{ paddingHorizontal: space.screen, paddingBottom: 12 }}>
+          <Segmented<"new" | "aisles">
+            label="What to review"
+            value={tab}
+            onChange={setTab}
+            options={[{ value: "new", label: `New (${list.length})` }, { value: "aisles", label: `Aisles (${ag.guesses.length})` }]}
+          />
+        </View>
+      )}
+      {onAisles ? (
+        <>
+          <FlatList
+            data={ag.guesses}
+            keyExtractor={(g) => g.itemId}
+            contentContainerStyle={{ paddingHorizontal: space.screen, paddingBottom: 24 }}
+            renderItem={({ item: g }) => <AisleGuessRow g={g} name={ag.nameOf(g)} tag={ag.tagName(g)} onYes={() => ag.yes(g)} onNo={() => ag.no(g)} />}
+            ListEmptyComponent={<Caption style={{ paddingVertical: 20 }}>No aisle guesses to check. They come from the tags of items you've already placed in this store.</Caption>}
+          />
+          {ag.guesses.length > 1 && (
+            <View style={{ paddingHorizontal: space.screen, paddingTop: 12, paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: c.line }}>
+              <Button label={`Accept all ${ag.guesses.length}`} onPress={ag.all} />
+            </View>
+          )}
+        </>
+      ) : (
       <FlatList
         data={list}
         keyExtractor={(i) => i.id}
@@ -106,6 +140,7 @@ export default function Browse() {
           </Caption>
         }
       />
+      )}
     </View>
   )
 }

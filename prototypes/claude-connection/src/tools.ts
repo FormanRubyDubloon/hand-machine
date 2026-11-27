@@ -10,7 +10,7 @@
 //
 // Stock, list and recipe rules are the pantry app's own (prototypes/pantry-app/src/model.ts).
 import {
-  amountOf, byUseFirst, cap, distance, entryTotal, haveText, isBulk, isStaple, lower, matchesName, namesOf, needOf, normalise, openUnit, plural,
+  amountOf, byUseFirst, cap, distance, factsOf, type Counts, entryTotal, haveText, isBulk, isStaple, lower, matchesName, namesOf, needOf, normalise, openUnit, plural,
   recipeInfo, settle, soldAt, stockOf, categoriesAtoZ, listRows, listTotal, money, withStock, type Items, type Reason,
   aisleKey, aisleLabel, aisleTitle, compareAisles, DEFAULT_AISLES, itemAisle, storeAisles, tagsOf, withAisle, withTags, type AisleValue,
 } from "../../pantry-app/src/model"
@@ -72,6 +72,8 @@ async function commit(
     detail?: string
     itemIds?: string[]
     recipeId?: string
+    /** How it counts for Insights (factsOf in the model): using, adding stock, cooking. */
+    counts?: Counts
   },
 ) {
   const { data, backend } = ctx
@@ -105,6 +107,8 @@ async function commit(
     undone: false,
     key: null,
   }
+  const facts = change.counts ? factsOf(undoItems, Object.fromEntries(items.map((i) => [i.id, i])), change.counts) : []
+  if (facts.length) row.facts = facts
   await backend.addHistory(row)
 
   for (const i of items) data.items[i.id] = i
@@ -702,7 +706,7 @@ export const tools: Tool[] = [
       while (old.length < i.inStock) old.push(null)
       const fresh = Array.from({ length: amount }, (_, n) => dates[n] ?? null)
       const next = { ...withStock(i, i.inStock + amount), useBy: [...old, ...fresh].sort(byDate), entries: settle(i.entries, amount), boughtAt: ctx.now().toISOString().slice(0, 10) }
-      await commit(ctx, { items: [next], title: `Added ${amountOf(i, amount)}`, detail: stockDetail(normalise(next)), itemIds: [i.id] })
+      await commit(ctx, { items: [next], title: `Added ${amountOf(i, amount)}`, detail: stockDetail(normalise(next)), itemIds: [i.id], counts: { as: "stock" } })
       return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`
     },
   },
@@ -752,7 +756,7 @@ export const tools: Tool[] = [
       const title = args.all === true ? `Used all the ${lower(i.name)}`
         : isBulk(i) ? (taken === 1 ? `Finished a ${pack} of ${lower(i.name)}` : `Finished ${amountOf(i, taken)}`)
           : next.inStock === 0 ? `Used the last ${lower(i.name)}` : `Used ${amountOf(i, taken)}`
-      await commit(ctx, { items: [next], title, detail: stockDetail(normalise(next)), itemIds: [i.id] })
+      await commit(ctx, { items: [next], title, detail: stockDetail(normalise(next)), itemIds: [i.id], counts: { as: "stock" } })
       const note = used > taken ? ` Only ${taken} were in stock, so it's now at 0.` : ""
       return `Done.${note} ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`
     },
@@ -931,6 +935,7 @@ export const tools: Tool[] = [
         detail: parts.join(", ") || "No stock changes",
         itemIds: [...Object.keys(counts), ...finished],
         recipeId: r.id,
+        counts: { as: "stock", cooked: r.id },
       })
       return `Recorded ${r.name} as cooked. ${parts.length ? `Stock: ${parts.join(", ")}.` : "No stock changed."}`
     },
@@ -1115,7 +1120,7 @@ export const tools: Tool[] = [
       }
       if (next.type !== "bulk") { next.open = undefined; next.packSize = undefined; next.openedAt = undefined }
       if (!said.length) return "Nothing to change."
-      await commit(ctx, { items: [next], title: `Changed ${next.name}`, detail: cap(said.join(", ")), itemIds: [i.id] })
+      await commit(ctx, { items: [next], title: `Changed ${next.name}`, detail: cap(said.join(", ")), itemIds: [i.id], counts: { as: "stock" } })
       // A new place for the store: it joins the store's places, after the others.
       if (storeChange) await commitStores(ctx, { save: [storeChange], title: `${storeChange.name}: added the place ${(storeChange.places ?? []).at(-1)}` })
       return `Changed. ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`

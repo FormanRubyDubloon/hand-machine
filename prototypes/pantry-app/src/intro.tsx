@@ -50,12 +50,12 @@ type Step = { target: string; title: string; text: string }
 
 /** The tour, in order. A step whose target isn't on the page (Use today with nothing due) is skipped. */
 const steps: Step[] = [
-  { target: "use-field", title: "Record what you used", text: "Type what you used and press Used. Stock goes down, and Staples go on the shopping list when they run low. Press / to jump here from anywhere on Home." },
-  { target: "use-today", title: "Use it before it goes off", text: "Anything at or past its use-by date, with the recipes that would use it up." },
+  { target: "use-field", title: "Record what you used", text: "Press −1 on an item you used, or search for it at the top. Stock goes down, and Staples go on the shopping list when they run low." },
+  { target: "use-today", title: "Use it before it goes off", text: "What goes off in the next week, soonest first. Tonight's recipe uses it up when it can." },
   { target: "nav-pantry", title: "Everything you have", text: "Every item: how many, the minimum to keep, where it lives and when it goes off. Filter by status to see what's low or out." },
   { target: "nav-recipes", title: "What you can cook", text: "Recipes ranked by what you have, with food that needs using first at the top. Open one to cook from it." },
   { target: "nav-list", title: "What to buy", text: "The list builds itself from Staples below their minimum and recipes you want to cook. Mark things as ordered here; tick them off on your phone." },
-  { target: "history", title: "Every change, undoable", text: "What changed and who did it: you, your phone or Claude. Today's changes can be undone." },
+  { target: "history", title: "Every change, undoable", text: "The clock opens History: what changed and who did it, you, your phone or Claude. Today's changes can be undone." },
   { target: "settings", title: "Connect Claude", text: "In Settings, under Claude connection, let Claude read and update your pantry: save recipes, record what you've used, plan a shop." },
 ]
 

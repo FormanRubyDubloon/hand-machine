@@ -81,6 +81,22 @@
   --new: oklch(0.740 0.086 87.5); /* #C2A86A */
   --new-border: oklch(0.525 0.061 86.1); /* #7A6840 */
   --new-foreground: oklch(0.244 0.025 52.8); /* #2A1D15 */
+  /* Focus: always dark, as the phone's focus set (Home's shop card). Deep brown, the same in light and dark. */
+  --focus: oklch(0.307 0.034 54.8); /* #3D2B1F */
+  --focus-foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 */
+  --focus-muted: oklch(0.795 0.020 93.7); /* #C0BCAE */
+  --focus-gold: oklch(0.740 0.086 87.5); /* #C2A86A */
+  --focus-gold-foreground: oklch(0.213 0.016 53.6); /* #1F1712 */
+  /* Home's Tonight pot, drawn on the --status-out card (as the phone's potBody and potKnob; a guess in Walnut). */
+  --pot-body: oklch(0.837 0.060 84.5); /* #DCC79D */
+  --pot-knob: oklch(0.704 0.123 56.3); /* #D98A4E */
+  /* Insights' spend by tag (four tags, then the rest) and weekly bars (spend-1, this week spend-2).
+     Checked with the dataviz validator for colour-blind and normal-vision separation, 27 Nov 2026. */
+  --spend-1: oklch(0.525 0.061 86.1); /* #7A6840 */
+  --spend-2: oklch(0.704 0.123 56.3); /* #D98A4E */
+  --spend-3: oklch(0.307 0.034 54.8); /* #3D2B1F */
+  --spend-4: oklch(0.740 0.086 87.5); /* #C2A86A */
+  --spend-rest: oklch(0.861 0.021 91.6); /* #D6D1C2 */
 }
 
 /* Colour: dark. .theme-warm.dark outranks the design system's .dark. */
@@ -126,6 +142,12 @@
   --status-out-foreground: oklch(0.244 0.025 52.8); /* #2A1D15 */
   --status-low: oklch(0.244 0.025 52.8); /* #2A1D15 */
   --status-low-border: oklch(0.740 0.086 87.5); /* #C2A86A */
+  --pot-body: oklch(0.525 0.061 86.1); /* #7A6840 */
+  --spend-1: oklch(0.740 0.086 87.5); /* #C2A86A */
+  --spend-2: oklch(0.951 0.016 95.2); /* #F2EFE3 */
+  --spend-3: oklch(0.704 0.123 56.3); /* #D98A4E */
+  --spend-4: oklch(0.546 0.033 56.9); /* #806C5E */
+  --spend-rest: oklch(0.392 0.032 51.5); /* #544136 */
   --status-low-foreground: oklch(0.951 0.016 95.2); /* #F2EFE3 */
 }
 

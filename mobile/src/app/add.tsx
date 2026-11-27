@@ -48,7 +48,7 @@ export default function Add() {
     if (!i) return
     const name = i.name.toLowerCase()
     change((s) => (got ? gotNow(addToList(s, id, qty), id, qty) : addToList(s, id, qty)), got
-      ? { title: `Got ${qty} ${name} on the phone`, detail: "Added to the list and ticked off" }
+      ? { title: `Got ${qty} ${name} on the phone`, detail: "Added to the list and ticked off", counts: { as: "shop" } }
       : { title: `Added ${qty} ${name} to the shopping list`, detail: "Added on the phone" })
     router.back()
     say(got ? `Added and ticked off: ${name}.` : `Added ${qty > 1 ? `${qty} ` : ""}${name} to the list.`)

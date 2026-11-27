@@ -24,6 +24,7 @@ export type SyncOutcome = {
 const toRow = (h: HistoryEntry): HistoryRow => ({
   id: h.id, at: h.at, who: h.who, title: h.title, detail: h.detail ?? null, item_ids: h.itemIds ?? [],
   recipe_id: h.recipeId ?? null, undo: h.undo ?? null, undone: !!h.undone, redo: h.redo ?? null, key: h.key ?? null,
+  ...(h.facts?.length ? { facts: h.facts } : {}),
 })
 
 /** True when Supabase couldn't be reached at all, as opposed to it saying no. */

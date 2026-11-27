@@ -38,6 +38,49 @@ export type HistoryEntry = {
   redo?: Snapshot
   /** Consecutive changes with the same key (tapping a stepper) merge into one entry. */
   key?: string
+  /** What the change means for Insights: bought, used, threw out, cooked (history.facts, 27 Nov 2026). */
+  facts?: Fact[]
+}
+
+// ---------- facts, for Insights (27 Nov 2026, claude/insights-plan.md) ----------
+
+/**
+ * A dated record of what happened, carried on a History entry. Undone entries don't count. `pence` is the line's
+ * total at the time (the item's price × qty), left out when the item has no price. A bought qty can be negative: a
+ * tick-off taken back later.
+ */
+export type Fact =
+  | { kind: "bought"; itemId: string; qty: number; pence?: number; estimate?: boolean; storeId?: string; shopId?: string }
+  | { kind: "used"; itemId: string; qty: number }
+  | { kind: "threw"; itemId: string; qty: number; pence?: number; estimate?: boolean }
+  | { kind: "cooked"; recipeId: string }
+
+/**
+ * How a change counts, for the actions that do. The facts come from each item's stock before and after, so a run
+ * of taps merged into one History entry nets out (+1 then −1 is nothing).
+ * - shop: a tick-off on the phone; any change is bought (taking a tick back is a negative buy).
+ * - stock: a stepper, a tile or the item panel; more is bought, less is used.
+ * - threw: less is thrown out.
+ * `cooked` adds a cooked fact (the stock it used counts as used).
+ */
+export type Counts = { as: "shop" | "stock" | "threw"; storeId?: string; shopId?: string; cooked?: string }
+
+export function factsOf(before: Record<string, Item | null | undefined> | undefined, after: Items, c: Counts): Fact[] {
+  const out: Fact[] = []
+  if (c.cooked) out.push({ kind: "cooked", recipeId: c.cooked })
+  for (const [id, was] of Object.entries(before ?? {})) {
+    const now = after[id]
+    if (!was || !now || now.oneOff) continue
+    const d = now.inStock - was.inStock
+    if (!d) continue
+    const price = now.price ? { pence: Math.round(now.price * Math.abs(d)) * Math.sign(d), estimate: now.priceEstimate || undefined } : {}
+    if (c.as === "shop" || (c.as === "stock" && d > 0)) {
+      out.push({ kind: "bought", itemId: id, qty: d, ...price, storeId: c.storeId, shopId: c.shopId })
+    } else if (d < 0 && c.as === "threw") {
+      out.push({ kind: "threw", itemId: id, qty: -d, ...(now.price ? { pence: Math.round(now.price * -d), estimate: now.priceEstimate || undefined } : {}) })
+    } else if (d < 0) out.push({ kind: "used", itemId: id, qty: -d })
+  }
+  return out
 }
 
 /** An item that changed here and on the phone since the phone's last sync. */
@@ -606,6 +649,14 @@ function guessFrom(byTag: Map<string, TagAisles>, store: Store, item: Item): Ais
 
 /** A guess for one item's aisle in a store from its tags, or null when it has an aisle there or the vote isn't clear. */
 export const guessAisle = (store: Store, items: Item[], item: Item) => guessFrom(tagAisles(store, items), store, item)
+
+/** Why a guess: "4 of your 5 Tinned items are in aisle 7", "Both your Dairy items are at the Tills". */
+export function aisleGuessReason(g: AisleGuess, tagName: string) {
+  const where = typeof g.aisle === "number" ? `in aisle ${g.aisle}` : `at ${g.aisle}`
+  const items = `${tagName} items`
+  if (g.agree === g.of) return `${g.of === 2 ? "Both" : `All ${g.of} of`} your ${items} are ${where}`
+  return `${g.agree} of your ${g.of} ${items} are ${where}`
+}
 
 /** Guesses for every item with no aisle in a store (one-off items left out), A to Z. */
 export function guessAisles(store: Store, items: Item[]): AisleGuess[] {
