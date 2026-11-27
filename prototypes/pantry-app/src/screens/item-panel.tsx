@@ -11,9 +11,10 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
+import { Switch } from "@/components/ui/switch"
 import {
   addListBox, aisleTiles, aisleTitle, amountOf, cap, categoriesAtoZ, dateText, daysUntil, entryTotal, haveText, isBulk, isStaple, listBox, locationLabel, locations,
-  lower, matchesName, measureText, money, nameList, needOf, normalise, openUnit, plural, recipesUsing, todayIso, unitNames, unitsOf, whenText,
+  lower, matchesName, measureText, money, nameList, needOf, normalise, openUnit, plural, recipesUsing, shortfall, todayIso, unitNames, unitsOf, whenText,
   itemAisle, tagsOf, withAisle, withTags, withUnits, type AisleValue, type Item, type ListBox, type Location, type Store, type Unit,
 } from "../model"
 import { navigate } from "../router"
@@ -1049,6 +1050,17 @@ function EditPanel({ item, onClose, onDeleted }: { item?: Item; onClose: () => v
                 <span className="text-[15px] font-semibold">No {many} left</span>
                 <span className="text-sm text-muted-foreground">{isStaple(i) ? `${i.name} is on the shopping list.` : "It isn't a Staple, so it won't go on the list by itself."}</span>
               </div>
+            )}
+            {bulk && (i.open ?? 0) > 0 && (
+              <label className="flex min-h-11 cursor-pointer items-center gap-3">
+                <Switch checked={!!i.openLow} onCheckedChange={(v) => set({ openLow: v || undefined })} />
+                <span className="flex flex-col">
+                  <span className="text-sm font-semibold">Open {one} running low</span>
+                  <span className="text-[13px] text-muted-foreground">
+                    {(i.open ?? 0) < i.inStock ? `You have a full ${one} to follow it.` : shortfall({ ...i, openLow: undefined }) > 0 ? "It's on the shopping list already, for your minimum." : `With no full ${one} left, 1 goes on the shopping list.`}
+                  </span>
+                </span>
+              </label>
             )}
             <div className="flex min-h-10 items-center justify-between gap-3">
               <button type="button" onClick={addUnit} className={cn(quietButton, "inline-flex items-center gap-2", focus)}>

@@ -1,6 +1,6 @@
 # Intent: pantry, recipes and shopping list app, with Claude access
 
-Author: Isaac Forman · Date: 14 Nov 2026 · Updated: 26 Nov 2026 (colour themes; before that 24 Nov: aisles on items, Tags, bought date, shopping by aisle or tag) · Status: draft, awaiting review
+Author: Isaac Forman · Date: 14 Nov 2026 · Updated: 27 Nov 2026 (open pack running low; before that 26 Nov: colour themes; before that 24 Nov: aisles on items, Tags, bought date, shopping by aisle or tag) · Status: draft, awaiting review
 
 ## Problem
 
@@ -94,6 +94,7 @@ Each recipe records:
 - Stock goes down when I record what I've used. I can do that in the pantry admin app, in the phone's Pantry section, or by telling Claude.
 - Counted items are tracked by number. Bulk items are tracked as whole packs, and the app knows whether one is open. I want to see the quantity the way I'd say it, for example "two bags of flour, one open". It doesn't measure how much is left in an open pack.
 - I can mark a pack as open. An open pack counts as less than one full pack.
+- I can mark an open pack as running low, on the phone, in the admin app or by telling Claude ("the rice is nearly out"). It's my say-so, not a measurement. A pack running low never counts towards the minimum. If it's the last pack, with no full one to follow it, one goes on the shopping list, whether or not the item is a Staple, and it shows as Low. The mark goes when no pack is open.
 - For bulk items, only full packs count towards the minimum. The amount to buy is the minimum minus the full packs. For example, one open bag of rice with a minimum of 2 means buying 2.
 - Each unit has its own use-by date. Opening a pack brings its use-by forward if the item has a use-within time.
 - Ticking an item off the list, or adding stock, sets its bought date to today. I can change it.

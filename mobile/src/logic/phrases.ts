@@ -1,5 +1,5 @@
 // Saying things the way a person would: "2 bags, 1 open", "Use by tomorrow", "Short of 2". Pure, so it's tested.
-import { daysUntil, fullOf, isBulk, isStaple, soonest, type Item } from "../../../prototypes/pantry-app/src/model"
+import { daysUntil, fullOf, isBulk, isStaple, lowAndLast, shortfall, soonest, type Item } from "../../../prototypes/pantry-app/src/model"
 
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
@@ -18,8 +18,9 @@ export function phrase(i: Item) {
   const base = count(i, i.inStock)
   const open = isBulk(i) ? Math.min(i.open ?? 0, i.inStock) : 0
   if (!open) return base
-  if (open === i.inStock) return i.inStock === 1 ? `${base}, open` : `${base}, all open`
-  return `${base}, ${open} open`
+  const low = i.openLow ? ", running low" : ""
+  if (open === i.inStock) return i.inStock === 1 ? `${base}, open${low}` : `${base}, all open${low}`
+  return `${base}, ${open} open${low}`
 }
 
 /** The minimum, said plainly: "2 bottles" or "None, not a Staple". */
@@ -52,6 +53,7 @@ export const goingOffSoon = (i: Item) => {
 
 /** The sentence under the stock on an item's page. */
 export function stockStatus(i: Item) {
+  if (lowAndLast(i) && shortfall(i) === 0) return `The open ${i.unit?.[0] ?? "pack"} is running low and there's no full one, so 1 is on the list.`
   if (!isStaple(i)) return i.inStock > 0 ? "Not a Staple, so it only goes on the list when you add it." : "None left. Not a Staple, so it isn't on the list unless you add it."
   const counts = fullOf(i)
   const short = Math.max(0, i.target - counts)

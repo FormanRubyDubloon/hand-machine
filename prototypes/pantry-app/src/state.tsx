@@ -174,6 +174,7 @@ function itemChanges(before: Item, draft: Item) {
   else if (!!before.priceEstimate !== !!draft.priceEstimate) changes.push(draft.priceEstimate ? "price marked as an estimate" : "price no longer an estimate")
   if (before.brand !== draft.brand) changes.push("brand")
   if (!!before.openCounts !== !!draft.openCounts) changes.push(draft.openCounts ? "open pack counts towards the minimum" : "open pack doesn't count towards the minimum")
+  if (!!before.openLow !== !!draft.openLow) changes.push(draft.openLow ? "open pack running low" : "open pack no longer running low")
   if (!!before.noExpiry !== !!draft.noExpiry) changes.push(draft.noExpiry ? "no use-by dates" : "use-by dates tracked again")
   else if (JSON.stringify(before.useBy) !== JSON.stringify(draft.useBy)) changes.push("use-by dates")
   if (before.useWithinWeeks !== draft.useWithinWeeks) changes.push("use within, once open")

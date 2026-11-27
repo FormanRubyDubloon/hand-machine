@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { daysUntil, fullOf, soonest, stockOf, whenText, type HistoryEntry, type IngredientStatus, type Item, type Who } from "./model"
+import { daysUntil, fullOf, isStaple, LOW_AT, lowAndLast, soonest, stockOf, whenText, type HistoryEntry, type IngredientStatus, type Item, type Who } from "./model"
 
 // ---------- type ----------
 
@@ -110,13 +110,15 @@ export function EstimateMark({ tip, size = "sm", className }: { tip: string; siz
 }
 
 /** What the Status column means, for a tooltip. */
-export const statusHelp = "Out: none in stock. Low: half the minimum or fewer. A Staple under its minimum but above half goes on the shopping list without a status. To buy: not a Staple, and on the shopping list. Ordered: on the shopping list and already ordered."
+export const statusHelp = "Out: none in stock. Low: half the minimum or fewer, or a bulk item whose last pack is open and marked running low. A Staple under its minimum but above half goes on the shopping list without a status. To buy: not a Staple, and on the shopping list. Ordered: on the shopping list and already ordered."
 
 /** Out (solid) or Low (outlined), from the stock. Nothing when it's fine. The tooltip says why. */
 export function StockPill({ item }: { item: Item }) {
   const s = stockOf(item)
   if (!s) return null
-  const tip = s === "out" ? `None in stock. The minimum is ${item.target}.` : `${fullOf(item)} of ${item.target} count towards the minimum. Low is half the minimum or fewer.`
+  const tip = s === "out" ? `None in stock. The minimum is ${item.target}.`
+    : lowAndLast(item) && !(isStaple(item) && fullOf(item) <= item.target * LOW_AT) ? `The open ${item.unit?.[0] ?? "pack"} is running low and there's no full one.`
+      : `${fullOf(item)} of ${item.target} count towards the minimum. Low is half the minimum or fewer.`
   return (
     <TooltipProvider>
       <Tooltip>

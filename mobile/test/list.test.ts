@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { demoState } from "../src/data/demo"
 import { clearShop, removeFromList, removeQuestion, restoreAll, restoreTicks, skip, tickAll, tickRows, tickOne, untick, addNew, setToGet } from "../src/logic/actions"
-import { filtersOn, leftOf, matchesFilter, NO_FILTER, refreshShop, rowsOf, shopGroups, shownRows, tickedText, whereNext, type Row } from "../src/logic/list"
+import { filtersOn, leftOf, matchesFilter, NO_FILTER, refreshShop, rowsOf, shopGroups, shownRows, tickedText, gotPopupText, whereNext, type Row } from "../src/logic/list"
 import type { PhoneState } from "../src/data/state"
 
 const start = (): PhoneState => {
@@ -113,6 +113,11 @@ describe("the toast after a tick", () => {
     expect(tickedText(row({}, 6, 5), 6)).toBe("Got all 6 eggs.")
     expect(tickedText(row({}, 1), 1)).toBe("Got eggs.")
   })
+  it("says what you got in the item sheet's popup, without all or a full stop", () => {
+    expect(gotPopupText(row({ name: "Bin bags" }, 2))).toBe("Got 2 bin bags")
+    expect(gotPopupText(row({}, 1))).toBe("Got eggs")
+    expect(gotPopupText(row({ name: "Flour", unit: ["bag", "bags"] }, 3))).toBe("Got 3 bags of flour")
+  })
 })
 
 describe("the aisle counts", () => {
@@ -213,5 +218,21 @@ describe("shop done: where next", () => {
     expect(whereNext(s)).toEqual([])
     s = skip(s, "eggs")
     expect(whereNext(s).map((n) => n.store.id)).toEqual(["tesco"])
+  })
+})
+
+describe("an open pack running low", () => {
+  it("goes on the list with its reason when it's the last pack, and leaves once one is bought", async () => {
+    const { setOpenLow, addOne } = await import("../src/logic/actions")
+    let s = start()
+    s = { ...s, items: { ...s.items, rice: { ...s.items.rice, target: 0, inStock: 1, open: 1 } } }
+    s = { ...s, shop: refreshShop(s.shop, s.items) }
+    expect(rowsOf(s).find((r) => r.id === "rice")).toBeUndefined()
+    s = setOpenLow(s, "rice", true)
+    const row = rowsOf(s).find((r) => r.id === "rice")!
+    expect([row.need, row.note, row.group, row.status]).toEqual([1, "Open bag running low", "staples", "low"])
+    s = addOne(s, "rice")
+    expect(s.items.rice.openLow).toBe(true)
+    expect(rowsOf({ ...s, shop: refreshShop(null, s.items) }).find((r) => r.id === "rice")).toBeUndefined()
   })
 })

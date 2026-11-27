@@ -2,7 +2,7 @@
 // Pure, so it's tested (test/list.test.ts). The rules come from intent.md ("The shopping list") and the PROTO-1
 // handoff (section 6).
 import {
-  aisleLabel, aisleTitle, compareAisles, entryTotal, isStaple, itemAisle, needOf, normalise, settle, shortfall, stockOf, tagsOf,
+  aisleLabel, aisleTitle, compareAisles, entryTotal, isStaple, itemAisle, lowAndLast, needOf, normalise, settle, shortfall, stockOf, tagsOf,
   type AisleValue, type Category, type Item, type Items, type Store,
 } from "../../../prototypes/pantry-app/src/model"
 import type { PhoneState, Shop } from "../data/state"
@@ -176,6 +176,7 @@ export function reasonOf(i: Item, startEntries = i.entries) {
     if (i.type === "bulk" && (i.open ?? 0) > 0 && !i.openCounts) return `Open ${i.unit?.[1] ?? "packs"} don't count · minimum ${i.target}`
     return `Below your minimum of ${i.target}`
   }
+  if (lowAndLast(i)) return `Open ${i.unit?.[0] ?? "pack"} running low`
   if (startEntries?.some((e) => e.source.kind === "claude")) return "Added by Claude"
   return i.notes ?? ""
 }
@@ -194,7 +195,7 @@ export function rowsOf(state: Pick<PhoneState, "items" | "shop">): Row[] {
     // Group and grade it as it was before this shop, as the pantry app does (a Staple below its minimum first,
     // then a recipe, then anything else added).
     const before = got > 0 ? unbought(item, got, r.entries, r.review, r.boughtAt) : item
-    const group = shortfall(before) > 0 ? "staples" : before.entries?.[0]?.source.kind === "recipe" ? "recipes" : "added"
+    const group = shortfall(before) > 0 || lowAndLast(before) ? "staples" : before.entries?.[0]?.source.kind === "recipe" ? "recipes" : "added"
     const status = item.ordered ? "ordered" : stockOf(before)
     return [{ id, item, need: r.need, got, left, done, ordered: !!item.ordered, isNew: !!r.review, note, group, status, skipped: !!r.skipped && !done }]
   })
@@ -254,6 +255,13 @@ export function asksForAisle(state: Pick<PhoneState, "stores" | "storeId" | "noA
 
 /** "Got all 6 eggs." */
 export const gotAllText = (r: Row) => `Got all ${count(r.item, r.need)}${r.item.unit ? ` of ${r.item.name.toLowerCase()}` : ` ${r.item.name.toLowerCase()}`}.`
+
+/** The item sheet's Got all popup (Isaac's design, 27 Nov 2026): "Got 2 bin bags", "Got 3 tins of tomatoes", "Got eggs". */
+export const gotPopupText = (r: Row) => {
+  const name = r.item.name.toLowerCase()
+  if (r.need === 1) return `Got ${name}`
+  return `Got ${count(r.item, r.need)}${r.item.unit ? ` of ${name}` : ` ${name}`}`
+}
 
 /**
  * The toast after ticking a row up to `got` (`r` is the row as it was before): "Eggs: got 1, 2 to get.",

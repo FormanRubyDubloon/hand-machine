@@ -5,11 +5,11 @@ import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/d
 import { router, useLocalSearchParams } from "expo-router"
 import * as React from "react"
 import { Platform, ScrollView, Text, View } from "react-native"
-import { aisleTitle, isBulk, isStaple, itemAisle, locationLabel, tagsOf, type Location } from "../../../../../../prototypes/pantry-app/src/model"
+import { aisleTitle, isBulk, isStaple, itemAisle, shortfall, locationLabel, tagsOf, type Location } from "../../../../../../prototypes/pantry-app/src/model"
 import { useStore } from "../../../../data/store"
-import { addOne, approve, openOne, setLocation, setMin, setNotes, setStore, setUseBy, usedOne } from "../../../../logic/actions"
+import { addOne, approve, openOne, setOpenLow, setLocation, setMin, setNotes, setStore, setUseBy, usedOne } from "../../../../logic/actions"
 import { stockStatus, expiryText } from "../../../../logic/phrases"
-import { AisleField, BackLink, Body, Button, Caption, Chip, Display, Field, InfoBox, Label, Picker, Press, Stepper } from "../../../../ui/kit"
+import { AisleField, BackLink, Body, Button, Caption, Chip, Display, Field, InfoBox, Label, Picker, Press, Stepper, Toggle } from "../../../../ui/kit"
 import { LOCATIONS } from "../../../../ui/locations"
 import { TagMark } from "../../../../ui/tags"
 import { font, radius, space, useColours } from "../../../../ui/theme"
@@ -86,6 +86,14 @@ export default function PantryItem() {
             <Stepper label="Minimum to keep" value={item.target} min={0} onChange={(n) => change((st) => setMin(st, id, n), note(`Set the minimum for ${name} to ${n}`, `min:${id}`))} />
           </View>
           {bulk && <Button kind="secondary" height={48} label={`Open a ${unit}`} disabled={open >= item.inStock} onPress={() => change((st) => openOne(st, id), note(`Opened a ${unit} of ${name}`))} />}
+          {bulk && open > 0 && (
+            <Toggle
+              label={`Open ${unit} running low`}
+              caption={open < item.inStock ? `You have a full ${unit} to follow it.` : shortfall({ ...item, openLow: undefined }) > 0 ? "It's on the list already, for your minimum." : `With no full ${unit} left, 1 goes on the list.`}
+              value={!!item.openLow}
+              onChange={(v) => change((st) => setOpenLow(st, id, v), note(v ? `${name}: open ${unit} running low` : `${name}: open ${unit} not running low`))}
+            />
+          )}
         </View>
 
         <UseBy

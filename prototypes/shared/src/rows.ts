@@ -44,6 +44,7 @@ export type Row = {
   use_by: string[]
   no_expiry?: boolean
   open_counts?: boolean
+  open_low?: boolean
   use_within_weeks?: number | null
   store_ids?: string[]
   aisles?: Record<string, number | string> | null
@@ -105,6 +106,7 @@ export function toItem(r: Row): SharedItem {
     useBy: r.use_by.length ? r.use_by : undefined,
     noExpiry: r.no_expiry || undefined,
     openCounts: r.open_counts || undefined,
+    openLow: r.open_low || undefined,
     useWithinWeeks: r.use_within_weeks ?? undefined,
     oneOff: r.one_off || undefined,
     ordered: r.ordered || undefined,
@@ -198,6 +200,7 @@ export function toRow(i: SharedItem, knownCategories: Set<string>) {
     use_by: i.noExpiry ? [] : (i.useBy ?? []).filter((d): d is string => !!d),
     no_expiry: !!i.noExpiry,
     open_counts: !!i.openCounts,
+    open_low: !!i.openLow,
     use_within_weeks: i.useWithinWeeks ?? null,
     store_ids: i.where ?? [],
     aisles: i.aisleAt ?? {},

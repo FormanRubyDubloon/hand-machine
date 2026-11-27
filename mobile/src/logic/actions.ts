@@ -312,6 +312,8 @@ export const usedAll = (s: PhoneState, id: string) => edit(s, id, (x) => ({ ...w
 export const addOne = (s: PhoneState, id: string) => edit(s, id, (x) => bought(x, 1))
 /** Opens the soonest full pack. With "use within, once open" set, its use-by moves no later than that. */
 export const openOne = (s: PhoneState, id: string) => edit(s, id, (x) => openUnit(x).item)
+/** Marks the open pack as running low, or not (27 Nov 2026). A last pack running low puts one on the list. */
+export const setOpenLow = (s: PhoneState, id: string, on: boolean) => withShopRow(edit(s, id, (x) => ({ ...x, openLow: on || undefined })), id)
 
 export const setMin = (s: PhoneState, id: string, n: number) => withShopRow(edit(s, id, (x) => ({ ...x, target: Math.max(0, n) })), id)
 export const setLocation = (s: PhoneState, id: string, location: Location) => edit(s, id, (x) => ({ ...x, location }))

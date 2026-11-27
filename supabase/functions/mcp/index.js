@@ -55,6 +55,7 @@ function toItem(r) {
     useBy: r.use_by.length ? r.use_by : void 0,
     noExpiry: r.no_expiry || void 0,
     openCounts: r.open_counts || void 0,
+    openLow: r.open_low || void 0,
     useWithinWeeks: r.use_within_weeks ?? void 0,
     oneOff: r.one_off || void 0,
     ordered: r.ordered || void 0,
@@ -112,6 +113,7 @@ function toRow(i, knownCategories) {
     use_by: i.noExpiry ? [] : (i.useBy ?? []).filter((d) => !!d),
     no_expiry: !!i.noExpiry,
     open_counts: !!i.openCounts,
+    open_low: !!i.openLow,
     use_within_weeks: i.useWithinWeeks ?? null,
     store_ids: i.where ?? [],
     aisles: i.aisleAt ?? {},
@@ -280,12 +282,14 @@ var locations = [
 var locationLabel = (l) => locations.find((x) => x.value === l)?.label ?? "No location";
 var isStaple = (i) => i.target > 0;
 var isBulk = (i) => i.type === "bulk";
-var fullOf = (i, total = i.inStock) => isBulk(i) && !i.openCounts ? Math.max(0, total - (i.open ?? 0)) : total;
+var isOpenLow = (i) => isBulk(i) && !!i.openLow && (i.open ?? 0) > 0;
+var fullOf = (i, total = i.inStock) => !isBulk(i) ? total : Math.max(0, total - (i.openCounts ? isOpenLow(i) ? 1 : 0 : i.open ?? 0));
+var lowAndLast = (i) => isOpenLow(i) && i.inStock - (i.open ?? 0) <= 0;
 var shortfall = (i) => Math.max(0, i.target - fullOf(i));
 var entryTotal = (i) => (i.entries ?? []).reduce((n, e) => n + e.qty, 0);
-var needOf = (i) => Math.max(shortfall(i), entryTotal(i));
+var needOf = (i) => Math.max(shortfall(i), entryTotal(i), lowAndLast(i) ? 1 : 0);
 var LOW_AT = 0.5;
-var stockOf = (i) => !isStaple(i) ? null : i.inStock <= 0 ? "out" : fullOf(i) <= i.target * LOW_AT ? "low" : null;
+var stockOf = (i) => isStaple(i) && i.inStock <= 0 ? "out" : isStaple(i) && fullOf(i) <= i.target * LOW_AT || lowAndLast(i) ? "low" : null;
 function unitText2(i, n) {
   if (!i.unit) return String(n);
   return `${n} ${n === 1 ? i.unit[0] : i.unit[1]}`;
@@ -308,7 +312,7 @@ function normalise(i) {
   while (dates.length < want) dates.push(null);
   const opened = [...i.openedAt ?? []].slice(0, open ?? 0);
   while (opened.length < (open ?? 0)) opened.push(null);
-  return { ...i, open, useBy: dates, openedAt: isBulk(i) ? opened : void 0, review: i.review && i.inStock <= 0 ? true : void 0, ordered: i.ordered && needOf(i) > 0 ? true : void 0 };
+  return { ...i, open, useBy: dates, openedAt: isBulk(i) ? opened : void 0, openLow: isBulk(i) && i.openLow && (open ?? 0) > 0 || void 0, review: i.review && i.inStock <= 0 ? true : void 0, ordered: i.ordered && needOf(i) > 0 ? true : void 0 };
 }
 function withStock(i, n) {
   const next = Math.max(0, n);
@@ -399,13 +403,14 @@ function listRows(items) {
   return Object.values(items).filter((i) => needOf(i) > 0).map((i) => {
     const reasons = [];
     if (shortfall(i) > 0) reasons.push({ kind: "staple", stock: stockOf(i) });
+    else if (lowAndLast(i)) reasons.push({ kind: "low" });
     for (const e of i.entries ?? []) {
       if (e.source.kind === "recipe") reasons.push({ kind: "recipe", recipe: e.source.recipe });
       else if (e.source.kind === "claude") reasons.push({ kind: "claude", at: e.at });
       else reasons.push({ kind: "hand" });
     }
     const first = reasons[0]?.kind;
-    return { item: i, qty: needOf(i), reasons, group: first === "staple" ? "staples" : first === "recipe" ? "recipes" : "added" };
+    return { item: i, qty: needOf(i), reasons, group: first === "staple" || first === "low" ? "staples" : first === "recipe" ? "recipes" : "added" };
   });
 }
 function listTotal(rows) {
@@ -553,6 +558,7 @@ function itemLine(i, categories, stores = []) {
   if (i.packSize) parts.push(`pack size ${i.packSize.amount} ${i.packSize.measure}`);
   const opened = (i.openedAt ?? []).filter((x) => !!x);
   if (opened.length) parts.push(`opened ${opened.join(", ")}`);
+  if (isOpenLow(i)) parts.push("open pack running low");
   if (i.location) parts.push(locationLabel(i.location).toLowerCase());
   const tags = tagNames(categories, i);
   parts.push(tags.length ? `tags: ${tags.join(", ")}` : "no tags");
@@ -886,7 +892,7 @@ function ingredientsReport(r) {
   return lines.join("\n");
 }
 var removeRecipeEntries = (i, recipeName) => i.entries?.some((e) => e.source.kind === "recipe" && e.source.recipe === recipeName) ? { ...i, entries: i.entries.filter((e) => !(e.source.kind === "recipe" && e.source.recipe === recipeName)) } : null;
-var reasonText = (r, i) => r.kind === "staple" ? `Staple, have ${haveText(i)}, keep ${i.target}` : r.kind === "recipe" ? `for ${r.recipe}` : r.kind === "claude" ? "added by Claude" : "added by you";
+var reasonText = (r, i) => r.kind === "staple" ? `Staple, have ${haveText(i)}, keep ${i.target}` : r.kind === "low" ? `open ${i.unit?.[0] ?? "pack"} running low, none full` : r.kind === "recipe" ? `for ${r.recipe}` : r.kind === "claude" ? "added by Claude" : "added by you";
 function totalText(t) {
   if (t.pence === 0 && t.unpriced) return `No estimated total: nothing on the list has a price yet (${plural(t.unpriced, "thing")}).`;
   const notes = [
@@ -1165,14 +1171,18 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
   {
     name: "record_used",
     title: "Record what was used",
-    description: `Takes used things off stock, when the user says what they've used: "I used the last of the rice", "we had 4 eggs", "I opened a new bag of flour". This isn't an edit, so it doesn't need asking. Counted items: amount is how many were used. Bulk items: amount is how many packs were finished; opened_pack opens one instead.`,
+    description: `Takes used things off stock, when the user says what they've used: "I used the last of the rice", "we had 4 eggs", "I opened a new bag of flour", "the rice is nearly out". This isn't an edit, so it doesn't need asking. Counted items: amount is how many were used. Bulk items: amount is how many packs were finished; opened_pack opens one instead; running_low marks the open pack as running low.`,
     inputSchema: {
       type: "object",
       properties: {
         item: itemRef,
         amount: { type: "number", description: "Default 1." },
         all: { type: "boolean", description: 'Used all of it ("the last of the rice").' },
-        opened_pack: { type: "boolean", description: "Bulk only: opened a pack, nothing finished." }
+        opened_pack: { type: "boolean", description: "Bulk only: opened a pack, nothing finished." },
+        running_low: {
+          type: "boolean",
+          description: 'Bulk only: true when the open pack is running low ("nearly out of rice"), false to take that back. Nothing is taken off stock. If no full pack is left, one goes on the shopping list. Needs a pack open: if none is, open one with opened_pack first.'
+        }
       },
       required: ["item"]
     },
@@ -1180,6 +1190,13 @@ ${list.map(({ recipe }) => recipeLine(recipe, data.items)).join("\n")}`;
     async run(args, ctx) {
       const i = findItem(ctx.data.items, args.item);
       const pack = i.unit?.[0] ?? "pack";
+      if (typeof args.running_low === "boolean") {
+        if (!isBulk(i)) throw new ToolError(`${i.name} is counted, not bulk, so it has no open pack. Use amount for what was used.`);
+        if ((i.open ?? 0) <= 0) throw new ToolError(`No ${pack} of ${lower(i.name)} is open (${haveText(i)}). Ask the user whether they opened one; if so, use opened_pack first.`);
+        const next2 = normalise({ ...i, openLow: args.running_low || void 0 });
+        await commit(ctx, { items: [next2], title: args.running_low ? `Open ${pack} of ${lower(i.name)} running low` : `Open ${pack} of ${lower(i.name)} not running low`, detail: stockDetail(next2), itemIds: [i.id] });
+        return `Done. ${itemLine(ctx.data.items[i.id], ctx.data.categories, ctx.data.stores)}`;
+      }
       if (args.opened_pack === true) {
         if (!isBulk(i)) throw new ToolError(`${i.name} is counted, not bulk: use amount instead.`);
         if ((i.open ?? 0) >= i.inStock) throw new ToolError(`Every ${pack} of ${lower(i.name)} is already open (${haveText(i)}). Ask the user whether one was finished or more came in.`);
@@ -1411,6 +1428,7 @@ ${recipeLine(recipe, ctx.data.items)}`;
             location: { type: ["string", "null"], enum: [...LOCATIONS, null], description: "household is shown to the user as Other." },
             use_by: { type: "array", items: { type: "string" }, description: "Replaces every date, one per unit or pack. YYYY-MM-DD. [] clears them." },
             open_counts: { type: "boolean", description: "Bulk only: true if an open pack counts towards the minimum like a full one. false (the default) counts only full packs." },
+            open_low: { type: "boolean", description: "Bulk only, with a pack open: true marks the open pack as running low, false clears it. When the user just says something's nearly out, use record_used running_low instead (no asking)." },
             use_within_weeks: { type: ["number", "null"], description: "Bulk only: weeks to use a pack within once it's open (1 to 52). Opening a pack then moves its use-by no later than that. null clears it." },
             no_expiry: { type: "boolean", description: "true for things that never go off (salt, tins, cleaning products): clears every date and stops the item asking for one. false to track dates again." },
             use_by_one: {
@@ -1519,6 +1537,12 @@ ${recipeLine(recipe, ctx.data.items)}`;
         if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs.`);
         next.openCounts = c.open_counts || void 0;
         said.push(c.open_counts ? "open pack counts towards the minimum" : "open pack doesn't count towards the minimum");
+      }
+      if (typeof c.open_low === "boolean") {
+        if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs.`);
+        if ((next.open ?? 0) <= 0 && c.open_low) throw new ToolError(`No pack of ${lower(i.name)} is open, so none can be running low. Set open first, or use record_used opened_pack.`);
+        next.openLow = c.open_low || void 0;
+        said.push(c.open_low ? "open pack running low" : "open pack no longer running low");
       }
       if (has("use_within_weeks")) {
         if (next.type !== "bulk") throw new ToolError(`${i.name} is counted, so it has no open packs.`);
