@@ -66,6 +66,13 @@
   /* Home's Tonight pot, drawn on the --status-out card (as the phone's potBody and potKnob). */
   --pot-body: oklch(0.497 0.094 119.8); /* #5C6A26 */
   --pot-knob: oklch(0.633 0.141 63.6); /* #C4740A */
+  /* Insights' spend by tag (four tags, then the rest) and weekly bars (spend-1, this week spend-2).
+     Checked with the dataviz validator for colour-blind and normal-vision separation, 27 Nov 2026. */
+  --spend-1: oklch(0.497 0.094 119.8); /* #5C6A26 */
+  --spend-2: oklch(0.784 0.144 86.2); /* #E1B136 */
+  --spend-3: oklch(0.422 0.053 141.8); /* #3D553A */
+  --spend-4: oklch(0.715 0.159 64.4); /* #E68A0A */
+  --spend-rest: oklch(0.877 0.025 89.2); /* #DDD6C4 */
 }
 
 :root.theme-warm.theme-thyme.dark,
@@ -103,6 +110,11 @@
   --status-low: oklch(0.446 0.072 120.0); /* #4F5A2A */
   --status-low-border: oklch(0.802 0.146 88.2); /* #E5B83A */
   --status-low-foreground: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --spend-1: oklch(0.802 0.146 88.2); /* #E5B83A */
+  --spend-2: oklch(0.694 0.049 136.3); /* #8FA486 */
+  --spend-3: oklch(0.715 0.159 64.4); /* #E68A0A */
+  --spend-4: oklch(0.946 0.018 89.4); /* #F2EDE0 */
+  --spend-rest: oklch(0.471 0.055 139.4); /* #4B6345 */
   --sidebar: oklch(0.408 0.052 140.9); /* #3A5136 */
   --sidebar-foreground: oklch(0.946 0.018 89.4); /* #F2EDE0 */
   --sidebar-primary: oklch(0.802 0.146 88.2); /* #E5B83A */

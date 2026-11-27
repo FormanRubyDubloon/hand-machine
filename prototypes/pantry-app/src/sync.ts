@@ -343,6 +343,8 @@ export function historyFingerprint(h: HistoryEntry | undefined): string {
   if (!h) return ""
   return JSON.stringify([
     iso(h.at), h.who, h.title, h.detail ?? "", h.itemIds ?? [], h.recipeId ?? "", !!h.undone, h.key ?? "", sortKeys(h.undo ?? null), sortKeys(h.redo ?? null),
+    // Facts only when there are some, so entries from before them keep their fingerprint.
+    ...(h.facts?.length ? [sortKeys(h.facts)] : []),
   ])
 }
 
@@ -355,11 +357,13 @@ const toHistory = (r: HistoryRow): HistoryEntry => ({
   undone: r.undone || undefined,
   redo: (r.redo as HistoryEntry["redo"]) ?? undefined,
   key: r.key ?? undefined,
+  facts: Array.isArray(r.facts) && r.facts.length ? (r.facts as HistoryEntry["facts"]) : undefined,
 })
 
 const toHistoryRow = (h: HistoryEntry): HistoryRow => ({
   id: h.id, at: h.at, who: h.who, title: h.title, detail: h.detail ?? null, item_ids: h.itemIds ?? [],
   recipe_id: h.recipeId ?? null, undo: h.undo ?? null, undone: !!h.undone, redo: h.redo ?? null, key: h.key ?? null,
+  ...(h.facts?.length ? { facts: h.facts } : {}),
 })
 
 /** The History entries that differ from the last sync. `base` maps entry id to its fingerprint then. */

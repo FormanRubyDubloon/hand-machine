@@ -245,6 +245,8 @@ export type HistoryRow = {
   /** What an undo overwrote, so the app can revert it (20261120200000_history_redo). */
   redo?: unknown
   key: string | null
+  /** What the entry means for Insights (20261127120000_history_facts). */
+  facts?: unknown
 }
 
 /** The newest history rows, newest first. */
@@ -252,6 +254,18 @@ export async function fetchHistory(limit = 500): Promise<HistoryRow[]> {
   const { data, error } = await supabase.from("history").select("*").order("at", { ascending: false }).limit(limit)
   if (error) throw new Error(error.message)
   return data as HistoryRow[]
+}
+
+/** Undone-or-not entries with facts since a date, oldest first, for Insights. Only the columns it needs. */
+export async function fetchFacts(since: string): Promise<{ id: string; at: string; who: HistoryRow["who"]; undone: boolean; facts: unknown }[]> {
+  const rows: { id: string; at: string; who: HistoryRow["who"]; undone: boolean; facts: unknown }[] = []
+  // Supabase returns at most 1,000 rows a request, so page through.
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase.from("history").select("id, at, who, undone, facts").not("facts", "is", null).gte("at", since).order("at").range(from, from + 999)
+    if (error) throw new Error(error.message)
+    rows.push(...(data as typeof rows))
+    if (!data || data.length < 1000) return rows
+  }
 }
 
 export async function writeHistory(rows: HistoryRow[]) {

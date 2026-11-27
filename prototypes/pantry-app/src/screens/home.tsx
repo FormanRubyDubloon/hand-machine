@@ -1,7 +1,7 @@
 // Home (new design, 27 Nov 2026): Today and Insights. Today is a greeting, then four cards: Tonight (one recipe you
 // can cook now, picked as the phone's Home picks it), Use it up (what goes off first), the next shop (hidden with
 // nothing to buy) and Used one? Tap it (the most-used items, with −1). A bar under them says what's waiting to be
-// reviewed. Insights needs a record of what was bought, which the app doesn't keep yet, so it says so.
+// reviewed. Insights (insights.tsx) adds up the facts on History entries for this week, month or year.
 // Search moved to the header (it was already there) and History to a panel off the header's clock.
 import * as React from "react"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,8 @@ import { Eyebrow, Segmented } from "../components"
 import { ItemPanel } from "./item-panel"
 import { RecipePanel } from "./recipe"
 import { ReviewBar } from "../review"
+import { Insights, insightsTitle, periodLabel } from "../insights"
+import type { Period } from "../insights-model"
 
 type View = "today" | "insights"
 
@@ -313,30 +315,17 @@ function UsedOne({ all }: { all: Item[] }) {
   )
 }
 
-// ---------- Insights ----------
-
-function Insights() {
-  return (
-    <section aria-labelledby="insights" className="flex max-w-[720px] flex-col gap-3 rounded-lg border border-border p-10">
-      <h2 id="insights"><Eyebrow className="text-[13px] text-foreground">Insights are on the way</Eyebrow></h2>
-      <p className="text-lg leading-snug">
-        Spending, shops, what you cooked and what you threw out need a record of each shop: what you bought, where and
-        for how much. The app doesn't keep one yet. Once it does, this page fills up from that day.
-      </p>
-    </section>
-  )
-}
-
 // ---------- the page ----------
 
 export function Home({ item, recipe }: { item?: string; recipe?: string }) {
   const { items } = usePantry()
   const [view, setView] = React.useState<View>("today")
+  const [period, setPeriod] = React.useState<Period>("month")
   const all = Object.values(items).filter((i) => !i.oneOff)
   const soon = all.filter((i) => i.inStock > 0 && goingOffSoon(i)).sort((a, b) => (soonest(a) ?? "").localeCompare(soonest(b) ?? ""))
   const hasShop = listRows(items).some((r) => !r.item.ordered)
   const sub = view === "insights"
-    ? "What you bought, cooked and threw out."
+    ? "What you bought, cooked and threw out, up to today."
     : soon.length
       ? `${namesText(soon).replace(/^the/, "The")} ${soon.length === 1 ? "wants" : "want"} using soon.`
       : "Nothing needs using up."
@@ -347,19 +336,34 @@ export function Home({ item, recipe }: { item?: string; recipe?: string }) {
         <header className="flex flex-wrap items-end justify-between gap-6 border-b border-border pb-8">
           <div className="flex min-w-0 flex-col gap-3">
             <Eyebrow className="text-[13px]">{dateLine()}</Eyebrow>
-            <h1 className="font-serif text-[64px] leading-none font-bold">{view === "insights" ? "How it's going" : greeting()}</h1>
+            <h1 className="font-serif text-[64px] leading-none font-bold">{view === "insights" ? insightsTitle(period) : greeting()}</h1>
             <p className="text-xl text-muted-foreground">{sub}</p>
           </div>
+          <div className="flex items-center gap-4">
+          {view === "insights" && (
+            <Segmented<Period>
+              label="Period"
+              value={period}
+              onChange={setPeriod}
+              className="h-14 w-[330px] [&>button]:h-14 [&>button]:text-[15px] [&>button]:normal-case [&>button]:tracking-normal"
+              options={[
+                { value: "week", label: periodLabel("week") },
+                { value: "month", label: periodLabel("month") },
+                { value: "year", label: periodLabel("year") },
+              ]}
+            />
+          )}
           <Segmented<View>
             label="Home view"
             value={view}
             onChange={setView}
-            className="h-14 w-[420px] [&>button]:h-14 [&>button]:text-sm [&>button]:tracking-widest"
+            className="h-14 w-[320px] [&>button]:h-14 [&>button]:text-sm [&>button]:tracking-widest"
             options={[
               { value: "today", label: "Today" },
               { value: "insights", label: "Insights" },
             ]}
           />
+          </div>
         </header>
 
         {view === "today" ? (
@@ -375,7 +379,7 @@ export function Home({ item, recipe }: { item?: string; recipe?: string }) {
             <ReviewBar />
           </>
         ) : (
-          <Insights />
+          <Insights period={period} />
         )}
       </div>
       <ItemPanel id={item} onClose={() => navigate({ name: "home" })} />

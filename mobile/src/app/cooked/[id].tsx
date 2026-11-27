@@ -81,7 +81,7 @@ export default function Cooked() {
           height={60}
           onPress={() => {
             const done = Object.keys(finished).filter((k) => finished[k])
-            change((s) => cooked(s, recipe, counts, done), { title: `Cooked ${recipe.name}`, detail: "Stock updated on the phone", recipeId: recipe.id })
+            change((s) => cooked(s, recipe, counts, done), { title: `Cooked ${recipe.name}`, detail: "Stock updated on the phone", recipeId: recipe.id, counts: { as: "stock", cooked: recipe.id } })
             router.back()
             say(`Cooked ${recipe.name}. Stock updated.`)
           }}

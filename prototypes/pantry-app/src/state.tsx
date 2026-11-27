@@ -14,8 +14,8 @@ import { deleteCategories } from "../../shared/src/pantry-remote"
 import { href } from "./router"
 import type { CategoryColour, CategoryIcon } from "../../shared/src/category-look"
 import {
-  amountOf, cap, hasTag, haveText, tagsOf, withAisle, withTags, unitText, nameList, isBulk, isToday, lower, needOf, normalise, openUnit, plural, settle, todayIso, unitsOf, withStock, withUnits,
-  type Db, type HistoryEntry, type Item, type Items, type Recipe, type Snapshot, type Store, type Who,
+  amountOf, cap, factsOf, hasTag, haveText, tagsOf, withAisle, withTags, unitText, nameList, isBulk, isToday, lower, needOf, normalise, openUnit, plural, settle, todayIso, unitsOf, withStock, withUnits,
+  type Counts, type Db, type HistoryEntry, type Item, type Items, type Recipe, type Snapshot, type Store, type Who,
 } from "./model"
 
 type S = { db: Db; items: Items }
@@ -153,7 +153,10 @@ function diffSnapshot(prev: S, next: S): Snapshot {
   return snapshot
 }
 
-type EntryInput = { who?: Who; title: string | ((undo: Snapshot, next: S) => string); detail?: string | ((undo: Snapshot, next: S) => string); itemIds?: string[]; recipeId?: string; key?: string }
+type EntryInput = { who?: Who; title: string | ((undo: Snapshot, next: S) => string); detail?: string | ((undo: Snapshot, next: S) => string); itemIds?: string[]; recipeId?: string; key?: string
+  /** How it counts for Insights (factsOf in the model). A `stock:` key counts as stock without saying so. */
+  counts?: Counts
+}
 
 /** What changed between two versions of an item, for History. */
 function itemChanges(before: Item, draft: Item) {
@@ -240,6 +243,10 @@ function usePantryState() {
         id: merge ? last.id : id, at: new Date().toISOString(), who: input.who ?? "you",
         title: text(input.title)!, detail: text(input.detail), itemIds: input.itemIds, recipeId: input.recipeId, key: input.key, undo,
       }
+      // Facts from the first "before" of a merged run to now, so taps that undo each other net out.
+      const counts = input.counts ?? (input.key?.startsWith("stock:") ? { as: "stock" as const } : undefined)
+      const facts = counts ? factsOf(undo.items, next.items, counts) : []
+      if (facts.length) entry.facts = facts
       return { ...next, db: { ...next.db, history: [entry, ...(merge ? prev.db.history.slice(1) : prev.db.history)] } }
     })
     return id
@@ -289,14 +296,14 @@ function usePantryState() {
       const i = ref.current.items[id]
       if (!i) return
       commit((s) => edit(s, id, (x) => ({ ...withStock(x, 0), uses: (x.uses ?? 0) + 1 })), {
-        title: `Used all the ${lower(i.name)}`, detail: i.target > 0 ? "Out · on the shopping list" : "None left", itemIds: [id],
+        title: `Used all the ${lower(i.name)}`, detail: i.target > 0 ? "Out · on the shopping list" : "None left", itemIds: [id], counts: { as: "stock" },
       })
     },
     finishPack(id: string) {
       const i = ref.current.items[id]
       if (!i || i.inStock === 0) return
       commit((s) => edit(s, id, (x) => ({ ...withStock(x, x.inStock - 1), uses: (x.uses ?? 0) + 1 })), {
-        title: `Finished a ${i.unit?.[0] ?? "pack"} of ${lower(i.name)}`, detail: stockDetail(id), itemIds: [id],
+        title: `Finished a ${i.unit?.[0] ?? "pack"} of ${lower(i.name)}`, detail: stockDetail(id), itemIds: [id], counts: { as: "stock" },
       })
     },
     openPack(id: string) {
@@ -318,7 +325,7 @@ function usePantryState() {
       const gone = unitsOf(i).filter((u) => u.useBy && u.useBy < today).length
       if (!gone) return
       commit((s) => edit(s, id, (x) => withUnits(x, unitsOf(x).filter((u) => !(u.useBy && u.useBy < today)))), {
-        title: `Threw out ${amountOf(i, gone)}`, detail: stockDetail(id), itemIds: [id],
+        title: `Threw out ${amountOf(i, gone)}`, detail: stockDetail(id), itemIds: [id], counts: { as: "threw" },
       })
     },
 
@@ -348,6 +355,8 @@ function usePantryState() {
               }),
           itemIds: [draft.id],
           key: opts?.key,
+          // More stock saved in the panel is bought, less is used.
+          counts: { as: "stock" },
         },
       )
     },
@@ -603,7 +612,7 @@ function usePantryState() {
           }
           return next
         },
-        { title: `Cooked ${recipe.name}`, detail: parts.join(", ") || "No stock changes", recipeId: recipe.id, itemIds: [...Object.keys(counts), ...finished] },
+        { title: `Cooked ${recipe.name}`, detail: parts.join(", ") || "No stock changes", recipeId: recipe.id, itemIds: [...Object.keys(counts), ...finished], counts: { as: "stock", cooked: recipe.id } },
       )
       toast(`Cooked ${recipe.name}`, { description: "Stock updated." })
     },

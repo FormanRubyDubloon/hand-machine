@@ -10,6 +10,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import * as Network from "expo-network"
 import * as React from "react"
 import { AppState } from "react-native"
+import { factsOf, type Counts } from "../../../prototypes/pantry-app/src/model"
 import { itemPrint } from "../logic/merge"
 import { uid } from "../logic/actions"
 import { refreshShop } from "../logic/list"
@@ -38,7 +39,11 @@ export const POPUP_MOVE_MS = 320
 export type Toast = { id: number; message: string; undo?: () => void; popup?: "got" | "skip" }
 
 /** A History entry for Collca on the web: what changed, and what the items were before, so it can be undone there. */
-export type Note = { title: string; detail?: string; recipeId?: string; key?: string }
+export type Note = {
+  title: string; detail?: string; recipeId?: string; key?: string
+  /** How the change counts for Insights (factsOf in the model): a tick-off, a use, a throw-out, cooking. */
+  counts?: Counts
+}
 
 type Ctx = {
   ready: boolean
@@ -215,6 +220,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     let outbox = after.outbox
     if (n && !DEMO) {
       const items = beforeOf(before, after)
+      // How it counts for Insights: said by the note, or known from its key (shop: is a tick-off, stock: a
+      // stepper). A tick-off belongs to the store you're in and to this shop (its start is its id).
+      const c = n.counts ?? (n.key?.startsWith("shop:") ? { as: "shop" as const } : n.key?.startsWith("stock:") ? { as: "stock" as const } : undefined)
+      const counts = c?.as === "shop" ? { storeId: after.storeId ?? before.storeId, shopId: (after.shop ?? before.shop)?.startedAt, ...c } : c
       const entry: HistoryEntry = {
         id: uid("phone"), at: new Date().toISOString(), who: "phone", title: n.title, detail: n.detail,
         itemIds: Object.keys(items), recipeId: n.recipeId, undo: Object.keys(items).length ? { items } : undefined,
@@ -223,8 +232,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const last = outbox[outbox.length - 1]
       if (n.key && last?.key === n.key && Date.now() - Date.parse(last.at) < 10 * 60_000) {
         const undo = { items: { ...items, ...(last.undo?.items ?? {}) } }
-        outbox = [...outbox.slice(0, -1), { ...entry, id: last.id, key: n.key, itemIds: Object.keys(undo.items), undo }]
-      } else outbox = [...outbox, { ...entry, key: n.key }]
+        // Facts from the first "before" to now, so ticks taken back net out.
+        const facts = counts ? factsOf(undo.items, after.items, counts) : undefined
+        outbox = [...outbox.slice(0, -1), { ...entry, id: last.id, key: n.key, itemIds: Object.keys(undo.items), undo, facts: facts?.length ? facts : undefined }]
+      } else {
+        const facts = counts ? factsOf(items, after.items, counts) : undefined
+        outbox = [...outbox, { ...entry, key: n.key, facts: facts?.length ? facts : undefined }]
+      }
     }
     put({ ...after, outbox })
     soon(AFTER_CHANGE_MS)
